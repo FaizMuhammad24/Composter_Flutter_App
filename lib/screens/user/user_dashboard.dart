@@ -1,171 +1,265 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../constants/app_colors.dart';
-import '../../constants/app_spacing.dart';
-import '../../constants/app_text_styles.dart';
-import '../../utils/app_radius.dart';
-import '../../utils/app_elevation.dart';
-import '../../utils/mock_data.dart';
 import 'user_deposit_screen.dart';
 import 'user_history_screen.dart';
 import 'user_rewards_screen.dart';
 import 'user_profile_screen.dart';
-import '../authentication/login_screen.dart';
 
-class UserDashboard extends StatelessWidget {
+class UserDashboard extends StatefulWidget {
   final UserModel user;
-  
+
   const UserDashboard({Key? key, required this.user}) : super(key: key);
 
   @override
+  State<UserDashboard> createState() => _UserDashboardState();
+}
+
+class _UserDashboardState extends State<UserDashboard> {
+  int _currentIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
-    final userStats = MockData.getUserStats();
-    
     return Scaffold(
-      backgroundColor: AppColors.background,
+      // HEADER
       appBar: AppBar(
-        title: const Text('Dashboard'),
-        backgroundColor: AppColors.user,
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.eco, color: AppColors.primary, size: 20),
+          ),
+        ),
+        title: const Text(
+          'I - Compost',
+          style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.white),
+        ),
+        centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => _showLogoutDialog(context),
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications_outlined, color: Colors.white),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Notifikasi (Coming Soon)')),
+              );
+            },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          children: [
-            // Hero Card dengan gradient
-            Card(
-              elevation: AppElevation.lg,
-              shape: AppRadius.shapeMd,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.user, AppColors.user.withOpacity(0.7)],
+
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFFE8F5E9), // Light green top
+              Color(0xFFF5F5DC), // Beige bottom
+            ],
+            stops: [0.0, 0.4],
+          ),
+        ),
+        child: SafeArea(
+          bottom: false,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. HERO CARD (dengan statistik di dalamnya)
+                _buildHeroCard(),
+
+            const SizedBox(height: 24),
+
+            // 2. QUICK ACTION
+            _buildQuickActions(),
+
+            const SizedBox(height: 24),
+
+            // 3. REWARD TERPOPULER
+            _buildPopularRewards(),
+
+            const SizedBox(height: 24),
+
+            // 4. TIPS KOMPOS
+            _buildKomposTips(),
+
+            const SizedBox(height: 100),
+              ],
+            ),
+          ),
+        ),
+      ),
+
+      // BOTTOM NAVIGATION
+      bottomNavigationBar: _buildBottomNav(),
+    );
+  }
+
+  // ========== 1. HERO CARD ==========
+  Widget _buildHeroCard() {
+    return Container(
+      height: 300,
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2D5016), Color(0xFF6B8E23)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          // Dekorasi background
+          Positioned(
+            top: 16,
+            right: 16,
+            child: Icon(
+              Icons.local_florist,
+              size: 70,
+              color: Colors.white.withOpacity(0.12),
+            ),
+          ),
+          Positioned(
+            bottom: 90,
+            right: 32,
+            child: Icon(
+              Icons.spa,
+              size: 40,
+              color: Colors.white.withOpacity(0.1),
+            ),
+          ),
+
+          // Greeting
+          Positioned(
+            top: 24,
+            left: 20,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Hai, Selamat Datang!',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.white70,
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w400,
                   ),
-                  borderRadius: AppRadius.borderRadiusMd,
                 ),
-                padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Column(
+                Text(
+                  widget.user.name,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    color: Colors.white,
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.user.email,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.white60,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Statistik Bulan Ini (di dalam hero)
+          Positioned(
+            bottom: 20,
+            left: 16,
+            right: 16,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Statistik Bulan Ini',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white70,
+                    fontFamily: 'Poppins',
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
                   children: [
-                    CircleAvatar(
-                      radius: 40,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.person, size: 50, color: AppColors.user),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      user.name,
-                      style: AppTextStyles.h2.copyWith(color: Colors.white),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.star, color: Colors.amber, size: 30),
-                        const SizedBox(width: AppSpacing.sm),
-                        Text(
-                          '${user.points ?? 0} Poin',
-                          style: AppTextStyles.h2.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      user.email,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: Colors.white70,
-                      ),
-                    ),
+                    _buildHeroStatCard('🗑️', '12 kg', 'Disetor'),
+                    const SizedBox(width: 10),
+                    _buildHeroStatCard('⭐', '${widget.user.points ?? 0}', 'Poin'),
+                    const SizedBox(width: 10),
+                    _buildHeroStatCard('🎁', '2x', 'Ditukar'),
                   ],
                 ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroStatCard(String icon, String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.18),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(icon, style: const TextStyle(fontSize: 22)),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontFamily: 'Poppins',
               ),
             ),
-            const SizedBox(height: AppSpacing.lg),
-            
-            // Quick Stats
-            Row(
-              children: [
-                Expanded(
-                  child: _buildStatCard(
-                    '${userStats['total_deposits']}',
-                    'Total Setoran',
-                    Icons.delete_outline,
-                    AppColors.success,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: _buildStatCard(
-                    '${userStats['total_weight']} kg',
-                    'Total Berat',
-                    Icons.scale,
-                    AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.lg),
-
-            // Menu Grid
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              crossAxisSpacing: AppSpacing.md,
-              mainAxisSpacing: AppSpacing.md,
-              children: [
-                _buildMenuCard(
-                  context,
-                  'Setor Sampah',
-                  Icons.delete,
-                  AppColors.success,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => UserDepositScreen(userEmail: user.email),
-                    ),
-                  ),
-                ),
-                _buildMenuCard(
-                  context,
-                  'Riwayat',
-                  Icons.history,
-                  AppColors.user,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const UserHistoryScreen()),
-                  ),
-                ),
-                _buildMenuCard(
-                  context,
-                  'Tukar Poin',
-                  Icons.card_giftcard,
-                  AppColors.warning,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const UserRewardsScreen()),
-                  ),
-                ),
-                _buildMenuCard(
-                  context,
-                  'Profile',
-                  Icons.person,
-                  AppColors.ph,
-                  () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const UserProfileScreen()),
-                  ),
-                ),
-              ],
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: Colors.white70,
+                fontFamily: 'Poppins',
+              ),
             ),
           ],
         ),
@@ -173,104 +267,417 @@ class UserDashboard extends StatelessWidget {
     );
   }
 
-  // Stat card widget
-  Widget _buildStatCard(String value, String label, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: AppRadius.borderRadiusMd,
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
+  // ========== 2. QUICK ACTION ==========
+  Widget _buildQuickActions() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            value,
-            style: AppTextStyles.h3.copyWith(color: color),
+          const Text(
+            '⚡ Quick Action',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D5016),
+              fontFamily: 'Poppins',
+            ),
           ),
-          Text(
-            label,
-            style: AppTextStyles.bodySmall,
-            textAlign: TextAlign.center,
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              _buildActionButton(
+                icon: '🗑️',
+                label: 'Setor\nSampah',
+                color: const Color(0xFF4CAF50),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => UserDepositScreen(userEmail: widget.user.email),
+                  ),
+                ),
+              ),
+              _buildActionButton(
+                icon: '📊',
+                label: 'Riwayat',
+                color: const Color(0xFF2196F3),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const UserHistoryScreen()),
+                ),
+              ),
+              _buildActionButton(
+                icon: '🎁',
+                label: 'Tukar\nPoin',
+                color: const Color(0xFFFF9800),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const UserRewardsScreen()),
+                ),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // Menu card widget
-  Widget _buildMenuCard(
-    BuildContext context,
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return Card(
-      elevation: AppElevation.md,
-      shape: AppRadius.shapeMd,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: AppRadius.borderRadiusMd,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          decoration: BoxDecoration(
-            borderRadius: AppRadius.borderRadiusMd,
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [color, color.withOpacity(0.7)],
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 48, color: Colors.white),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: AppTextStyles.bodyLarge.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+  Widget _buildActionButton({
+    required String icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        child: Material(
+          color: color,
+          borderRadius: BorderRadius.circular(16),
+          elevation: 2,
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              child: Column(
+                children: [
+                  Text(icon, style: const TextStyle(fontSize: 30)),
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                      height: 1.2,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // Logout dialog
-  void _showLogoutDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: AppRadius.shapeMd,
-        title: const Text('Logout'),
-        content: const Text('Yakin ingin keluar?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal'),
+  // ========== 4. REWARD TERPOPULER ==========
+  Widget _buildPopularRewards() {
+    final rewards = [
+      {'name': 'Voucher\nAlfamart', 'points': '500', 'stars': 5, 'image': '🎫'},
+      {'name': 'Pupuk\nOrganik', 'points': '300', 'stars': 4, 'image': '🌱'},
+      {'name': 'Bibit\nTanaman', 'points': '200', 'stars': 5, 'image': '🌿'},
+      {'name': 'Tas\nBelanja', 'points': '150', 'stars': 4, 'image': '👜'},
+    ];
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '🎁 Reward Terpopuler',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D5016),
+                  fontFamily: 'Poppins',
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const UserRewardsScreen()),
+                ),
+                child: const Text(
+                  'Lihat Semua →',
+                  style: TextStyle(fontFamily: 'Poppins'),
+                ),
+              ),
+            ],
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(builder: (_) => const LoginScreen()),
-                (route) => false,
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 230,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: rewards.length,
+            itemBuilder: (context, index) {
+              final reward = rewards[index];
+              return _buildRewardCard(
+                name: reward['name'] as String,
+                points: reward['points'] as String,
+                stars: reward['stars'] as int,
+                image: reward['image'] as String,
               );
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildRewardCard({
+    required String name,
+    required String points,
+    required int stars,
+    required String image,
+  }) {
+    return Container(
+      width: 150,
+      margin: const EdgeInsets.only(right: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 110,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Colors.orange[200]!, Colors.orange[100]!],
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             ),
-            child: const Text('Logout'),
+            child: Center(
+              child: Text(image, style: const TextStyle(fontSize: 50)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    height: 1.2,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$points pts',
+                  style: const TextStyle(
+                    color: Colors.orange,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    fontFamily: 'Poppins',
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: List.generate(
+                    5,
+                    (i) => Icon(
+                      Icons.star,
+                      size: 13,
+                      color: i < stars ? Colors.amber : Colors.grey[300],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
+    // ========== 3. TIPS KOMPOS ==========
+  Widget _buildKomposTips() {
+    final tips = [
+      {
+        'icon': '🌿',
+        'title': 'Campur Hijau & Coklat',
+        'desc': 'Padukan sampah hijau (sisa makanan) dan coklat (daun kering).',
+        'color': const Color(0xFF4CAF50),
+      },
+      {
+        'icon': '💧',
+        'title': 'Jaga Kelembaban',
+        'desc': 'Pastikan kompos lembab seperti spons basah, tidak terlalu kering atau becek.',
+        'color': const Color(0xFF2196F3),
+      },
+      {
+        'icon': '🔄',
+        'title': 'Aduk Rutin',
+        'desc': 'Aduk tumpukan kompos setiap 2-3x/hari agar oksigen merata',
+        'color': const Color(0xFFFF9800),
+      },
+      {
+        'icon': '🌡️',
+        'title': 'Suhu Ideal',
+        'desc': 'Kompos aktif bisa mencapai 55–65°C — itu tanda fermentasi berhasil!',
+        'color': const Color(0xFFE91E63),
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16),
+          child: Text(
+            '💡 Tips Kompos Hari Ini',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2D5016),
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 160,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: tips.length,
+            itemBuilder: (context, index) {
+              final tip = tips[index];
+              final color = tip['color'] as Color;
+              return Container(
+                width: 195,
+                margin: const EdgeInsets.only(right: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.06),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(color: color.withOpacity(0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            tip['icon'] as String,
+                            style: const TextStyle(fontSize: 18),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            tip['title'] as String,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      tip['desc'] as String,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[600],
+                        fontFamily: 'Poppins',
+                        height: 1.4,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ========== BOTTOM NAVIGATION ==========
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        backgroundColor: AppColors.primary,
+        selectedItemColor: Colors.white,
+        unselectedItemColor: Colors.white60,
+        selectedFontSize: 12,
+        unselectedFontSize: 12,
+        currentIndex: _currentIndex,
+        onTap: (index) {
+          setState(() => _currentIndex = index);
+          switch (index) {
+            case 0:
+              break;
+            case 1:
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => UserDepositScreen(userEmail: widget.user.email),
+                ),
+              );
+              break;
+            case 2:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const UserRewardsScreen()),
+              );
+              break;
+            case 3:
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const UserProfileScreen()),
+              );
+              break;
+          }
+        },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.delete_outline), label: 'Setor'),
+          BottomNavigationBarItem(icon: Icon(Icons.card_giftcard), label: 'Reward'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+        ],
+      ),
+    );
+  }
+
 }
