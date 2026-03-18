@@ -27,38 +27,67 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: AppColors.adminBg,
-      child: Column(
+    return Scaffold(
+      backgroundColor: AppColors.adminBg,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFFF6B35), // Match monitor screens
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'History Log Alat',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined, color: Colors.white),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Downloading CSV...')),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Column(
         children: [
           Container(
-            color: AppColors.adminPrimary,
+            color: const Color(0xFFFF6B35), // Match AppBar
             child: TabBar(
-            controller: _tabController,
-            isScrollable: true,
-            indicatorColor: Colors.white,
-            indicatorWeight: 3,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontFamily: 'Poppins'),
-            tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+              controller: _tabController,
+              isScrollable: true,
+              indicatorColor: Colors.white,
+              indicatorWeight: 3,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontFamily: 'Poppins'),
+              tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+            ),
           ),
-        ),
-        Expanded(
-          child: TabBarView(
-            controller: _tabController,
-            children: [
-              _buildLogList(MockActuatorLogs.getExhaustFanLogs()),
-              _buildLogList(MockActuatorLogs.getHeaterLogs()),
-              _buildLogList(MockActuatorLogs.getMotorAdukLogs()),
-              _buildLogList(MockActuatorLogs.getPompaEM4Logs()),
-              _buildLogList(MockActuatorLogs.getPompaAirLogs()),
-            ],
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildLogList(MockActuatorLogs.getExhaustFanLogs()),
+                _buildLogList(MockActuatorLogs.getHeaterLogs()),
+                _buildLogList(MockActuatorLogs.getMotorAdukLogs()),
+                _buildLogList(MockActuatorLogs.getPompaEM4Logs()),
+                _buildLogList(MockActuatorLogs.getPompaAirLogs()),
+              ],
+            ),
           ),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
   Widget _buildLogList(List<ActuatorLog> logs) {
     if (logs.isEmpty) {

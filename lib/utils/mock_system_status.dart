@@ -6,7 +6,7 @@ class SystemStatusData {
   final String lastPing;
   final Map<String, String> sensorStatus;
   final Map<String, String> actuatorStatus;
-  final Map<String, String> deviceInfo;
+  final Map<String, String> qosMonitoring;
 
   SystemStatusData({
     required this.health,
@@ -16,7 +16,7 @@ class SystemStatusData {
     required this.lastPing,
     required this.sensorStatus,
     required this.actuatorStatus,
-    required this.deviceInfo,
+    required this.qosMonitoring,
   });
 }
 
@@ -41,10 +41,12 @@ class MockSystemStatus {
         'Pompa EM4': 'ready',
         'Pompa Air': 'ready'
       },
-      deviceInfo: {
-        'MAC Address': 'AA:BB:CC:DD:EE:FF',
-        'Firmware': 'v2.1.3',
-        'IP Address': '192.168.1.100'
+      qosMonitoring: {
+        'Status': '🟢 Stabil',
+        'Delay': '120 ms',
+        'Packet Loss': '1.2 %',
+        'Throughput': '12 KB/s',
+        'Last Update': '10:32',
       },
     );
   }

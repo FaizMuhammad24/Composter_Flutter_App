@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
-import '../../constants/app_text_styles.dart';
 import '../../utils/screen_utils.dart';
 import '../../utils/mock_data.dart';
 import '../../models/sensor_data_model.dart';
@@ -13,6 +12,7 @@ import 'admin_category_temperature_screen.dart';
 import 'admin_category_humidity_screen.dart';
 import 'admin_category_ph_screen.dart';
 import 'admin_category_gas_screen.dart';
+import 'admin_history_log_screen.dart';
 import '../../utils/mock_actuator_logs.dart';
 
 class AdminDashboard extends StatefulWidget {
@@ -151,8 +151,25 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
               const SizedBox(height: AppSpacing.md),
               _buildSensorGrid(),
               const SizedBox(height: AppSpacing.lg),
-              _buildSectionTitle('Histori Log Alat'),
-              const SizedBox(height: AppSpacing.md),
+              _buildSectionTitle(
+                'Histori Log Alat', 
+                trailing: TextButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const AdminHistoryLogScreen()),
+                  ),
+                  child: const Text(
+                    'Lihat Selengkapnya',
+                    style: TextStyle(
+                      color: AppColors.adminPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xs),
               _buildHorizontalHistory(),
               const SizedBox(height: 100), // Bottom padding for nav
             ],
@@ -162,10 +179,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     );
   }
 
-  // Section title
-  Widget _buildSectionTitle(String title) {
-    return Text(title, style: AppTextStyles.h3);
-  }
+
 
   // Hero Card like User Dashboard
   Widget _buildHeroCard() {
@@ -451,6 +465,24 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
             fontFamily: 'Poppins',
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title, {Widget? trailing}) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+            fontFamily: 'Poppins',
+          ),
+        ),
+        if (trailing != null) trailing,
       ],
     );
   }

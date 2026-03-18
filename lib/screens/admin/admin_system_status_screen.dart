@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../utils/mock_system_status.dart';
 import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart';
 
 class AdminSystemStatusScreen extends StatefulWidget {
   const AdminSystemStatusScreen({Key? key}) : super(key: key);
@@ -27,80 +28,118 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
-      appBar: AppBar(
-        title: const Text('System Status', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.admin,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _refreshStatus,
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.admin))
-          : RefreshIndicator(
-              onRefresh: _refreshStatus,
-              color: AppColors.admin,
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Health Overview
-                    _buildHealthCard(),
-                    const SizedBox(height: 24),
-                    
-                    // Connection & Uptime
-                    Row(
-                      children: [
-                        Expanded(child: _buildInfoCard('Uptime', '${_status.uptime['days']}d ${_status.uptime['hours']}h', Icons.timer_outlined, Colors.blue)),
-                        const SizedBox(width: 16),
-                        Expanded(child: _buildInfoCard('WiFi', '${_status.wifiStrength}%', Icons.wifi, Colors.orange)),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.adminPrimary));
+    }
 
-                    // Connection Section
-                    const Text('Konektivitas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                    const SizedBox(height: 12),
-                    _buildStatusTile('ESP32 Status', _status.esp32Status == 'online', _status.esp32Status.toUpperCase()),
-                    _buildStatusTile('Last Ping', true, _status.lastPing),
-                    const SizedBox(height: 24),
-
-                    // Sensors & Actuators
-                    const Text('Status Perangkat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                    const SizedBox(height: 12),
-                    _buildDeviceStatusGrid(),
-                    const SizedBox(height: 24),
-
-                    // Device Info
-                    const Text('Informasi Perangkat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                    const SizedBox(height: 12),
-                    _buildDeviceInfoCard(),
-                    const SizedBox(height: 32),
-                    
-                    // Restart Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showRestartDialog(),
-                        icon: const Icon(Icons.restart_alt, color: Colors.red),
-                        label: const Text('Restart System', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(color: Colors.red),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ),
-                  ],
+    return RefreshIndicator(
+      onRefresh: _refreshStatus,
+      color: AppColors.adminPrimary,
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Health Overview
+            _buildHealthCard(),
+            const SizedBox(height: AppSpacing.lg),
+            
+            // Stats Row
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInfoCard(
+                    'Uptime Sistem', 
+                    '${_status.uptime['days']} Hari, ${_status.uptime['hours']} Jam', 
+                    Icons.speed, 
+                    Colors.blue[400]!,
+                  ),
                 ),
-              ),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(
+                  child: _buildInfoCard(
+                    'Kekuatan WiFi', 
+                    '${_status.wifiStrength}%', 
+                    Icons.wifi_tethering, 
+                    Colors.orange[400]!,
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Connectivity
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: AppColors.adminPrimary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Konektivitas ESP32', 
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _buildStatusTile('Status Koneksi', _status.esp32Status == 'online', _status.esp32Status.toUpperCase()),
+            _buildStatusTile('Terakhir Online', true, _status.lastPing),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Devices
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: AppColors.adminPrimary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Status Unit Perangkat', 
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _buildDeviceStatusGrid(),
+            const SizedBox(height: AppSpacing.xl),
+
+            // QoS Monitoring
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: AppColors.adminPrimary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Monitoring QoS', 
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _buildQosMonitoringCard(),
+            const SizedBox(height: AppSpacing.xl),
+            
+            const SizedBox(height: 100), // Padding for nav
+          ],
+        ),
+      ),
     );
   }
 
@@ -108,37 +147,85 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        gradient: LinearGradient(
+          colors: [Colors.white, Colors.orange[50]!],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.adminPrimary.withOpacity(0.1),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              SizedBox(
-                width: 80, height: 80,
-                child: CircularProgressIndicator(
-                  value: _status.health / 100,
-                  strokeWidth: 8,
-                  backgroundColor: Colors.grey[200],
-                  valueColor: AlwaysStoppedAnimation<Color>(_status.health > 90 ? Colors.green : Colors.orange),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
                 ),
-              ),
-              Text('${_status.health.toStringAsFixed(1)}%', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, fontFamily: 'Poppins')),
-            ],
+              ],
+            ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 80, height: 80,
+                  child: CircularProgressIndicator(
+                    value: _status.health / 100,
+                    strokeWidth: 8,
+                    backgroundColor: Colors.grey[200],
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _status.health > 90 ? Colors.green[400]! : Colors.orange[400]!,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${_status.health.toInt()}%', 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Poppins'),
+                ),
+              ],
+            ),
           ),
           const SizedBox(width: 24),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('System Health', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                const SizedBox(height: 4),
+                const Text(
+                  'Kesehatan Sistem', 
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                ),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _status.health > 90 ? Colors.green[50] : Colors.orange[50],
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _status.health > 90 ? 'Sangat Baik' : 'Normal',
+                    style: TextStyle(
+                      color: _status.health > 90 ? Colors.green[700] : Colors.orange[700],
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
                 Text(
-                  _status.health > 90 ? 'Semua sistem berjalan optimal' : 'Perlu pengecekan ringan',
-                  style: TextStyle(color: Colors.grey[600], fontSize: 13, fontFamily: 'Poppins'),
+                  _status.health > 90 ? 'Semua unit berjalan lancar' : 'Performa optimal',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 11, fontFamily: 'Poppins'),
                 ),
               ],
             ),
@@ -150,20 +237,39 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
 
   Widget _buildInfoCard(String label, String value, IconData icon, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 12),
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins')),
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            label, 
+            style: TextStyle(color: Colors.grey[500], fontSize: 11, fontFamily: 'Poppins'),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Poppins')),
+          Text(
+            value, 
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins'),
+          ),
         ],
       ),
     );
@@ -220,20 +326,47 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
     );
   }
 
-  Widget _buildDeviceInfoCard() {
+  Widget _buildQosMonitoringCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Column(
-        children: _status.deviceInfo.entries.map((e) {
+        children: _status.qosMonitoring.entries.map((e) {
+          final isStatus = e.key == 'Status';
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(e.key, style: const TextStyle(color: Colors.grey, fontSize: 13, fontFamily: 'Poppins')),
-                Text(e.value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, fontFamily: 'Poppins')),
+                Text(
+                  e.key, 
+                  style: TextStyle(
+                    color: Colors.grey[600], 
+                    fontSize: 13, 
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w500,
+                  )
+                ),
+                Text(
+                  e.value, 
+                  style: TextStyle(
+                    fontWeight: isStatus ? FontWeight.bold : FontWeight.w600, 
+                    fontSize: 13, 
+                    fontFamily: 'Poppins',
+                    color: isStatus ? Colors.green[700] : Colors.black87,
+                  )
+                ),
               ],
             ),
           );
@@ -241,23 +374,5 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
       ),
     );
   }
-
-  void _showRestartDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Restart System?', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        content: const Text('Tindakan ini akan merestart perangkat ESP32. Pastikan tidak ada proses kritis yang sedang berjalan.', style: TextStyle(fontFamily: 'Poppins')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal', style: TextStyle(fontFamily: 'Poppins'))),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-            child: const Text('Restart', style: TextStyle(color: Colors.white, fontFamily: 'Poppins')),
-          ),
-        ],
-      ),
-    );
-  }
 }
+

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import 'admin_dashboard.dart';
-import 'admin_history_log_screen.dart';
+import 'admin_system_status_screen.dart';
 import 'admin_profile_screen.dart';
 import 'widgets/admin_header.dart';
 import 'widgets/admin_bottom_nav.dart';
@@ -18,14 +18,14 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
 
   final List<Widget> _pages = [
     const AdminDashboard(),
-    const AdminHistoryLogScreen(),
+    const AdminSystemStatusScreen(),
     const AdminProfileScreen(),
   ];
 
   @override
   Widget build(BuildContext context) {
     String title = 'Admin I-Compost';
-    if (_currentIndex == 1) title = 'History Log Alat';
+    if (_currentIndex == 1) title = 'Status Sistem';
     if (_currentIndex == 2) title = 'Profil Admin';
 
     return Scaffold(
