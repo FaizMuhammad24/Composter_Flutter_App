@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
-import '../../constants/app_colors.dart';
 import 'user_deposit_screen.dart';
 import 'user_history_screen.dart';
 import 'user_rewards_screen.dart';
 import 'user_profile_screen.dart';
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'widgets/user_header.dart';
 import 'widgets/user_bottom_nav.dart';
 
@@ -89,7 +87,7 @@ class _UserDashboardState extends State<UserDashboard> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.2),
+            color: Colors.black.withValues(alpha: 0.2),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -104,7 +102,7 @@ class _UserDashboardState extends State<UserDashboard> {
             child: Icon(
               Icons.local_florist,
               size: 70,
-              color: Colors.white.withOpacity(0.12),
+              color: Colors.white.withValues(alpha: 0.12),
             ),
           ),
           Positioned(
@@ -113,7 +111,7 @@ class _UserDashboardState extends State<UserDashboard> {
             child: Icon(
               Icons.spa,
               size: 40,
-              color: Colors.white.withOpacity(0.1),
+              color: Colors.white.withValues(alpha: 0.1),
             ),
           ),
 
@@ -186,9 +184,9 @@ class _UserDashboardState extends State<UserDashboard> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.18),
+          color: Colors.white.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withOpacity(0.3)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
         ),
         child: Column(
           children: [
@@ -388,7 +386,7 @@ class _UserDashboardState extends State<UserDashboard> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.08),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -514,12 +512,12 @@ class _UserDashboardState extends State<UserDashboard> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
                   ],
-                  border: Border.all(color: color.withOpacity(0.2)),
+                  border: Border.all(color: color.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,7 +527,7 @@ class _UserDashboardState extends State<UserDashboard> {
                         Container(
                           padding: const EdgeInsets.all(7),
                           decoration: BoxDecoration(
-                            color: color.withOpacity(0.12),
+                            color: color.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
