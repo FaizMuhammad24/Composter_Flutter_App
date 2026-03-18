@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../constants/app_colors.dart';
+import '../user_notifications_screen.dart';
 
 class UserHeader extends StatelessWidget implements PreferredSizeWidget {
   const UserHeader({Key? key}) : super(key: key);
@@ -48,8 +49,9 @@ class UserHeader extends StatelessWidget implements PreferredSizeWidget {
             ],
           ),
           onPressed: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Notifikasi (Coming Soon)')),
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const UserNotificationsScreen()),
             );
           },
         ),
