@@ -15,6 +15,7 @@ class SensorCard extends StatelessWidget {
   final String? actuatorInfo;
   final IconData icon;
   final Color color;
+  final double? valuePercent;
   final VoidCallback? onTap;
 
   const SensorCard({
@@ -26,6 +27,7 @@ class SensorCard extends StatelessWidget {
     this.actuatorInfo,
     required this.icon,
     required this.color,
+    this.valuePercent,
     this.onTap,
   }) : super(key: key);
 
@@ -85,6 +87,21 @@ class SensorCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: AppSpacing.xs),
+
+              // Progress Bar
+              if (valuePercent != null) ...[
+                const SizedBox(height: AppSpacing.sm),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(2),
+                  child: LinearProgressIndicator(
+                    value: valuePercent,
+                    backgroundColor: color.withOpacity(0.1),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                    minHeight: 4,
+                  ),
+                ),
+              ],
+              const SizedBox(height: AppSpacing.sm),
 
               // Status Badge
               Container(

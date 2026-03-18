@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 import '../../constants/app_text_styles.dart';
@@ -173,6 +174,8 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildQuickStats(),
+            const SizedBox(height: AppSpacing.md),
+            _buildLastUpdateInfo(),
             const SizedBox(height: AppSpacing.lg),
             _buildSectionTitle('Monitoring Sensor Real-time'),
             const SizedBox(height: AppSpacing.md),
@@ -231,6 +234,32 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     );
   }
 
+  // Last update timestamp
+  Widget _buildLastUpdateInfo() {
+    return Row(
+      children: [
+        const Icon(Icons.update, size: 14, color: Colors.grey),
+        const SizedBox(width: 4),
+        Text(
+          'Update terakhir: ${DateFormat('HH:mm:ss').format(DateTime.now())}',
+          style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'Poppins'),
+        ),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+          child: Row(
+            children: [
+              Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+              const SizedBox(width: 4),
+              const Text('System Healthy', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   // Sensor grid dengan SensorCard widget
   Widget _buildSensorGrid() {
     if (_sensorData == null) return const SizedBox();
@@ -241,13 +270,14 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       crossAxisCount: ScreenUtils.getSensorGridCount(context),
       crossAxisSpacing: AppSpacing.md,
       mainAxisSpacing: AppSpacing.md,
-      childAspectRatio: 1.0,
+      childAspectRatio: 0.85, 
       children: [
         SensorCard(
           title: 'Suhu',
           value: _sensorData!.temperature.toStringAsFixed(1),
           unit: '°C',
           status: _sensorData!.temperatureStatus,
+          valuePercent: (_sensorData!.temperature - 30) / (80 - 30),
           actuatorInfo: 'Heater: ${_actuatorStatus['heater'] == true ? 'ON' : 'OFF'}',
           icon: Icons.thermostat,
           color: AppColors.temperature,
@@ -261,6 +291,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
           value: _sensorData!.humidity.toStringAsFixed(1),
           unit: '%',
           status: _sensorData!.humidityStatus,
+          valuePercent: _sensorData!.humidity / 100,
           actuatorInfo: 'Pompa Air: ${_actuatorStatus['pompa_air'] == true ? 'ON' : 'OFF'}',
           icon: Icons.water_drop,
           color: AppColors.humidity,
@@ -274,6 +305,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
           value: _sensorData!.ph.toStringAsFixed(1),
           unit: '',
           status: _sensorData!.phStatus,
+          valuePercent: _sensorData!.ph / 14,
           actuatorInfo: 'Pompa FLM: ${_actuatorStatus['pompa_flm'] == true ? 'ON' : 'OFF'}',
           icon: Icons.science,
           color: AppColors.ph,
@@ -287,6 +319,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
           value: _sensorData!.mq4.toString(),
           unit: 'ppm',
           status: _sensorData!.gasStatus,
+          valuePercent: _sensorData!.mq4 / 800,
           actuatorInfo: 'Exhaust Fan: ${_actuatorStatus['exhaust_fan'] == true ? 'ON' : 'OFF'}',
           icon: Icons.air,
           color: AppColors.gas,
