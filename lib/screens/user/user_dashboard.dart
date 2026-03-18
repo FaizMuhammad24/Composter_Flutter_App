@@ -639,7 +639,11 @@ class _UserDashboardState extends State<UserDashboard> {
           case 1:
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const UserHistoryScreen()),
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const UserHistoryScreen(),
+                transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+                transitionDuration: const Duration(milliseconds: 300),
+              ),
             ).then((_) {
               // Reset index ketika kembali ke Dashboard
               if (mounted) setState(() => _currentIndex = 0);
@@ -648,7 +652,11 @@ class _UserDashboardState extends State<UserDashboard> {
           case 2:
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const UserProfileScreen()),
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const UserProfileScreen(),
+                transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+                transitionDuration: const Duration(milliseconds: 300),
+              ),
             ).then((_) {
               // Reset index ketika kembali ke Dashboard
               if (mounted) setState(() => _currentIndex = 0);

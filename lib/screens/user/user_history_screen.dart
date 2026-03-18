@@ -326,7 +326,11 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
         } else if (index == 2) {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (_) => const UserProfileScreen()),
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => const UserProfileScreen(),
+              transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+              transitionDuration: const Duration(milliseconds: 300),
+            ),
           );
         }
       },
