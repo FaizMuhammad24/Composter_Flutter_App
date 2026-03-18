@@ -43,7 +43,7 @@ class LoginService {
 
     var user = UserModel.fromJson(userData);
 
-    SessionService.setCurrentUser(user);
+    await SessionService.setCurrentUser(user);
 
     return {
       'success': true,

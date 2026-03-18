@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import 'user_history_screen.dart';
 import '../authentication/login_screen.dart';
+import '../authentication/reset_password_screen.dart';
+import '../../services/auth/session_service.dart';
 import 'widgets/user_header.dart';
 import 'widgets/user_bottom_nav.dart';
 
@@ -29,7 +31,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   Container(
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       shape: BoxShape.circle,
                     ),
                     child: const CircleAvatar(
@@ -80,7 +82,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.06),
+                            color: Colors.black.withValues(alpha: 0.06),
                             blurRadius: 15,
                             offset: const Offset(0, 5),
                           ),
@@ -104,7 +106,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     _buildMenuTile(
                       icon: Icons.lock_outline,
                       title: 'Ubah Password',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ResetPasswordScreen(
+                              email: SessionService.getCurrentUser()?.email,
+                            ),
+                          ),
+                        );
+                      },
                       color: Colors.black87,
                     ),
                     
@@ -188,7 +199,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: isDestructive ? Colors.red.withOpacity(0.1) : Colors.grey[100],
+          color: isDestructive ? Colors.red.withValues(alpha: 0.1) : Colors.grey[100],
           shape: BoxShape.circle,
         ),
         child: Icon(icon, color: color, size: 22),
@@ -235,7 +246,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
-                  onPressed: () {
+                  onPressed: () async {
+                    Navigator.pop(context); // Tutup dialog
+                    await SessionService.logout();
+                    if (!mounted) return;
+                    
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
                       (route) => false,

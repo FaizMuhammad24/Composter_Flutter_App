@@ -3,6 +3,7 @@ import 'signup_screen.dart';
 import '../super_admin/super_admin_dashboard.dart';
 import '../admin/admin_dashboard.dart';
 import '../user/user_dashboard.dart';
+import 'reset_password_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/auth/login_service.dart';
@@ -104,7 +105,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         width: 170,
                         height: 170,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Stack(
@@ -114,7 +115,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               width: 140,
                               height: 140,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
+                                color: Colors.white.withValues(alpha: 0.2),
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -149,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         'WASTE MANAGEMENT APP',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           letterSpacing: 2.5,
                           fontWeight: FontWeight.w300,
                           fontFamily: 'Poppins',
@@ -159,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         'by Politeknik Negeri Jakarta',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           letterSpacing: 2.5,
                           fontWeight: FontWeight.w300,
                           fontFamily: 'Poppins',
@@ -230,8 +231,9 @@ class _LoginScreenState extends State<LoginScreen> {
                             alignment: Alignment.centerRight,
                             child: TextButton(
                               onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Forgot Password (Coming Soon)')),
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (_) => const ResetPasswordScreen()),
                                 );
                               },
                               child: Text(
@@ -311,7 +313,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 );
                               },
                               style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: AppColors.primary.withOpacity(0.3), width: 1.5),
+                                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(28),
                                 ),
@@ -321,7 +323,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.primary.withOpacity(0.8),
+                                  color: AppColors.primary.withValues(alpha: 0.8),
                                   letterSpacing: 0.5,
                                   fontFamily: 'Poppins',
                                 ),
@@ -423,7 +425,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide(color: AppColors.primary.withOpacity(0.5), width: 1.5),
+          borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.5), width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(28),
