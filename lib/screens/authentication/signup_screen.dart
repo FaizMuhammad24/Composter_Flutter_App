@@ -110,19 +110,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.more_horiz,
-                          color: Colors.white.withOpacity(0.7),
-                          size: 32,
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ],
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.white, size: 28),
+                        onPressed: () => Navigator.pop(context),
+                      ),
                     ),
                     
                     const SizedBox(height: 20),
