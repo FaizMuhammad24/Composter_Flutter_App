@@ -34,8 +34,19 @@ class _AdminCategoryHumidityScreenState extends State<AdminCategoryHumidityScree
       backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(
         title: const Text('Monitoring Kelembaban', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF2196F3),
+        backgroundColor: const Color(0xFF2196F3), // Assuming AppColors.humidity is Color(0xFF2196F3) based on the original code
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Data berhasil diekspor ke CSV')),
+              );
+            },
+            tooltip: 'Export CSV',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,

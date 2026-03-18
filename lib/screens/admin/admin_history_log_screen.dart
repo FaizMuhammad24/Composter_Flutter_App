@@ -11,7 +11,7 @@ class AdminHistoryLogScreen extends StatefulWidget {
 
 class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final List<String> _tabs = ['Exhaust Fan', 'Heater', 'Motor Aduk', 'Pompa FLM', 'Pompa Air'];
+  final List<String> _tabs = ['Exhaust Fan', 'Heater', 'Motor Aduk', 'Pompa EM4', 'Pompa Air'];
   
   @override
   void initState() {
@@ -27,45 +27,38 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
-      appBar: AppBar(
-        title: const Text('History Log Alat', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.admin,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.file_download_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Log berhasil diekspor ke CSV', style: TextStyle(fontFamily: 'Poppins'))),
-              );
-            },
-            tooltip: 'Export CSV',
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          indicatorColor: Colors.white,
-          indicatorWeight: 3,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontFamily: 'Poppins'),
-          tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
+    return Container(
+      color: AppColors.adminBg,
+      child: Column(
         children: [
-          _buildLogList(MockActuatorLogs.getExhaustFanLogs()),
-          _buildLogList(MockActuatorLogs.getHeaterLogs()),
-          _buildLogList(MockActuatorLogs.getMotorAdukLogs()),
-          _buildLogList(MockActuatorLogs.getPompaFLMLogs()),
-          _buildLogList(MockActuatorLogs.getPompaAirLogs()),
-        ],
-      ),
-    );
-  }
+          Container(
+            color: AppColors.adminPrimary,
+            child: TabBar(
+            controller: _tabController,
+            isScrollable: true,
+            indicatorColor: Colors.white,
+            indicatorWeight: 3,
+            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontFamily: 'Poppins'),
+            tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildLogList(MockActuatorLogs.getExhaustFanLogs()),
+              _buildLogList(MockActuatorLogs.getHeaterLogs()),
+              _buildLogList(MockActuatorLogs.getMotorAdukLogs()),
+              _buildLogList(MockActuatorLogs.getPompaEM4Logs()),
+              _buildLogList(MockActuatorLogs.getPompaAirLogs()),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
 
   Widget _buildLogList(List<ActuatorLog> logs) {
     if (logs.isEmpty) {

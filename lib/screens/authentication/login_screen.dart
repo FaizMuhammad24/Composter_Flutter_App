@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'signup_screen.dart';
 import '../super_admin/super_admin_dashboard.dart';
-import '../admin/admin_dashboard.dart';
+import '../admin/admin_main_screen.dart';
 import '../user/user_dashboard.dart';
 import 'reset_password_screen.dart';
 import '../../constants/app_colors.dart';
@@ -49,7 +49,7 @@ class _LoginScreenState extends State<LoginScreen> {
         if (user.role == 'super_admin') {
           nextScreen = const SuperAdminDashboard();
         } else if (user.role == 'admin') {
-          nextScreen = const AdminDashboard();
+          nextScreen = const AdminMainScreen();
         } else {
           nextScreen = UserDashboard(user: user);
         }

@@ -40,21 +40,22 @@ class SensorCard extends StatelessWidget {
         onTap: onTap,
         borderRadius: AppRadius.borderRadiusMd,
         child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Icon
-              Icon(icon, color: color, size: 40),
-              const SizedBox(height: AppSpacing.sm),
+              Icon(icon, color: color, size: 36),
+              const SizedBox(height: AppSpacing.xs),
 
               // Title
               Text(
                 title,
                 style: const TextStyle(
-                  fontSize: 14,
+                  fontSize: 12,
                   color: AppColors.textSecondary,
+                  fontFamily: 'Poppins',
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -69,9 +70,10 @@ class SensorCard extends StatelessWidget {
                   Text(
                     value,
                     style: TextStyle(
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                       color: color,
+                      fontFamily: 'Poppins',
                     ),
                   ),
                   if (unit.isNotEmpty) ...[
@@ -129,11 +131,12 @@ class SensorCard extends StatelessWidget {
                 Text(
                   actuatorInfo!,
                   style: const TextStyle(
-                    fontSize: 11,
+                    fontSize: 10,
                     color: AppColors.textSecondary,
+                    fontFamily: 'Poppins',
                   ),
                   textAlign: TextAlign.center,
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
               ],

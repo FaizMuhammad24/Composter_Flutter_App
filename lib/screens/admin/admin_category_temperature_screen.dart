@@ -36,6 +36,17 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
         title: const Text('Monitoring Suhu', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFFFF6B35),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Data berhasil diekspor ke CSV')),
+              );
+            },
+            tooltip: 'Export CSV',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,

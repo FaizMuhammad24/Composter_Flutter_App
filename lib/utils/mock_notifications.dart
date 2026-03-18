@@ -40,7 +40,7 @@ class MockNotifications {
       id: 'notif_3',
       type: 'ph_abnormal',
       title: 'pH TIDAK NORMAL',
-      message: 'pH terdeteksi 5.8 (terlalu asam), Pompa FLM aktif.',
+      message: 'pH terdeteksi 5.8 (terlalu asam), Pompa EM4 aktif.',
       timestamp: DateTime.now().subtract(const Duration(hours: 5)),
       severity: 'warning',
       isRead: true,

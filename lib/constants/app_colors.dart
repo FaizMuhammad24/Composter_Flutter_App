@@ -23,6 +23,8 @@ class AppColors {
   // Role
   static const Color superAdmin = Color(0xFFD32F2F);
   static const Color admin = Color(0xFF388E3C);
+  static const Color adminPrimary = Color(0xFFFFA726); // Soft orange/yellow
+  static const Color adminBg = Color(0xFFFFFDE7);      // Cream/soft yellow
   static const Color user = Color(0xFF1976D2);
 
   // Neutral

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../user/user_dashboard.dart';
-import '../admin/admin_dashboard.dart';
+import '../admin/admin_main_screen.dart';
 import '../super_admin/super_admin_dashboard.dart';
 import '../../services/auth/session_service.dart';
 
@@ -35,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen> {
       if (user.role == 'super_admin') {
         nextScreen = const SuperAdminDashboard();
       } else if (user.role == 'admin') {
-        nextScreen = const AdminDashboard();
+        nextScreen = const AdminMainScreen();
       } else {
         nextScreen = UserDashboard(user: user);
       }

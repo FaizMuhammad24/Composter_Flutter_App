@@ -38,7 +38,7 @@ class MockSystemStatus {
         'Exhaust Fan': 'ready',
         'Heater': 'ready',
         'Motor Aduk': 'ready',
-        'Pompa FLM': 'ready',
+        'Pompa EM4': 'ready',
         'Pompa Air': 'ready'
       },
       deviceInfo: {

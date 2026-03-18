@@ -64,7 +64,7 @@ class MockData {
       'exhaust_fan': sensorData['mq4'] > 500,
       'heater': sensorData['temperature'] < 60,
       'motor_aduk': _random.nextBool(),
-      'pompa_flm': sensorData['ph'] < 6 || sensorData['ph'] > 8,
+      'pompa_em4': sensorData['ph'] < 6 || sensorData['ph'] > 8,
       'pompa_air': sensorData['humidity'] < 30,
       'timestamp': DateTime.now().toIso8601String(),
     };
@@ -102,7 +102,7 @@ class MockData {
           log['reason'] = isOn ? 'Jadwal pengadukan' : 'Selesai pengadukan';
           log['sensor_value'] = null;
           break;
-        case 'pompa_flm':
+        case 'pompa_em4':
           double phValue = isOn ? (5.0 + _random.nextDouble()) : (6.5 + _random.nextDouble() * 1.5);
           log['reason'] = isOn ? 'pH tidak normal (${phValue.toStringAsFixed(1)})' : 'pH normal';
           log['sensor_value'] = phValue;

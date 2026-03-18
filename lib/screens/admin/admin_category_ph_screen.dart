@@ -34,8 +34,19 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
       backgroundColor: const Color(0xFFF5F5DC),
       appBar: AppBar(
         title: const Text('Monitoring pH', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFF9C27B0),
+        backgroundColor: const Color(0xFF9C27B0), // Assuming AppColors.ph is equivalent to this color
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Data berhasil diekspor ke CSV')),
+              );
+            },
+            tooltip: 'Export CSV',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,
@@ -75,7 +86,7 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      const Text('Pompa FLM', style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Poppins')),
+                                      const Text('Pompa EM4', style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Poppins')),
                                       const SizedBox(height: 4),
                                       Text(_currentValue < 6 || _currentValue > 8 ? 'AKTIF (ON)' : 'MATI (OFF)', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                                     ],
@@ -185,7 +196,7 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
                             const Divider(),
                             _buildStatRow('Status Terakhir', _currentValue < 7 ? 'Slightly Acidic' : 'Optimal'),
                             const Divider(),
-                            _buildStatRow('Pompa FLM Runtime', '12 menit'),
+                            _buildStatRow('Pompa EM4 Runtime', '12 menit'),
                           ],
                         ),
                       ),

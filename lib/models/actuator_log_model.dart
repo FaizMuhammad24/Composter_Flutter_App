@@ -3,7 +3,7 @@
 
 class ActuatorLogModel {
   final String id;
-  final String actuatorName; // exhaust_fan, heater, motor_aduk, pompa_flm, pompa_air
+  final String actuatorName; // exhaust_fan, heater, motor_aduk, pompa_em4, pompa_air
   final String status; // ON, OFF
   final DateTime timestamp;
   final int durationMinutes;
@@ -59,8 +59,8 @@ class ActuatorLogModel {
         return 'Heater';
       case 'motor_aduk':
         return 'Motor Aduk';
-      case 'pompa_flm':
-        return 'Pompa FLM';
+      case 'pompa_em4':
+        return 'Pompa EM4';
       case 'pompa_air':
         return 'Pompa Air';
       default:

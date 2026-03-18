@@ -36,6 +36,17 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
         title: const Text('Monitoring Gas (MQ-4)', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
         backgroundColor: const Color(0xFFE53935),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.file_download_outlined),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Data berhasil diekspor ke CSV')),
+              );
+            },
+            tooltip: 'Export CSV',
+          ),
+        ],
       ),
       body: RefreshIndicator(
         onRefresh: _loadData,

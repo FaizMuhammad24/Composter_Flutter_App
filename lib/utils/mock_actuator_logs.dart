@@ -23,7 +23,7 @@ class MockActuatorLogs {
 
   static List<ActuatorLog> getExhaustFanLogs() => _generateLogs('Exhaust Fan', 'Gas', 'ppm', 500, 'tinggi');
   static List<ActuatorLog> getHeaterLogs() => _generateLogs('Heater', 'Suhu', '°C', 60, 'rendah');
-  static List<ActuatorLog> getPompaFLMLogs() => _generateLogs('Pompa FLM', 'pH', '', 6, 'tidak normal');
+  static List<ActuatorLog> getPompaEM4Logs() => _generateLogs('Pompa EM4', 'pH', '', 6, 'tidak normal');
   static List<ActuatorLog> getPompaAirLogs() => _generateLogs('Pompa Air', 'Kelembaban', '%', 30, 'rendah');
   
   static List<ActuatorLog> getMotorAdukLogs() {
