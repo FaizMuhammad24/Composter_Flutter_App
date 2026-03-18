@@ -6,6 +6,8 @@ import 'user_history_screen.dart';
 import 'user_rewards_screen.dart';
 import 'user_profile_screen.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
+import 'widgets/user_header.dart';
+import 'widgets/user_bottom_nav.dart';
 
 class UserDashboard extends StatefulWidget {
   final UserModel user;
@@ -23,51 +25,7 @@ class _UserDashboardState extends State<UserDashboard> {
   Widget build(BuildContext context) {
     return Scaffold(
       // HEADER
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.eco, color: AppColors.primary, size: 20),
-          ),
-        ),
-        title: const Text(
-          'I - Compost',
-          style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.white),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Stack(
-              children: [
-                const Icon(Icons.notifications_outlined, color: Colors.white),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifikasi (Coming Soon)')),
-              );
-            },
-          ),
-        ],
-      ),
+      appBar: const UserHeader(),
 
       body: Container(
         decoration: const BoxDecoration(
@@ -617,19 +575,8 @@ class _UserDashboardState extends State<UserDashboard> {
 
   // ========== BOTTOM NAVIGATION ==========
   Widget _buildBottomNav() {
-    return CurvedNavigationBar(
-      index: _currentIndex,
-      height: 60.0,
-      backgroundColor: Colors.transparent, // Background di belakang lengkungan
-      color: AppColors.primary, // Warna bar
-      buttonBackgroundColor: AppColors.primary, // Warna tombol bulat yang aktif
-      animationDuration: const Duration(milliseconds: 300),
-      animationCurve: Curves.easeInOut,
-      items: const <Widget>[
-        Icon(Icons.home, size: 30, color: Colors.white),
-        Icon(Icons.history, size: 30, color: Colors.white),
-        Icon(Icons.person_outline, size: 30, color: Colors.white),
-      ],
+    return UserBottomNav(
+      currentIndex: _currentIndex,
       onTap: (index) {
         setState(() => _currentIndex = index);
         switch (index) {

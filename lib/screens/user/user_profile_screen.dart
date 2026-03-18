@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'user_history_screen.dart';
 import '../authentication/login_screen.dart';
+import 'widgets/user_header.dart';
+import 'widgets/user_bottom_nav.dart';
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({Key? key}) : super(key: key);
@@ -16,63 +17,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      
-      // HEADER SESUAI DASHBOARD
-      appBar: AppBar(
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.eco, color: AppColors.primary, size: 20),
-          ),
-        ),
-        title: const Text(
-          'I-Compost',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Poppins',
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: Stack(
-              children: [
-                const Icon(Icons.notifications_outlined, color: Colors.white),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifikasi (Coming Soon)')),
-              );
-            },
-          ),
-        ],
-      ),
-
+      appBar: const UserHeader(),
       body: Container(
-        color: AppColors.primary, // Latar hijau nyambung dengan header
+        color: AppColors.primary,
         child: Column(
           children: [
-            // PROFILE INFO (Bagian Atas)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 30),
               child: Column(
@@ -111,7 +60,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ),
             ),
             
-            // MENU (Bagian Bawah Putih Melengkung)
             Expanded(
               child: Container(
                 width: double.infinity,
@@ -125,7 +73,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
                 child: Column(
                   children: [
-                    // KARTU STATISTIK
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       decoration: BoxDecoration(
@@ -154,7 +101,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     
                     const SizedBox(height: 40),
                     
-                    // DAFTAR MENU
                     _buildMenuTile(
                       icon: Icons.lock_outline,
                       title: 'Ubah Password',
@@ -182,8 +128,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
       ),
 
-      // BOTTOM NAVIGATION SESUAI DASHBOARD
-      bottomNavigationBar: _buildBottomNav(context),
+      bottomNavigationBar: UserBottomNav(
+        currentIndex: 2, // 2 = Profile
+        backgroundColor: Colors.white,
+        onTap: (index) {
+          if (index == 2) return;
+          
+          if (index == 0) {
+            Navigator.pop(context);
+          } else if (index == 1) {
+            Navigator.pushReplacement(
+              context,
+              PageRouteBuilder(
+                pageBuilder: (_, __, ___) => const UserHistoryScreen(),
+                transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
+                transitionDuration: const Duration(milliseconds: 300),
+              ),
+            );
+          }
+        },
+      ),
     );
   }
 
@@ -243,7 +207,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  // ========== LOGOUT DIALOG ==========
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
@@ -291,40 +254,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  // ========== BOTTOM NAVIGATION ==========
-  Widget _buildBottomNav(BuildContext context) {
-    return CurvedNavigationBar(
-      index: 2, // 2 = Profile
-      height: 60.0,
-      backgroundColor: Colors.white, // Latar belakang curve nyambung ke body container putih
-      color: AppColors.primary,
-      buttonBackgroundColor: AppColors.primary,
-      animationDuration: const Duration(milliseconds: 300),
-      animationCurve: Curves.easeInOut,
-      items: const <Widget>[
-        Icon(Icons.home, size: 30, color: Colors.white),
-        Icon(Icons.history, size: 30, color: Colors.white),
-        Icon(Icons.person_outline, size: 30, color: Colors.white),
-      ],
-      onTap: (index) {
-        if (index == 2) return; // Sudah di Profile
-        
-        if (index == 0) {
-          Navigator.pop(context); // Kembali ke Home
-        } else if (index == 1) {
-          Navigator.pushReplacement(
-            context,
-            PageRouteBuilder(
-              pageBuilder: (_, __, ___) => const UserHistoryScreen(),
-              transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
-              transitionDuration: const Duration(milliseconds: 300),
-            ),
-          );
-        }
-      },
     );
   }
 }
