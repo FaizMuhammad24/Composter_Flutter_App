@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import 'user_deposit_screen.dart';
 import 'user_history_screen.dart';
+import 'user_deposit_history_screen.dart';
 import 'user_rewards_screen.dart';
 import 'user_profile_screen.dart';
 import 'widgets/user_header.dart';
@@ -251,7 +252,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 color: const Color(0xFF2196F3),
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const UserHistoryScreen()),
+                  MaterialPageRoute(builder: (_) => const UserDepositHistoryScreen()),
                 ),
               ),
               _buildActionButton(
