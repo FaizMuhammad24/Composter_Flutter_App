@@ -169,7 +169,7 @@ class _UserDashboardState extends State<UserDashboard> {
                 const Text(
                   'Hai, Selamat Datang!',
                   style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 18,
                     color: Colors.white70,
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.w400,
@@ -178,19 +178,10 @@ class _UserDashboardState extends State<UserDashboard> {
                 Text(
                   widget.user.name,
                   style: const TextStyle(
-                    fontSize: 24,
+                    fontSize: 30,
                     color: Colors.white,
                     fontFamily: 'Poppins',
                     fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.user.email,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Colors.white60,
-                    fontFamily: 'Poppins',
                   ),
                 ),
               ],
@@ -300,7 +291,7 @@ class _UserDashboardState extends State<UserDashboard> {
               ),
               _buildActionButton(
                 icon: '📊',
-                label: 'Riwayat',
+                label: 'Riwayat Setor Sampah',
                 color: const Color(0xFF2196F3),
                 onTap: () => Navigator.push(
                   context,
