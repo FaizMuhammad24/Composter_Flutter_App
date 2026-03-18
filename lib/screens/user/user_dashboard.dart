@@ -5,6 +5,7 @@ import 'user_deposit_screen.dart';
 import 'user_history_screen.dart';
 import 'user_rewards_screen.dart';
 import 'user_profile_screen.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 
 class UserDashboard extends StatefulWidget {
   final UserModel user;
@@ -625,58 +626,45 @@ class _UserDashboardState extends State<UserDashboard> {
 
   // ========== BOTTOM NAVIGATION ==========
   Widget _buildBottomNav() {
-    return Container(
-      decoration: BoxDecoration(
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.primary,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white60,
-        selectedFontSize: 12,
-        unselectedFontSize: 12,
-        currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() => _currentIndex = index);
-          switch (index) {
-            case 0:
-              break;
-            case 1:
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => const UserHistoryScreen(),
-                ),
-              );
-              break;
-            case 2:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const UserRewardsScreen()),
-              );
-              break;
-            case 3:
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const UserProfileScreen()),
-              );
-              break;
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Riwayat'),
-          BottomNavigationBarItem(icon: Icon(Icons.card_giftcard), label: 'Reward'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
-        ],
-      ),
+    return CurvedNavigationBar(
+      index: _currentIndex,
+      height: 60.0,
+      backgroundColor: Colors.transparent, // Background di belakang lengkungan
+      color: AppColors.primary, // Warna bar
+      buttonBackgroundColor: AppColors.primary, // Warna tombol bulat yang aktif
+      animationDuration: const Duration(milliseconds: 300),
+      animationCurve: Curves.easeInOut,
+      items: const <Widget>[
+        Icon(Icons.home, size: 30, color: Colors.white),
+        Icon(Icons.history, size: 30, color: Colors.white),
+        Icon(Icons.person_outline, size: 30, color: Colors.white),
+      ],
+      onTap: (index) {
+        setState(() => _currentIndex = index);
+        switch (index) {
+          case 0:
+            // Tetap di Home
+            break;
+          case 1:
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const UserHistoryScreen()),
+            ).then((_) {
+              // Reset index ketika kembali ke Dashboard
+              if (mounted) setState(() => _currentIndex = 0);
+            });
+            break;
+          case 2:
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const UserProfileScreen()),
+            ).then((_) {
+              // Reset index ketika kembali ke Dashboard
+              if (mounted) setState(() => _currentIndex = 0);
+            });
+            break;
+        }
+      },
     );
   }
 
