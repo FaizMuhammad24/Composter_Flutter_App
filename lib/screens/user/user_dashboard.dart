@@ -652,7 +652,7 @@ class _UserDashboardState extends State<UserDashboard> {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => UserDepositScreen(userEmail: widget.user.email),
+                  builder: (_) => const UserHistoryScreen(),
                 ),
               );
               break;
@@ -672,7 +672,7 @@ class _UserDashboardState extends State<UserDashboard> {
         },
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.delete_outline), label: 'Setor'),
+          BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Riwayat'),
           BottomNavigationBarItem(icon: Icon(Icons.card_giftcard), label: 'Reward'),
           BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
         ],
