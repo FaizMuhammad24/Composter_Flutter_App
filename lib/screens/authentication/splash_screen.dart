@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'login_screen.dart';
-import '../user/user_dashboard.dart';
+import '../user/user_main_screen.dart';
 import '../admin/admin_main_screen.dart';
-import '../super_admin/super_admin_dashboard.dart';
+import '../super_admin/super_admin_main_screen.dart';
 import '../../services/auth/session_service.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -33,11 +33,11 @@ class _SplashScreenState extends State<SplashScreen> {
       Widget nextScreen;
 
       if (user.role == 'super_admin') {
-        nextScreen = const SuperAdminDashboard();
+        nextScreen = const SuperAdminMainScreen();
       } else if (user.role == 'admin') {
         nextScreen = const AdminMainScreen();
       } else {
-        nextScreen = UserDashboard(user: user);
+        nextScreen = UserMainScreen(user: user);
       }
 
       Navigator.pushReplacement(

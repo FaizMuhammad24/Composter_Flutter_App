@@ -28,7 +28,7 @@ class RewardCard extends StatelessWidget {
       elevation: AppElevation.md,
       shape: AppRadius.shapeMd,
       child: InkWell(
-        onTap: reward.isAvailable ? onTap : null,
+        onTap: onTap,
         borderRadius: AppRadius.borderRadiusMd,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -91,14 +91,12 @@ class RewardCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
 
-                  // Stock
+                  // Category
                   Text(
-                    'Stok: ${reward.stock}',
-                    style: TextStyle(
+                    reward.category,
+                    style: const TextStyle(
                       fontSize: 12,
-                      color: reward.isAvailable
-                          ? AppColors.textSecondary
-                          : AppColors.error,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
@@ -107,7 +105,7 @@ class RewardCard extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: reward.isAvailable && canRedeem ? onTap : null,
+                      onPressed: canRedeem ? onTap : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: canRedeem
                             ? AppColors.success
@@ -151,7 +149,6 @@ class RewardCard extends StatelessWidget {
   }
 
   String _getButtonText(bool canRedeem) {
-    if (!reward.isAvailable) return 'Stok Habis';
     if (!canRedeem && userPoints != null) return 'Poin Kurang';
     return 'Tukar';
   }

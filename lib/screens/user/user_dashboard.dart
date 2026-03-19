@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import 'user_deposit_screen.dart';
-import 'user_history_screen.dart';
 import 'user_deposit_history_screen.dart';
 import 'user_rewards_screen.dart';
-import 'user_profile_screen.dart';
 import 'widgets/user_header.dart';
-import 'widgets/user_bottom_nav.dart';
 
 class UserDashboard extends StatefulWidget {
   final UserModel user;
@@ -18,8 +15,6 @@ class UserDashboard extends StatefulWidget {
 }
 
 class _UserDashboardState extends State<UserDashboard> {
-  int _currentIndex = 0;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,9 +63,6 @@ class _UserDashboardState extends State<UserDashboard> {
           ),
         ),
       ),
-
-      // BOTTOM NAVIGATION
-      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
@@ -572,45 +564,6 @@ class _UserDashboardState extends State<UserDashboard> {
     );
   }
 
-  // ========== BOTTOM NAVIGATION ==========
-  Widget _buildBottomNav() {
-    return UserBottomNav(
-      currentIndex: _currentIndex,
-      onTap: (index) {
-        setState(() => _currentIndex = index);
-        switch (index) {
-          case 0:
-            // Tetap di Home
-            break;
-          case 1:
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const UserHistoryScreen(),
-                transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
-                transitionDuration: const Duration(milliseconds: 300),
-              ),
-            ).then((_) {
-              // Reset index ketika kembali ke Dashboard
-              if (mounted) setState(() => _currentIndex = 0);
-            });
-            break;
-          case 2:
-            Navigator.push(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const UserProfileScreen(),
-                transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
-                transitionDuration: const Duration(milliseconds: 300),
-              ),
-            ).then((_) {
-              // Reset index ketika kembali ke Dashboard
-              if (mounted) setState(() => _currentIndex = 0);
-            });
-            break;
-        }
-      },
-    );
-  }
+
 
 }

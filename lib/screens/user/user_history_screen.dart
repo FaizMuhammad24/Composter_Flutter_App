@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import 'user_profile_screen.dart';
 import 'widgets/user_header.dart';
-import 'widgets/user_bottom_nav.dart';
 
 class UserHistoryScreen extends StatefulWidget {
   const UserHistoryScreen({Key? key}) : super(key: key);
@@ -189,27 +187,6 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
             ),
           ],
         ),
-      ),
-
-      bottomNavigationBar: UserBottomNav(
-        currentIndex: 1, // 1 = History
-        backgroundColor: Colors.white,
-        onTap: (index) {
-          if (index == 1) return;
-          
-          if (index == 0) {
-            Navigator.pop(context);
-          } else if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              PageRouteBuilder(
-                pageBuilder: (_, __, ___) => const UserProfileScreen(),
-                transitionsBuilder: (_, animation, __, child) => FadeTransition(opacity: animation, child: child),
-                transitionDuration: const Duration(milliseconds: 300),
-              ),
-            );
-          }
-        },
       ),
     );
   }

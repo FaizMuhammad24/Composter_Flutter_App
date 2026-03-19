@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../user/user_dashboard.dart';
+import '../user/user_main_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/auth/signup_service.dart';
@@ -68,7 +68,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => UserDashboard(user: user)),
+          MaterialPageRoute(builder: (_) => UserMainScreen(user: user)),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
