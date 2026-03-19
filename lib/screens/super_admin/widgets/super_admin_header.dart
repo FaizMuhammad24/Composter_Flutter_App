@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../constants/app_colors.dart';
 import '../super_admin_notifications_screen.dart';
 
@@ -11,6 +12,11 @@ class SuperAdminHeader extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: AppColors.superAdminPrimary,
       elevation: 0,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
       leading: Padding(
         padding: const EdgeInsets.all(12),
         child: Container(

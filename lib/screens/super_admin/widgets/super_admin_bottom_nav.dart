@@ -5,11 +5,13 @@ import '../../../constants/app_colors.dart';
 class SuperAdminBottomNav extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
+  final Color backgroundColor;
 
   const SuperAdminBottomNav({
     Key? key,
     required this.currentIndex,
     required this.onTap,
+    this.backgroundColor = Colors.transparent,
   }) : super(key: key);
 
   @override
@@ -17,7 +19,7 @@ class SuperAdminBottomNav extends StatelessWidget {
     return CurvedNavigationBar(
       index: currentIndex,
       onTap: onTap,
-      backgroundColor: AppColors.superAdminBg,
+      backgroundColor: backgroundColor,
       color: AppColors.superAdminPrimary,
       buttonBackgroundColor: AppColors.superAdminPrimary,
       animationDuration: const Duration(milliseconds: 300),

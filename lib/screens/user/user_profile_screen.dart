@@ -3,8 +3,6 @@ import '../../constants/app_colors.dart';
 import '../authentication/login_screen.dart';
 import '../authentication/reset_password_screen.dart';
 import '../../services/auth/session_service.dart';
-import 'widgets/user_header.dart';
-
 
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({Key? key}) : super(key: key);
@@ -16,121 +14,144 @@ class UserProfileScreen extends StatefulWidget {
 class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: const UserHeader(),
-      body: Container(
-        color: AppColors.primary,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 30),
-              child: Column(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const CircleAvatar(
-                      radius: 50,
-                      backgroundColor: Colors.white,
-                      child: Icon(Icons.person, size: 60, color: AppColors.primary),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Budi Santoso',
-                    style: TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'budi@gmail.com',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontFamily: 'Poppins',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(32),
-                    topRight: Radius.circular(32),
-                  ),
+    final user = SessionService.getCurrentUser();
+    final screenHeight = MediaQuery.of(context).size.height;
+    // Dynamic header height: 36% of screen, clamped between 230–300px
+    final headerH = (screenHeight * 0.38).clamp(230.0, 300.0);
+
+    return Container(
+      color: AppColors.primary, // Dark green header zone
+      child: Column(
+        children: [
+          // ── Header (green zone) ─────────────────────────────
+          SizedBox(
+            height: headerH,
+            child: _buildHeader(user),
+          ),
+
+          // ── White card panel ────────────────────────────────
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(32),
+                  topRight: Radius.circular(32),
                 ),
+              ),
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(24, 28, 24, 120),
                 child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(vertical: 20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 15,
-                            offset: const Offset(0, 5),
-                          ),
-                        ],
-                        border: Border.all(color: Colors.grey[100]!),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _buildStatColumn('Poin', '450', Colors.orange),
-                          Container(height: 40, width: 1, color: Colors.grey[300]),
-                          _buildStatColumn('Disetor', '45 kg', Colors.green),
-                          Container(height: 40, width: 1, color: Colors.grey[300]),
-                          _buildStatColumn('Reward', '3x', Colors.blue),
-                        ],
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 40),
-                    
+                    // Stats card
+                    _buildStatsCard(),
+                    const SizedBox(height: 28),
+
+                    // Menu: Ubah Password
                     _buildMenuTile(
-                      icon: Icons.lock_outline,
+                      icon: Icons.lock_outline_rounded,
                       title: 'Ubah Password',
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ResetPasswordScreen(
-                              email: SessionService.getCurrentUser()?.email,
-                            ),
-                          ),
-                        );
-                      },
-                      color: Colors.black87,
+                      subtitle: 'Ganti kata sandi akun Anda',
+                      color: AppColors.primary,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ResetPasswordScreen(email: user?.email),
+                        ),
+                      ),
                     ),
-                    
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Divider(color: Colors.black12),
-                    ),
-                    
+                    const SizedBox(height: 12),
+
+                    // Menu: Keluar
                     _buildMenuTile(
-                      icon: Icons.logout,
-                      title: 'Log Out',
-                      onTap: () => _showLogoutDialog(context),
+                      icon: Icons.logout_rounded,
+                      title: 'Keluar',
+                      subtitle: 'Log out dari akun Anda',
                       color: Colors.red,
                       isDestructive: true,
+                      onTap: () => _showLogoutDialog(context),
                     ),
                   ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────── Header ────────────────────────────────
+  Widget _buildHeader(dynamic user) {
+    return SafeArea(
+      bottom: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Double-ring avatar (same style as admin/super admin)
+            Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                shape: BoxShape.circle,
+              ),
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const CircleAvatar(
+                  radius: 44,
+                  backgroundColor: AppColors.primary,
+                  child: Icon(Icons.person_rounded, size: 50, color: Colors.white),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // Name from session
+            Text(
+              user?.name ?? 'Pengguna',
+              style: const TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontFamily: 'Poppins',
+              ),
+            ),
+            const SizedBox(height: 3),
+
+            // Email from session
+            Text(
+              user?.email ?? 'user@kompos.com',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontFamily: 'Poppins',
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Role badge
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white30),
+              ),
+              child: const Text(
+                'Pengguna Kompos',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Poppins',
                 ),
               ),
             ),
@@ -140,71 +161,147 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildStatColumn(String label, String value, Color color) {
+  // ─────────────────────────── Stats Card ─────────────────────────────
+  Widget _buildStatsCard() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.green.shade100),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          _buildStat('Poin', '450', Colors.orange),
+          _buildDivider(),
+          _buildStat('Disetor', '45 kg', Colors.green),
+          _buildDivider(),
+          _buildStat('Reward', '3x', Colors.blue),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStat(String label, String value, Color color) {
     return Column(
       children: [
         Text(
           value,
           style: TextStyle(
-            fontSize: 18,
+            fontSize: 15,
             fontWeight: FontWeight.bold,
             color: color,
             fontFamily: 'Poppins',
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 3),
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 12,
-            color: Colors.grey,
-            fontFamily: 'Poppins',
-          ),
+          style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins'),
         ),
       ],
     );
   }
 
+  Widget _buildDivider() =>
+      Container(height: 36, width: 1, color: Colors.grey.shade200);
+
+  // ─────────────────────────── Menu Tile ──────────────────────────────
   Widget _buildMenuTile({
     required IconData icon,
     required String title,
-    required VoidCallback onTap,
+    required String subtitle,
     required Color color,
+    required VoidCallback onTap,
     bool isDestructive = false,
   }) {
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: isDestructive ? Colors.red.withValues(alpha: 0.1) : Colors.grey[100],
-          shape: BoxShape.circle,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDestructive ? Colors.red.shade100 : Colors.green.shade100,
+            ),
+          ),
+          child: Row(
+            children: [
+              // Icon circle
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 22),
+              ),
+              const SizedBox(width: 14),
+
+              // Title + subtitle
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isDestructive ? Colors.red : Colors.black87,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Trailing icon
+              Icon(
+                isDestructive ? Icons.logout_rounded : Icons.arrow_forward_ios_rounded,
+                size: 16,
+                color: isDestructive ? Colors.red : Colors.grey,
+              ),
+            ],
+          ),
         ),
-        child: Icon(icon, color: color, size: 22),
       ),
-      title: Text(
-        title,
-        style: TextStyle(
-          fontSize: 15,
-          fontWeight: isDestructive ? FontWeight.bold : FontWeight.w500,
-          color: color,
-          fontFamily: 'Poppins',
-        ),
-      ),
-      trailing: isDestructive ? null : const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-      onTap: onTap,
     );
   }
 
+  // ─────────────────────────── Logout Dialog ──────────────────────────
   void _showLogoutDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Log Out', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          'Keluar?',
+          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 18),
+        ),
         content: const Text(
-          'Apakah kamu yakin ingin keluar dari aplikasi?',
-          style: TextStyle(fontFamily: 'Poppins'),
+          'Apakah kamu yakin ingin keluar dari akun?',
+          style: TextStyle(fontFamily: 'Poppins', color: Colors.grey),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
@@ -214,33 +311,43 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
                   style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     side: const BorderSide(color: Colors.grey),
                   ),
-                  child: const Text('Batal', style: TextStyle(fontFamily: 'Poppins', color: Colors.black87)),
+                  child: const Text(
+                    'Batal',
+                    style: TextStyle(fontFamily: 'Poppins', color: Colors.black87),
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: ElevatedButton(
                   onPressed: () async {
-                    Navigator.pop(context); // Tutup dialog
+                    Navigator.pop(context);
                     await SessionService.logout();
                     if (!mounted) return;
-                    
+                    // ignore: use_build_context_synchronously
                     Navigator.of(context).pushAndRemoveUntil(
                       MaterialPageRoute(builder: (_) => const LoginScreen()),
                       (route) => false,
                     );
                   },
                   style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 13),
                     backgroundColor: Colors.red,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  child: const Text('Keluar', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Keluar',
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
             ],

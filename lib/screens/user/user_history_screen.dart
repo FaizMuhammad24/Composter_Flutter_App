@@ -178,6 +178,7 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
                             amount: '+50 Pts',
                             amountColor: Colors.black87,
                           ),
+                          const SizedBox(height: 120),
                         ],
                       ),
                     ),

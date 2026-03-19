@@ -134,9 +134,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
             ),
             const SizedBox(height: AppSpacing.md),
             _buildQosMonitoringCard(),
-            const SizedBox(height: AppSpacing.xl),
-            
-            const SizedBox(height: 100), // Padding for nav
+            const SizedBox(height: 120), // Padding for nav
           ],
         ),
       ),

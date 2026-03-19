@@ -171,7 +171,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
               ),
               const SizedBox(height: AppSpacing.xs),
               _buildHorizontalHistory(),
-              const SizedBox(height: 100), // Bottom padding for nav
+              const SizedBox(height: 120), // Bottom padding for nav
             ],
           ),
         ),

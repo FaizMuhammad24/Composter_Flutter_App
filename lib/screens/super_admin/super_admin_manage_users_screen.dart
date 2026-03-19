@@ -84,7 +84,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
                     ),
                   )
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                     itemCount: _filtered.length,
                     itemBuilder: (_, i) => _buildUserCard(i),
                   ),

@@ -101,7 +101,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
             child: _filtered.isEmpty
                 ? _buildEmpty('Belum ada admin')
                 : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                     itemCount: _filtered.length,
                     itemBuilder: (_, i) => _buildAdminCard(i),
                   ),

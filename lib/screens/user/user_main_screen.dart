@@ -17,36 +17,36 @@ class UserMainScreen extends StatefulWidget {
 class _UserMainScreenState extends State<UserMainScreen> {
   int _currentIndex = 0;
 
+  late List<Widget> _pages;
+
   @override
-  Widget build(BuildContext context) {
-    final List<Widget> pages = [
+  void initState() {
+    super.initState();
+    _pages = [
       UserDashboard(user: widget.user),
       const UserHistoryScreen(),
       const UserProfileScreen(),
     ];
+  }
 
-    // Determine background color for nav bar based on active screen
-    // UserDashboard has a beige/white bottom gradient, others have their own backgrounds
-    Color navBackgroundColor;
-    if (_currentIndex == 0) {
-      navBackgroundColor = Colors.transparent; 
-    } else if (_currentIndex == 1) {
-      navBackgroundColor = Colors.white; // UserHistoryScreen is white/primary
-    } else {
-      navBackgroundColor = const Color(0xFFE8F5E9); // UserProfileScreen bg matches this
-    }
+  @override
+  Widget build(BuildContext context) {
+    // The bottom edge of ALL user screens is white (either scrollable content
+    // or the profile's white rounded panel). Use white consistently so the
+    // CurvedNavigationBar drop/wave effect always renders correctly.
+    const navBgColor = Colors.white;
 
     return Scaffold(
-      extendBody: true, // Important for transparent/curved nav bar
-      body: pages[_currentIndex],
+      // Match the nav bg so the curve blends in on all tabs.
+      backgroundColor: navBgColor,
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ),
       bottomNavigationBar: UserBottomNav(
         currentIndex: _currentIndex,
-        backgroundColor: navBackgroundColor,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        backgroundColor: navBgColor,
+        onTap: (index) => setState(() => _currentIndex = index),
       ),
     );
   }

@@ -16,11 +16,17 @@ class AdminMainScreen extends StatefulWidget {
 class _AdminMainScreenState extends State<AdminMainScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = [
-    const AdminDashboard(),
-    const AdminSystemStatusScreen(),
-    const AdminProfileScreen(),
-  ];
+  late List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      const AdminDashboard(),
+      const AdminSystemStatusScreen(),
+      const AdminProfileScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,16 +35,19 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     if (_currentIndex == 2) title = 'Profil Admin';
 
     return Scaffold(
+      // Always adminBg (cream) – the CurvedNavBar curves into this color.
+      // The Profile screen handles its own orange header internally.
       backgroundColor: AppColors.adminBg,
       appBar: AdminHeader(title: title),
-      body: _pages[_currentIndex],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
+      ),
       bottomNavigationBar: AdminBottomNav(
         currentIndex: _currentIndex,
-        onTap: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
+        // Must match Scaffold backgroundColor so the curve looks seamless.
+        backgroundColor: AppColors.adminBg,
+        onTap: (index) => setState(() => _currentIndex = index),
       ),
     );
   }

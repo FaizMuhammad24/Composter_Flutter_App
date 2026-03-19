@@ -4,6 +4,7 @@ import 'user_deposit_screen.dart';
 import 'user_deposit_history_screen.dart';
 import 'user_rewards_screen.dart';
 import 'widgets/user_header.dart';
+import '../../widgets/common/loading_shimmer.dart';
 
 class UserDashboard extends StatefulWidget {
   final UserModel user;
@@ -14,7 +15,47 @@ class UserDashboard extends StatefulWidget {
   State<UserDashboard> createState() => _UserDashboardState();
 }
 
-class _UserDashboardState extends State<UserDashboard> {
+class _UserDashboardState extends State<UserDashboard> with SingleTickerProviderStateMixin {
+  bool _isLoading = true;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuad),
+    );
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    _animationController.reset();
+    
+    // Simulate API fetch delay
+    await Future.delayed(const Duration(milliseconds: 1000));
+    
+    if (mounted) {
+      setState(() => _isLoading = false);
+      _animationController.forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -35,8 +76,52 @@ class _UserDashboardState extends State<UserDashboard> {
         ),
         child: SafeArea(
           bottom: false,
-          child: SingleChildScrollView(
-            child: Column(
+          child: RefreshIndicator(
+            onRefresh: _loadData,
+            color: const Color(0xFF2D5016),
+            child: _isLoading ? _buildLoadingState() : _buildContent(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LoadingShimmer(width: double.infinity, height: 260, borderRadius: BorderRadius.circular(20)),
+          const SizedBox(height: 24),
+          LoadingShimmer(width: 150, height: 24, borderRadius: BorderRadius.circular(8)),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: LoadingShimmer(width: 100, height: 100, borderRadius: BorderRadius.circular(16))),
+              const SizedBox(width: 16),
+              Expanded(child: LoadingShimmer(width: 100, height: 100, borderRadius: BorderRadius.circular(16))),
+              const SizedBox(width: 16),
+              Expanded(child: LoadingShimmer(width: 100, height: 100, borderRadius: BorderRadius.circular(16))),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const ListItemShimmer(),
+          const ListItemShimmer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 1. HERO CARD (dengan statistik di dalamnya)
@@ -56,11 +141,9 @@ class _UserDashboardState extends State<UserDashboard> {
 
             // 4. TIPS KOMPOS
             _buildKomposTips(),
-
-            const SizedBox(height: 100),
+            const SizedBox(height: 120),
               ],
             ),
-          ),
         ),
       ),
     );
@@ -68,8 +151,11 @@ class _UserDashboardState extends State<UserDashboard> {
 
   // ========== 1. HERO CARD ==========
   Widget _buildHeroCard() {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final cardHeight = (screenHeight * 0.38).clamp(260.0, 310.0);
+    
     return Container(
-      height: 300,
+      height: cardHeight,
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       decoration: BoxDecoration(
         gradient: const LinearGradient(

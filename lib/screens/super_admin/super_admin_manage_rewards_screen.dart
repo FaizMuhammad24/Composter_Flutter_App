@@ -111,7 +111,7 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
                       onRefresh: _loadRewards,
                       color: AppColors.superAdminPrimary,
                       child: ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
                         itemCount: _filtered.length,
                         itemBuilder: (context, index) => _buildRewardCard(_filtered[index]),
                       ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../services/reward_service.dart';
+import '../../widgets/common/loading_shimmer.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
   final Function(int) onNavigate;
@@ -10,8 +11,11 @@ class SuperAdminDashboard extends StatefulWidget {
   State<SuperAdminDashboard> createState() => _SuperAdminDashboardState();
 }
 
-class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
+class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
   final int _totalAdmins = 1;
   final int _totalUsers = 3;
   int _totalRewards = 0;
@@ -19,17 +23,35 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+    );
+    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuad),
+    );
     _loadStats();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadStats() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 600));
+    _animationController.reset();
+    await Future.delayed(const Duration(milliseconds: 800));
     if (mounted) {
       setState(() {
         _totalRewards = RewardService.getTotalRewards();
         _isLoading = false;
       });
+      _animationController.forward();
     }
   }
 
@@ -38,31 +60,62 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
     return RefreshIndicator(
       onRefresh: _loadStats,
       color: AppColors.superAdminPrimary,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: _isLoading
-            ? const Center(
-                heightFactor: 10,
-                child: CircularProgressIndicator(color: AppColors.superAdminPrimary),
-              )
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeroCard(),
-                  const SizedBox(height: 20),
-                  _buildStatsRow(),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle('Aktivitas Sistem Terbaru'),
-                  const SizedBox(height: 12),
-                  _buildRecentActivityList(),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle('Ringkasan Sistem'),
-                  const SizedBox(height: 12),
-                  _buildSystemSummaryCard(),
-                  const SizedBox(height: 100),
-                ],
-              ),
+      child: _isLoading ? _buildLoadingState() : _buildContent(),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          LoadingShimmer(width: double.infinity, height: 120, borderRadius: BorderRadius.circular(24)),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(child: LoadingShimmer(width: 100, height: 140, borderRadius: BorderRadius.circular(16))),
+              const SizedBox(width: 10),
+              Expanded(child: LoadingShimmer(width: 100, height: 140, borderRadius: BorderRadius.circular(16))),
+              const SizedBox(width: 10),
+              Expanded(child: LoadingShimmer(width: 100, height: 140, borderRadius: BorderRadius.circular(16))),
+            ],
+          ),
+          const SizedBox(height: 24),
+          const ListItemShimmer(),
+          const ListItemShimmer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent() {
+    return FadeTransition(
+      opacity: _fadeAnimation,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeroCard(),
+              const SizedBox(height: 20),
+              _buildStatsRow(),
+              const SizedBox(height: 24),
+              _buildSectionTitle('Aktivitas Sistem Terbaru'),
+              const SizedBox(height: 12),
+              _buildRecentActivityList(),
+              const SizedBox(height: 24),
+              _buildSectionTitle('Ringkasan Sistem'),
+              const SizedBox(height: 12),
+              _buildSystemSummaryCard(),
+              const SizedBox(height: 120),
+            ],
+          ),
+        ),
       ),
     );
   }
