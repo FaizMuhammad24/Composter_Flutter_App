@@ -17,7 +17,7 @@ class UserHeader extends StatelessWidget implements PreferredSizeWidget {
             color: Colors.white,
             shape: BoxShape.circle,
           ),
-          child: Icon(Icons.eco, color: AppColors.primary, size: 20),
+          child: const Icon(Icons.eco, color: AppColors.primary, size: 20),
         ),
       ),
       title: const Text(

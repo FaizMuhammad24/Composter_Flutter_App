@@ -16,7 +16,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
   bool _isLoading = false;
   bool _showForm = false;
 
-  List<Map<String, String>> _admins = [
+  final List<Map<String, String>> _admins = [
     {'name': 'Admin Default', 'email': 'admin@kompos.com', 'created_by': 'superadmin@kompos.com'},
   ];
   List<Map<String, String>> _filtered = [];

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../utils/mock_sensor_history.dart';
+import '../../utils/mocks/mock_sensor_history.dart';
 
 class AdminCategoryPhScreen extends StatefulWidget {
   const AdminCategoryPhScreen({Key? key}) : super(key: key);
@@ -67,9 +67,9 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           children: [
-                            Row(
+                            const Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: const [
+                              children: [
                                 Text('Tingkat Keasaman (pH)', style: TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Poppins')),
                                 Icon(Icons.science, color: Colors.white, size: 40),
                               ],
@@ -137,10 +137,10 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
                               child: LineChart(
                                 LineChartData(
                                   minY: 0, maxY: 14,
-                                  gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 2),
+                                  gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 2),
                                   titlesData: FlTitlesData(
-                                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                     bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: true, reservedSize: 30, interval: _selectedPeriod == '24 Jam' ? 4 : 24, getTitlesWidget: (value, meta) => value % (_selectedPeriod == '24 Jam' ? 4 : 24) == 0 ? Padding(padding: const EdgeInsets.only(top: 8), child: Text('${value.toInt()}:00', style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'Poppins'))) : const SizedBox())),
                                   ),
                                   borderData: FlBorderData(show: false),
@@ -157,7 +157,7 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
                                       isCurved: true,
                                       color: const Color(0xFF9C27B0),
                                       barWidth: 3,
-                                      dotData: FlDotData(show: false),
+                                      dotData: const FlDotData(show: false),
                                       belowBarData: BarAreaData(show: true, gradient: LinearGradient(colors: [const Color(0xFF9C27B0).withOpacity(0.3), const Color(0xFF9C27B0).withOpacity(0.0)], begin: Alignment.topCenter, end: Alignment.bottomCenter)),
                                     ),
                                   ],
@@ -190,7 +190,7 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: const [Text('0', style: TextStyle(fontSize: 10)), Text('7', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)), Text('14', style: TextStyle(fontSize: 10))]),
+                            const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('0', style: TextStyle(fontSize: 10)), Text('7', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)), Text('14', style: TextStyle(fontSize: 10))]),
                             const SizedBox(height: 16),
                             _buildStatRow('Rata-rata pH', _calculateAvg().toStringAsFixed(1)),
                             const Divider(),

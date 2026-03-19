@@ -384,7 +384,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
-                              child: Icon(Icons.calculate, color: AppColors.primary, size: 28),
+                              child: const Icon(Icons.calculate, color: AppColors.primary, size: 28),
                             )
                           ],
                         ),
@@ -493,7 +493,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppColors.primary, width: 2),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
                 ),
               ),
               onChanged: (_) => _calculatePoints(),

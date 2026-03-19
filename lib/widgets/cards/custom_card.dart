@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../constants/app_colors.dart';
-import '../../constants/app_spacing.dart';
+import '../../../constants/app_colors.dart';
+import '../../../constants/app_spacing.dart';
 
 /// Card konsisten untuk seluruh aplikasi
 class CustomCard extends StatelessWidget {

@@ -69,7 +69,7 @@ class KomposApp extends StatelessWidget {
           // Border saat focus (hijau)
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
-            borderSide: BorderSide(color: AppColors.primary, width: 2),
+            borderSide: const BorderSide(color: AppColors.primary, width: 2),
           ),
           
           // Border saat error
@@ -129,7 +129,7 @@ class KomposApp extends StatelessWidget {
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
-            side: BorderSide(color: AppColors.primary, width: 2),
+            side: const BorderSide(color: AppColors.primary, width: 2),
             padding: const EdgeInsets.symmetric(
               horizontal: 32,
               vertical: 16,

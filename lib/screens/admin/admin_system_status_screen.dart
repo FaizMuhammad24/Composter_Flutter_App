@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../utils/mock_system_status.dart';
+import '../../utils/mocks/mock_system_status.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 

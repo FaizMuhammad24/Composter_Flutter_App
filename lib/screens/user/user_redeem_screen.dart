@@ -106,12 +106,12 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
                     ),
-                    child: Row(
+                    child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.info_outline, color: Colors.blue),
-                        const SizedBox(width: 12),
-                        const Expanded(
+                        Icon(Icons.info_outline, color: Colors.blue),
+                        SizedBox(width: 12),
+                        Expanded(
                           child: Text(
                             'Instruksi Pengambilan:\nHadiah dapat diambil di loket panitia / Drop Point terdekat dengan menunjukkan bukti resi penukaran ini.',
                             style: TextStyle(fontFamily: 'Poppins', fontSize: 13, height: 1.5, color: Colors.black87),

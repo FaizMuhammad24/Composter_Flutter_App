@@ -39,7 +39,7 @@ class _UserDepositHistoryScreenState extends State<UserDepositHistoryScreen> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
+            colorScheme: const ColorScheme.light(
               primary: AppColors.primary,
               onPrimary: Colors.white,
               onSurface: Colors.black,
@@ -97,9 +97,9 @@ class _UserDepositHistoryScreenState extends State<UserDepositHistoryScreen> {
           // BAGIAN PENCARIAN & FILTER
           Container(
             padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.primary,
-              borderRadius: const BorderRadius.only(
+              borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(32),
                 bottomRight: Radius.circular(32),
               ),
@@ -132,7 +132,7 @@ class _UserDepositHistoryScreenState extends State<UserDepositHistoryScreen> {
                           ),
                           child: Row(
                             children: [
-                              Icon(Icons.calendar_month, color: AppColors.primary, size: 24),
+                              const Icon(Icons.calendar_month, color: AppColors.primary, size: 24),
                               const SizedBox(width: 12),
                               Text(
                                 _selectedDate == null
@@ -207,7 +207,7 @@ class _UserDepositHistoryScreenState extends State<UserDepositHistoryScreen> {
                             ),
                             child: Text(
                               '${_displayedHistory.length} Transaksi',
-                              style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'Poppins'),
+                              style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 12, fontFamily: 'Poppins'),
                             ),
                           ),
                         ],

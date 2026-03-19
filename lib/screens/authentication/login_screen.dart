@@ -119,9 +119,9 @@ class _LoginScreenState extends State<LoginScreen> {
                                 shape: BoxShape.circle,
                               ),
                             ),
-                            Column(
+                            const Column(
                               mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
+                              children: [
                                 Icon(Icons.eco, size: 64, color: Colors.white),
                                 SizedBox(height: 8),
                                 Icon(Icons.recycling, size: 30, color: Colors.white70),
@@ -343,8 +343,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
-                                  children: const [
+                                const Row(
+                                  children: [
                                     Icon(Icons.info_outline, size: 18, color: Colors.blue),
                                     SizedBox(width: 8),
                                     Text(

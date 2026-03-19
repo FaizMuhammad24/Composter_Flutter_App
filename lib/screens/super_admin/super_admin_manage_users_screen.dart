@@ -10,7 +10,7 @@ class ManageUsersScreen extends StatefulWidget {
 class _ManageUsersScreenState extends State<ManageUsersScreen> {
   final _searchCtrl = TextEditingController();
 
-  List<Map<String, dynamic>> _users = [
+  final List<Map<String, dynamic>> _users = [
     {'name': 'User Default', 'email': 'user@kompos.com', 'points': 150},
     {'name': 'Budi Santoso', 'email': 'budi@gmail.com', 'points': 450},
     {'name': 'Ani Rahmawati', 'email': 'ani@gmail.com', 'points': 280},

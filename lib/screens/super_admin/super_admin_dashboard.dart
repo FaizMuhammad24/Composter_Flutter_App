@@ -12,8 +12,8 @@ class SuperAdminDashboard extends StatefulWidget {
 
 class _SuperAdminDashboardState extends State<SuperAdminDashboard> {
   bool _isLoading = true;
-  int _totalAdmins = 1;
-  int _totalUsers = 3;
+  final int _totalAdmins = 1;
+  final int _totalUsers = 3;
   int _totalRewards = 0;
 
   @override

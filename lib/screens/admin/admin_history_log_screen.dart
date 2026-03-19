@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../utils/mock_actuator_logs.dart';
+import '../../utils/mocks/mock_actuator_logs.dart';
 import '../../constants/app_colors.dart';
 
 class AdminHistoryLogScreen extends StatefulWidget {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../constants/app_colors.dart';
+import '../../../constants/app_colors.dart';
 
 /// Loading indicator konsisten
 class CustomLoadingIndicator extends StatelessWidget {
@@ -27,7 +27,7 @@ class CustomLoadingIndicator extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               message!,
-              style: TextStyle(color: AppColors.textSecondary),
+              style: const TextStyle(color: AppColors.textSecondary),
             ),
           ],
         ],

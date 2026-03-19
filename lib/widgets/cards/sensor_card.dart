@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_spacing.dart';
-import '../utils/app_radius.dart';
-import '../utils/app_elevation.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart';
+import '../../utils/styles/app_radius.dart';
+import '../../utils/styles/app_elevation.dart';
 
 /// 🌡️ Sensor Card Widget - Aplikasi Monitoring Kompos
 /// Reusable card untuk menampilkan data sensor

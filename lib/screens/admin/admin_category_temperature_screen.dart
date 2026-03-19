@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../utils/mock_sensor_history.dart';
+import '../../utils/mocks/mock_sensor_history.dart';
 
 class AdminCategoryTemperatureScreen extends StatefulWidget {
   const AdminCategoryTemperatureScreen({Key? key}) : super(key: key);
@@ -67,9 +67,9 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           children: [
-                            Row(
+                            const Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: const [
+                              children: [
                                 Text('Suhu Saat Ini', style: TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Poppins')),
                                 Icon(Icons.thermostat, color: Colors.white, size: 40),
                               ],
@@ -162,10 +162,10 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
                               child: LineChart(
                                 LineChartData(
                                   minY: 40, maxY: 80,
-                                  gridData: FlGridData(show: true, drawVerticalLine: false),
+                                  gridData: const FlGridData(show: true, drawVerticalLine: false),
                                   titlesData: FlTitlesData(
-                                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                     bottomTitles: AxisTitles(
                                       sideTitles: SideTitles(
                                         showTitles: true,
@@ -192,7 +192,7 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
                                       isCurved: true,
                                       color: const Color(0xFFFF6B35),
                                       barWidth: 3,
-                                      dotData: FlDotData(show: false),
+                                      dotData: const FlDotData(show: false),
                                       belowBarData: BarAreaData(
                                         show: true,
                                         gradient: LinearGradient(

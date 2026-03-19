@@ -3,17 +3,17 @@ import 'dart:async';
 import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
-import '../../utils/screen_utils.dart';
-import '../../utils/mock_data.dart';
+import '../../utils/helpers/screen_utils.dart';
+import '../../utils/mocks/mock_data.dart';
 import '../../models/sensor_data_model.dart';
-import '../../widgets/sensor_card.dart';
-import '../../widgets/loading_shimmer.dart';
+import '../../widgets/cards/sensor_card.dart';
+import '../../widgets/common/loading_shimmer.dart';
 import 'admin_category_temperature_screen.dart';
 import 'admin_category_humidity_screen.dart';
 import 'admin_category_ph_screen.dart';
 import 'admin_category_gas_screen.dart';
 import 'admin_history_log_screen.dart';
-import '../../utils/mock_actuator_logs.dart';
+import '../../utils/mocks/mock_actuator_logs.dart';
 
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);

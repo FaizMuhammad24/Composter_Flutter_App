@@ -309,7 +309,7 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.superAdminPrimary, width: 1.5),
+          borderSide: const BorderSide(color: AppColors.superAdminPrimary, width: 1.5),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

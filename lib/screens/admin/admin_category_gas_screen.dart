@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../utils/mock_sensor_history.dart';
+import '../../utils/mocks/mock_sensor_history.dart';
 
 class AdminCategoryGasScreen extends StatefulWidget {
   const AdminCategoryGasScreen({Key? key}) : super(key: key);
@@ -68,14 +68,14 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.red[400]!),
                         ),
-                        child: Row(
+                        child: const Row(
                           children: [
-                            const Icon(Icons.warning_amber_rounded, color: Color(0xFFE53935), size: 28),
-                            const SizedBox(width: 12),
+                            Icon(Icons.warning_amber_rounded, color: Color(0xFFE53935), size: 28),
+                            SizedBox(width: 12),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
+                                children: [
                                   Text('BAHAYA: KADAR GAS TINGGI', style: TextStyle(color: Color(0xFFE53935), fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                                   Text('Kadar gas metana melebihi 500 ppm. Segera menjauh atau pastikan sirkulasi udara baik.', style: TextStyle(color: Color(0xFFE53935), fontSize: 12, fontFamily: 'Poppins')),
                                 ],
@@ -94,9 +94,9 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           children: [
-                            Row(
+                            const Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: const [
+                              children: [
                                 Text('Kadar Gas Metana', style: TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Poppins')),
                                 Icon(Icons.waves, color: Colors.white, size: 40),
                               ],
@@ -188,10 +188,10 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
                               height: 200,
                               child: LineChart(
                                 LineChartData(
-                                  gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 150),
+                                  gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 150),
                                   titlesData: FlTitlesData(
-                                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                                     bottomTitles: AxisTitles(
                                       sideTitles: SideTitles(
                                         showTitles: true,
@@ -223,7 +223,7 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
                                       color: const Color(0xFFE53935),
                                       barWidth: 3,
                                       isStrokeCapRound: true,
-                                      dotData: FlDotData(show: false),
+                                      dotData: const FlDotData(show: false),
                                       belowBarData: BarAreaData(
                                         show: true,
                                         gradient: LinearGradient(

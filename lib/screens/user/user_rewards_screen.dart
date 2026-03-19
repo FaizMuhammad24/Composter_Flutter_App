@@ -25,31 +25,31 @@ class UserRewardsScreen extends StatelessWidget {
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.primary,
-              borderRadius: const BorderRadius.only(
+              borderRadius: BorderRadius.only(
                 bottomLeft: Radius.circular(32),
                 bottomRight: Radius.circular(32),
               ),
             ),
-            child: Column(
+            child: const Column(
               children: [
-                const Text(
+                Text(
                   'Saldo Poin Saat Ini',
                   style: TextStyle(color: Colors.white70, fontFamily: 'Poppins', fontSize: 13),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.stars, color: Colors.amber, size: 32),
-                    const SizedBox(width: 8),
-                    const Text(
+                    Icon(Icons.stars, color: Colors.amber, size: 32),
+                    SizedBox(width: 8),
+                    Text(
                       '2.450',
                       style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                     ),
-                    const SizedBox(width: 4),
-                    const Text(
+                    SizedBox(width: 4),
+                    Text(
                       'Pts',
                       style: TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Poppins'),
                     ),

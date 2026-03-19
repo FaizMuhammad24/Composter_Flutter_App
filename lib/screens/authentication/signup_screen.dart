@@ -289,8 +289,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                                         color: Colors.grey[700],
                                         fontFamily: 'Poppins',
                                       ),
-                                      children: [
-                                        const TextSpan(text: 'I agree to the '),
+                                      children: const [
+                                        TextSpan(text: 'I agree to the '),
                                         TextSpan(
                                           text: 'Terms & Privacy',
                                           style: TextStyle(
@@ -355,7 +355,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                               ),
                               GestureDetector(
                                 onTap: () => Navigator.pop(context),
-                                child: Text(
+                                child: const Text(
                                   'Sign In',
                                   style: TextStyle(
                                     color: AppColors.primary,

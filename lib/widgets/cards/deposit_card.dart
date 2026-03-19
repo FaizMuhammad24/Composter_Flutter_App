@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
-import '../constants/app_spacing.dart';
-import '../utils/app_radius.dart';
-import '../utils/app_elevation.dart';
-import '../utils/date_formatter.dart';
+import '../../constants/app_colors.dart';
+import '../../constants/app_spacing.dart';
+import '../../utils/styles/app_radius.dart';
+import '../../utils/styles/app_elevation.dart';
+import '../../utils/helpers/date_formatter.dart';
 
 /// 🗑️ Deposit Card Widget - Aplikasi Monitoring Kompos
 /// Reusable card untuk menampilkan history deposit sampah

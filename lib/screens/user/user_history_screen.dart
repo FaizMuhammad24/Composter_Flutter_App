@@ -53,9 +53,9 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
                             color: const Color(0xFF81D4FA),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: Column(
+                          child: const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
                                 '15 kg',
                                 style: TextStyle(
@@ -87,9 +87,9 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
                             color: const Color(0xFFFFB74D),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: Column(
+                          child: const Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            children: const [
+                            children: [
                               Text(
                                 '3x',
                                 style: TextStyle(

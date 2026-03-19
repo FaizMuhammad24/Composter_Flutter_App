@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../constants/app_colors.dart';
-import '../../constants/app_text_styles.dart';
+import '../../../constants/app_colors.dart';
+import '../../../constants/app_text_styles.dart';
 
 /// Empty state konsisten
 class CustomEmptyState extends StatelessWidget {

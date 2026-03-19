@@ -60,8 +60,9 @@ class MockSensorHistory {
     return List.generate(points, (i) {
       double value = 50.0 + _random.nextDouble() * 550.0;
       String status = 'normal';
-      if (value > 500) status = 'danger';
-      else if (value > 400) status = 'warning';
+      if (value > 500) {
+        status = 'danger';
+      } else if (value > 400) status = 'warning';
       return SensorDataPoint(
         timestamp: DateTime.now().subtract(Duration(hours: points - i - 1)),
         value: value,

@@ -101,7 +101,7 @@ class SensorCardShimmer extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            LoadingShimmer.circular(size: 40),
+            const LoadingShimmer.circular(size: 40),
             const SizedBox(height: 12),
             LoadingShimmer(width: 80, height: 14, borderRadius: BorderRadius.circular(4)),
             const SizedBox(height: 8),
@@ -127,7 +127,7 @@ class ListItemShimmer extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
-            LoadingShimmer.circular(size: 48),
+            const LoadingShimmer.circular(size: 48),
             const SizedBox(width: 16),
             Expanded(
               child: Column(
