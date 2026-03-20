@@ -46,6 +46,16 @@ Sistem dilengkapi dengan logika pintar untuk mengontrol 5 komponen secara otomat
 > *Didedikasikan untuk Solusi Monitoring Kompos Berbasis IoT bagi Masyarakat.*
 
 ---
+
+### 💖 Ucapan Terima Kasih (Shout Out)
+Ucapan terima kasih yang tulus kami sampaikan kepada:
+- **Arthur Damara Gultom**: Kuli pangkul favorit kami.
+- **Mang Awai**: Mekanik konstruksi alat.
+- **Dosen-Dosen Teknik Elektro PNJ**: Atas bimbingan dan seluruh ilmunya.
+- **Keluarga Tercinta**: Dukungan dan doa yang tidak pernah putus.
+- **Teman-Teman**: Rekan seperjuangan Telkom B 23.
+
+---
 **© 2026 i-Composter Project. All rights reserved.**  
 *Dari Telkom B untuk Masyarakat.*
 
