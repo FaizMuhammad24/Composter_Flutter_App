@@ -1,4 +1,4 @@
-import '../models/reward_model.dart';
+import '../../models/reward_model.dart';
 
 /// 🎁 Reward Service - Aplikasi Monitoring Kompos
 /// CRUD Operations + 6 Dummy Rewards

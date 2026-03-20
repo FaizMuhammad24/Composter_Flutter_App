@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../utils/mocks/mock_actuator_logs.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../constants/app_colors.dart';
 
 class AdminHistoryLogScreen extends StatefulWidget {
@@ -12,11 +12,15 @@ class AdminHistoryLogScreen extends StatefulWidget {
 class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final List<String> _tabs = ['Exhaust Fan', 'Heater', 'Motor Aduk', 'Pompa EM4', 'Pompa Air'];
+  final DatabaseReference _dbRef = FirebaseDatabase.instance.ref('logs/actuators');
   
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: _tabs.length, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.indexIsChanging) setState(() {});
+    });
   }
 
   @override
@@ -30,14 +34,14 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
     return Scaffold(
       backgroundColor: AppColors.adminBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFF6B35), // Match monitor screens
+        backgroundColor: const Color(0xFFFF6B35),
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'History Log Alat',
+          'Riwayat Kerja Alat',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -45,43 +49,55 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
           ),
         ),
         centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.file_download_outlined, color: Colors.white),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Downloading CSV...')),
-              );
-            },
-          ),
-        ],
       ),
       body: Column(
         children: [
           Container(
-            color: const Color(0xFFFF6B35), // Match AppBar
+            color: const Color(0xFFFF6B35),
             child: TabBar(
               controller: _tabController,
               isScrollable: true,
               indicatorColor: Colors.white,
-              indicatorWeight: 3,
+              indicatorWeight: 4,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white70,
               labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontFamily: 'Poppins'),
               tabs: _tabs.map((tab) => Tab(text: tab)).toList(),
             ),
           ),
           Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildLogList(MockActuatorLogs.getExhaustFanLogs()),
-                _buildLogList(MockActuatorLogs.getHeaterLogs()),
-                _buildLogList(MockActuatorLogs.getMotorAdukLogs()),
-                _buildLogList(MockActuatorLogs.getPompaEM4Logs()),
-                _buildLogList(MockActuatorLogs.getPompaAirLogs()),
-              ],
+            child: StreamBuilder(
+              stream: _dbRef.orderByChild('actuator').equalTo(_tabs[_tabController.index]).onValue,
+              builder: (context, AsyncSnapshot<DatabaseEvent> snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35)));
+                }
+
+                if (!snapshot.hasData || snapshot.data?.snapshot.value == null) {
+                  return _buildEmptyState();
+                }
+
+                final Map<dynamic, dynamic> values = snapshot.data!.snapshot.value as Map;
+                final List<Map<String, dynamic>> logs = [];
+                
+                values.forEach((key, data) {
+                  logs.add({
+                    'id': key,
+                    ...Map<String, dynamic>.from(data as Map),
+                  });
+                });
+
+                // Sort by unix_time descending
+                logs.sort((a, b) => (b['unix_time'] as num).compareTo(a['unix_time'] as num));
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                  itemCount: logs.length,
+                  itemBuilder: (context, index) {
+                    return _buildTimelineItem(logs[index], index == logs.length - 1);
+                  },
+                );
+              },
             ),
           ),
         ],
@@ -89,121 +105,165 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
     );
   }
 
-  Widget _buildLogList(List<ActuatorLog> logs) {
-    if (logs.isEmpty) {
-      return const Center(child: Text('Tidak ada data log', style: TextStyle(fontFamily: 'Poppins')));
-    }
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.history_rounded, size: 80, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          Text(
+            'Belum ada riwayat untuk ${_tabs[_tabController.index]}',
+            style: TextStyle(color: Colors.grey.shade500, fontFamily: 'Poppins'),
+          ),
+        ],
+      ),
+    );
+  }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: logs.length,
-      itemBuilder: (context, index) {
-        final log = logs[index];
-        final isLast = index == logs.length - 1;
-        final isOn = log.status == 'ON';
+  Widget _buildTimelineItem(Map<String, dynamic> log, bool isLast) {
+    final bool isOn = log['status'] == 'ON';
+    final DateTime time = DateTime.fromMillisecondsSinceEpoch((log['unix_time'] as num).toInt() * 1000);
+    final String timeStr = DateFormat('dd MMM, HH:mm:ss').format(time);
 
-        return IntrinsicHeight(
-          child: Row(
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Left Timeline
+          Column(
             children: [
-              // Timeline line and circle
-              Column(
-                children: [
-                  Container(
-                    width: 2,
-                    height: 20,
-                    color: index == 0 ? Colors.transparent : Colors.grey[400],
+              Container(
+                width: 14,
+                height: 14,
+                decoration: BoxDecoration(
+                  color: isOn ? Colors.green : Colors.transparent,
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: isOn ? Colors.green : Colors.grey.shade400,
+                    width: 2.5,
                   ),
-                  Container(
-                    width: 16,
-                    height: 16,
+                ),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2.5,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
                     decoration: BoxDecoration(
-                      color: isOn ? Colors.green : Colors.transparent,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: isOn ? Colors.green : Colors.grey, width: 2),
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  Expanded(
-                    child: Container(
-                      width: 2,
-                      color: isLast ? Colors.transparent : Colors.grey[400],
-                    ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 16),
+          // Content Card
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
                 ],
               ),
-              const SizedBox(width: 16),
-              // Log content card
-              Expanded(
-                child: Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: IntrinsicHeight(
+                  child: Row(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            DateFormat('dd MMM yyyy, HH:mm:ss').format(log.timestamp),
-                            style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'Poppins'),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: isOn ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              log.status,
-                              style: TextStyle(
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                                color: isOn ? Colors.green : Colors.grey[600],
-                                fontFamily: 'Poppins',
+                      // Accent side bar
+                      Container(
+                        width: 5,
+                        color: isOn ? Colors.green : Colors.grey.shade300,
+                      ),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    timeStr,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.grey.shade500,
+                                      fontFamily: 'Poppins',
+                                    ),
+                                  ),
+                                  _buildStatusBadge(isOn),
+                                ],
                               ),
-                            ),
+                              const SizedBox(height: 10),
+                              Text(
+                                log['reason'] ?? 'Aktivitas Otomatis',
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF2D3142),
+                                  fontFamily: 'Poppins',
+                                ),
+                              ),
+                              const SizedBox(height: 6),
+                              if (log['value'] != null && log['value'] != 0.0)
+                                Text(
+                                  '📡 Deteksi: ${log['value']}${_getUnit(log['actuator'])}',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey.shade600,
+                                    fontFamily: 'Poppins',
+                                  ),
+                                ),
+                            ],
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        log.reason,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins'),
-                      ),
-                      if (log.sensorValue != null) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Deteksi Sensor: ${log.sensorValue}',
-                          style: const TextStyle(fontSize: 12, color: Colors.black54, fontFamily: 'Poppins'),
                         ),
-                      ],
-                      if (isOn) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.timer_outlined, size: 14, color: Colors.grey),
-                            const SizedBox(width: 4),
-                            Text(
-                              'Durasi: ${log.duration}',
-                              style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'Poppins'),
-                            ),
-                          ],
-                        ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
               ),
-            ],
+            ),
           ),
-        );
-      },
+        ],
+      ),
     );
+  }
+
+  Widget _buildStatusBadge(bool isOn) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: isOn ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        isOn ? 'ON' : 'OFF',
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: isOn ? Colors.green.shade700 : Colors.grey.shade700,
+          fontFamily: 'Poppins',
+        ),
+      ),
+    );
+  }
+
+  String _getUnit(String? actuator) {
+    if (actuator == 'Heater') return '°C';
+    if (actuator == 'Exhaust Fan') return ' ppm';
+    if (actuator == 'Pompa Air') return '%';
+    if (actuator == 'Pompa EM4') return ' pH';
+    return '';
   }
 }

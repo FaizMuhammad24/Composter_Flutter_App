@@ -17,13 +17,13 @@ class SensorDataModel {
   });
 
   // ==================== FROM JSON ====================
-  factory SensorDataModel.fromJson(Map<String, dynamic> json) {
+  factory SensorDataModel.fromJson(Map<dynamic, dynamic> json) {
     return SensorDataModel(
-      temperature: (json['temperature'] as num).toDouble(),
-      humidity: (json['humidity'] as num).toDouble(),
-      ph: (json['ph'] as num).toDouble(),
-      mq4: json['mq4'] as int,
-      timestamp: DateTime.parse(json['timestamp'] as String),
+      temperature: (json['temperature'] as num?)?.toDouble() ?? 0.0,
+      humidity: (json['soil'] as num?)?.toDouble() ?? 0.0,
+      ph: (json['ph'] as num?)?.toDouble() ?? 0.0,
+      mq4: (json['gas'] as num?)?.toInt() ?? 0,
+      timestamp: DateTime.now(), // Gunakan waktu lokal saat menerima data
     );
   }
 
@@ -31,10 +31,10 @@ class SensorDataModel {
   Map<String, dynamic> toJson() {
     return {
       'temperature': temperature,
-      'humidity': humidity,
+      'soil': humidity,
       'ph': ph,
-      'mq4': mq4,
-      'timestamp': timestamp.toIso8601String(),
+      'gas': mq4,
+      'time': timestamp.toIso8601String(),
     };
   }
 
@@ -48,6 +48,7 @@ class SensorDataModel {
 
   /// Get humidity status
   String get humidityStatus {
+    if (humidity == 100.0 || humidity == 0.0) return 'Gagal';
     if (humidity < 30) return 'Rendah';
     if (humidity > 60) return 'Tinggi';
     return 'Normal';
@@ -55,10 +56,16 @@ class SensorDataModel {
 
   /// Get pH status
   String get phStatus {
+    if (ph == 100.0 || ph == 10.0 || ph == 0.0) return 'Gagal';
     if (ph < 6) return 'Asam';
     if (ph > 8) return 'Basa';
     return 'Normal';
   }
+
+  bool get isTempHealthy => temperature != 100.0 && temperature != 0.0;
+  bool get isPhHealthy => ph != 100.0 && ph != 10.0 && ph != 0.0;
+  bool get isSoilHealthy => humidity != 100.0 && humidity != 0.0;
+  bool get isGasHealthy => mq4 != 100 && mq4 != 0;
 
   /// Get gas status
   String get gasStatus {
