@@ -1,104 +1,39 @@
-# Aplikasi Monitoring Kompos v2.0
-## Sistem Role-Based dengan Super Admin Security
+# i-Composter v2.0
+**Smart Composting Monitoring & Automation System**
 
-### 🔐 SISTEM KEAMANAN
+Sistem monitoring kompos cerdas berbasis IoT (Internet of Things) yang mengintegrasikan perangkat keras (ESP32) dengan aplikasi mobile (Flutter) melalui Firebase Realtime Database untuk proses pengomposan yang efisien dan terukur.
 
-#### 3 Level Role:
-1. **Super Admin** - Bisa membuat/hapus admin & user
-2. **Admin** - Monitoring sensor & alat (Read-only)
-3. **User** - Penyetoran sampah & poin
+## 🌟 Fitur Utama
 
-#### Keamanan Admin:
-- ✅ User biasa TIDAK BISA daftar sebagai admin
-- ✅ Hanya Super Admin yang bisa buat akun admin
-- ✅ Password di-hash dengan SHA256
-- ✅ Audit trail (siapa yang membuat admin)
+### 1. Monitoring Sensor Real-time
+Pantau kondisi kompos Anda secara instan dari mana saja:
+- **Suhu**: Memastikan suhu dekomposisi tetap dalam rentang optimal.
+- **Kelembaban (Soil Moisture)**: Memantau kadar air agar media kompos tidak kering.
+- **pH Tanah**: Menjaga tingkat keasaman ideal untuk aktivitas mikroba pengurai.
+- **Kadar Gas (MQ-4)**: Deteksi gas metana/biogas untuk keamanan dan indikator kematangan.
 
-### 📱 AKUN DEMO
+### 2. Otomasi Alat (Actuators)
+Sistem dilengkapi dengan logika pintar untuk mengontrol 5 komponen secara otomatis:
+- **Heater**: Menjaga suhu tetap hangat saat kondisi lingkungan dingin.
+- **Exhaust Fan**: Mengatur sirkulasi udara dan membuang gas berlebih.
+- **Pompa Air**: Menyiram media secara otomatis jika kelembaban rendah.
+- **Pompa EM4**: Injeksi cairan pengurai otomatis saat pH tidak stabil.
+- **Motor Aduk**: Pengadukan periodik untuk memastikan aerasi udara merata.
 
-```
-Super Admin:
-Email: superadmin@kompos.com
-Password: superadmin123
+### 3. Logika & Analasis Data
+- **Live Actuator Logs**: Catatan real-time setiap kali alat menyala/mati lengkap dengan alasan pemicunya.
+- **Histori Sensor (1 Menit)**: Rekap data sensor yang tercatat secara periodik.
+- **Export Data CSV**: Memungkinkan Admin mengunduh data riwayat sensor ke format file Excel/CSV.
 
-Admin:
-Email: admin@kompos.com
-Password: admin123
+### 4. Manajemen Pengguna (Role-Based)
+- **Super Admin**: Mengelola seluruh akun Admin, User, serta sistem penukaran Reward.
+- **Admin**: Fokus pada monitoring sistem, grafik sensor, dan kesehatan perangkat.
+- **User**: Berpartisipasi dalam penyetoran sampah untuk mendapatkan poin dan reward.
 
-User:
-Email: user@kompos.com
-Password: user123
-```
+### 5. Stabilitas & Kesehatan Sistem
+- **Offline Detection**: Notifikasi push instan jika perangkat ESP32 terputus atau online kembali.
+- **Health System Monitoring**: Memantau sisa memori (Free Heap) dan stabilitas WiFi pada perangkat keras.
+- **Monitoring QoS**: Visualisasi latensi (delay), packet loss, dan throughput data secara real-time.
 
-### 🚀 CARA INSTALL
-
-1. Extract folder `kompos_app_v2`
-2. Buka terminal di folder tersebut
-3. Jalankan:
-```bash
-flutter pub get
-flutter run
-```
-
-### 📂 STRUKTUR PROJECT
-
-```
-lib/
-├── main.dart
-├── models/
-│   └── user_model.dart
-├── services/
-│   └── auth_service.dart
-└── screens/
-    ├── splash_screen.dart
-    ├── login_screen.dart
-    ├── signup_screen.dart        # Hanya bisa daftar sebagai User
-    ├── super_admin_dashboard.dart # Kelola admin & user
-    ├── admin_dashboard.dart       # Monitoring sensor
-    └── user_dashboard.dart        # Setor sampah & poin
-```
-
-### 🎯 FITUR SUPER ADMIN
-
-- Kelola Admin (Tambah/Hapus)
-- Kelola User (Lihat/Hapus)
-- Lihat statistik sistem
-- Audit trail
-
-### 🎯 FITUR ADMIN
-
-- Dashboard monitoring real-time
-- Kategori Suhu
-- Kategori Kelembaban  
-- Kategori pH
-- Kategori Gas (MQ-4)
-- History Log ON/OFF alat
-- Notifikasi alert
-
-### 🎯 FITUR USER
-
-- Lihat poin saya
-- Setor sampah organik
-- Riwayat penyetoran
-- Tukar poin dengan reward
-
-### 🔧 DEPENDENCIES
-
-```yaml
-dependencies:
-  flutter_sdk
-  shared_preferences: ^2.2.2
-  intl: ^0.19.0
-  fl_chart: ^0.68.0
-  crypto (untuk hash password)
-```
-
-### ⚡ QUICK START
-
-```bash
-cd kompos_app_v2
-flutter pub get
-flutter run
-```
-
-Login sebagai Super Admin untuk membuat admin baru!
+---
+*Dikembangkan untuk Tugas Akhir Aplikasi Monitoring Kompos - Smart IoT Solution.*
