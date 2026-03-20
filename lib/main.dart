@@ -1,9 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart'; // File ini terbuat setelah run flutterfire configure
 import 'constants/app_colors.dart';
 import 'screens/authentication/splash_screen.dart';
+import 'services/notifications/notification_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    debugPrint("Firebase Initialized Successfully!");
+  } catch (e) {
+    debugPrint("Firebase Init Error: $e");
+  }
+  
+  // Initialize Local Notifications
+  await NotificationService().init();
+  
   runApp(const KomposApp());
 }
 
@@ -66,10 +82,10 @@ class KomposApp extends StatelessWidget {
             borderSide: BorderSide(color: Colors.grey[300]!),
           ),
           
-          // Border saat focus (hijau)
+          // Border saat focus
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
-            borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            borderSide: const BorderSide(color: Color(0xFFFFA726), width: 2),
           ),
           
           // Border saat error
