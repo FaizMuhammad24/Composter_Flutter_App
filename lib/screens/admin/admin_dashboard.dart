@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:intl/intl.dart';
+import 'package:firebase_database/firebase_database.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
+import 'admin_notifications_screen.dart';
 import '../../utils/helpers/screen_utils.dart';
-import '../../utils/mocks/mock_data.dart';
 import '../../models/sensor_data_model.dart';
 import '../../widgets/cards/sensor_card.dart';
 import '../../widgets/common/loading_shimmer.dart';
@@ -13,8 +14,7 @@ import 'admin_category_humidity_screen.dart';
 import 'admin_category_ph_screen.dart';
 import 'admin_category_gas_screen.dart';
 import 'admin_history_log_screen.dart';
-import '../../utils/mocks/mock_actuator_logs.dart';
-
+import '../../services/notifications/notification_service.dart';
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);
   @override
@@ -23,10 +23,15 @@ class AdminDashboard extends StatefulWidget {
 
 class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
-  Timer? _refreshTimer;
+  StreamSubscription<DatabaseEvent>? _rtdbSubscription;
   SensorDataModel? _sensorData;
   Map<String, dynamic> _actuatorStatus = {};
   late AnimationController _animationController;
+
+  // Offline Detection
+  DateTime? _lastUpdate;
+  Timer? _offlineCheckTimer;
+  bool _isOffline = false;
 
   @override
   void initState() {
@@ -35,52 +40,102 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    _loadData();
-    _startAutoRefresh();
+    _listenToFirebase();
+    _startOfflineTimer();
   }
 
-  @override
-  void dispose() {
-    _refreshTimer?.cancel();
-    _animationController.dispose();
-    super.dispose();
+  bool _isDataStale(Map<dynamic, dynamic> data) {
+    // 1. Cek via Unix Timestamp (Paling robust)
+    if (data.containsKey('unix_time')) {
+      final int espUnix = (data['unix_time'] as num).toInt();
+      final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final diff = (phoneUnix - espUnix).abs();
+      return diff > 60; // 1 Minute tolerance
+    }
+
+    // 2. Fallback ke String "time" (HH:mm:ss)
+    final String? timeStr = data['time']?.toString();
+    if (timeStr == null || timeStr.isEmpty) return true;
+    try {
+      final parts = timeStr.split(':');
+      if (parts.length != 3) return true;
+      final now = DateTime.now();
+      final dataTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+      return now.difference(dataTime).inSeconds.abs() > 60;
+    } catch (e) {
+      return true;
+    }
   }
 
-  // Load data from mock service
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-
-    await Future.delayed(const Duration(seconds: 1));
-
-    if (!mounted) return;
-
-    final sensorDataJson = MockData.getSensorData();
-    // final alertsJson = MockData.getAlerts(3); // Not used in the new design
-
-    setState(() {
-      _sensorData = SensorDataModel.fromJson(sensorDataJson);
-      _actuatorStatus = MockData.getActuatorStatus();
-      _isLoading = false;
-    });
-
-    _animationController.forward();
-  }
-
-  // Auto refresh every 5 seconds
-  void _startAutoRefresh() {
-    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (mounted) {
-        final sensorDataJson = MockData.getSensorData();
+  void _startOfflineTimer() {
+    _offlineCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_lastUpdate == null || _isLoading) return;
+      
+      final diff = DateTime.now().difference(_lastUpdate!);
+      if (diff.inSeconds > 20 && !_isOffline) {
         setState(() {
-          _sensorData = SensorDataModel.fromJson(sensorDataJson);
-          _actuatorStatus = MockData.getActuatorStatus();
+          _isOffline = true;
+          // Reset data stale agar tidak membingungkan
+          _sensorData = null;
+          _actuatorStatus = {};
         });
       }
     });
   }
 
+  @override
+  void dispose() {
+    _rtdbSubscription?.cancel();
+    _offlineCheckTimer?.cancel();
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  // Listen data dari Firebase
+  void _listenToFirebase() {
+    _rtdbSubscription = FirebaseDatabase.instance.ref('komposter').onValue.listen((event) {
+      if (event.snapshot.value != null) {
+        final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
+        final bool stale = _isDataStale(data);
+
+        if (mounted) {
+          setState(() {
+            if (stale) {
+              _isOffline = true;
+            } else {
+              _lastUpdate = DateTime.now();
+              _isOffline = false;
+            }
+            
+            _sensorData = SensorDataModel.fromJson(data);
+            
+            final actuators = data['actuators'] as Map? ?? {};
+            _actuatorStatus = {
+              'Exhaust Fan': actuators['fan'] == true,
+              'Heater': actuators['heater'] == true,
+              'Motor Aduk': actuators['motor'] == true,
+              'Pompa EM4': actuators['em4_pump'] == true,
+              'Pompa Air': actuators['water_pump'] == true,
+            };
+            
+            if (_isLoading) {
+              _isLoading = false;
+              _animationController.forward();
+            }
+          });
+        }
+      }
+    });
+  }
+
+  Future<void> _refreshData() async {
+    // Tarik UI untuk refresh (secara teknis data sudah stream realtime)
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
+
   // Count active actuators
   int _countActiveActuators() {
+    if (_isOffline) return 0;
     int count = 0;
     _actuatorStatus.forEach((key, value) {
       if (key != 'timestamp' && value == true) count++;
@@ -137,7 +192,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         ),
       ),
       child: RefreshIndicator(
-        onRefresh: _loadData,
+        onRefresh: _refreshData,
         color: AppColors.adminPrimary,
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -183,12 +238,12 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
 
   // Hero Card like User Dashboard
   Widget _buildHeroCard() {
-    final stats = MockData.getDashboardStats();
     final now = DateTime.now();
     final timeStr = DateFormat('HH:mm').format(now);
+    final cardHeight = MediaQuery.of(context).size.height * 0.28; // Dynamic height
 
     return Container(
-      height: 260,
+      height: cardHeight < 240 ? 240 : cardHeight, // Minimum height fallback
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
@@ -237,12 +292,46 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                     fontFamily: 'Poppins',
                   ),
                 ),
+                if (_isOffline)
+                  Container(
+                    margin: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red[700],
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withOpacity(0.5)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.wifi_off, size: 14, color: Colors.white),
+                        SizedBox(width: 6),
+                        Text('SISTEM OFFLINE', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1, fontFamily: 'Poppins')),
+                      ],
+                    ),
+                  ),
                 const Spacer(),
                 Row(
                   children: [
-                    _buildHeroStatCard('⚠️', stats['active_alerts'].toString(), 'Total Alert'),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminNotificationsScreen())),
+                        child: ValueListenableBuilder<List<LocalAlert>>(
+                          valueListenable: NotificationService.alertsNotifier,
+                          builder: (context, alertsList, _) {
+                            final unreadCount = _isOffline ? 0 : alertsList.where((a) => !a.isRead).length;
+                            return _buildHeroStatCardContent(Icons.warning_amber_rounded, '$unreadCount', 'Total Alert');
+                          },
+                        ),
+                      ),
+                    ),
                     const SizedBox(width: 10),
-                    _buildHeroStatCard('🔌', '${_countActiveActuators()}/5', 'Alat Aktif'),
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminHistoryLogScreen())),
+                        child: _buildHeroStatCardContent(Icons.settings_input_component, '${_countActiveActuators()}/5', 'Alat Aktif'),
+                      ),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       flex: 1,
@@ -254,8 +343,16 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                           border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                         ),
                         child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                             Text(timeStr, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins')),
+                             Row(
+                               mainAxisAlignment: MainAxisAlignment.center,
+                               children: [
+                                 const Icon(Icons.access_time_rounded, size: 14, color: Colors.white70),
+                                 const SizedBox(width: 4),
+                                 Text(timeStr, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins')),
+                               ],
+                             ),
                              const SizedBox(height: 2),
                              Text(DateFormat('EEE').format(now), style: const TextStyle(fontSize: 10, color: Colors.white70, fontFamily: 'Poppins')),
                              Text(DateFormat('d MMM').format(now), style: const TextStyle(fontSize: 10, color: Colors.white70, fontFamily: 'Poppins')),
@@ -273,38 +370,36 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     );
   }
 
-  Widget _buildHeroStatCard(String icon, String value, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-        ),
-        child: Column(
-          children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontFamily: 'Poppins',
-              ),
+  Widget _buildHeroStatCardContent(IconData icon, String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 22, color: Colors.white),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
+              fontFamily: 'Poppins',
             ),
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                color: Colors.white70,
-                fontFamily: 'Poppins',
-              ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 10,
+              color: Colors.white70,
+              fontFamily: 'Poppins',
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -313,161 +408,140 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   Widget _buildSensorGrid() {
     if (_sensorData == null) return const SizedBox();
 
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: _buildSuhuCard()),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(child: _buildKelembabanCard()),
-          ],
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Row(
-          children: [
-            Expanded(child: _buildPhCard()),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(child: _buildGasCard()),
-          ],
-        ),
-      ],
-    );
-  }
+    double screenWidth = MediaQuery.of(context).size.width;
+    double spacing = screenWidth * 0.04; // 4% of screen width
 
-  // Horizontal History Log (Actuator Style)
-  Widget _buildHorizontalHistory() {
-    final List<ActuatorLog> latestLogs = [
-      MockActuatorLogs.getExhaustFanLogs().first,
-      MockActuatorLogs.getHeaterLogs().first,
-      MockActuatorLogs.getMotorAdukLogs().first,
-      MockActuatorLogs.getPompaEM4Logs().first,
-      MockActuatorLogs.getPompaAirLogs().first,
-    ];
-
-    return SizedBox(
-      height: 180,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        itemCount: latestLogs.length,
-        itemBuilder: (context, index) {
-          final log = latestLogs[index];
-          final bool isOn = log.status == 'ON';
-          
-          return Container(
-            width: 200,
-            margin: const EdgeInsets.only(right: AppSpacing.md),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isOn ? AppColors.adminPrimary : Colors.grey[400],
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Icon(Icons.settings_remote, size: 14, color: Colors.white),
-                      Text(
-                        log.actuatorName,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildHistoryDetailRow(Icons.calendar_today, DateFormat('dd MMM yyyy, HH:mm:ss').format(log.timestamp), Colors.blue),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.power_settings_new, size: 14, color: isOn ? Colors.green : Colors.red),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Status: ',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600], fontFamily: 'Poppins'),
-                          ),
-                          Text(
-                            log.status,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: isOn ? Colors.green : Colors.red,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.info_outline, size: 14, color: Colors.orange),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Penyebab: ${log.reason}',
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: Colors.black87,
-                                fontFamily: 'Poppins',
-                                height: 1.2,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+    return Opacity(
+      opacity: _isOffline ? 0.6 : 1.0,
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(child: _buildSuhuCard()),
+              SizedBox(width: spacing),
+              Expanded(child: _buildKelembabanCard()),
+            ],
+          ),
+          SizedBox(height: spacing),
+          Row(
+            children: [
+              Expanded(child: _buildPhCard()),
+              SizedBox(width: spacing),
+              Expanded(child: _buildGasCard()),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildHistoryDetailRow(IconData icon, String value, Color color) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: color.withValues(alpha: 0.7)),
-        const SizedBox(width: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: Colors.black87,
-            fontFamily: 'Poppins',
+  Widget _buildHorizontalHistory() {
+    double screenWidth = MediaQuery.of(context).size.width;
+    double itemWidth = screenWidth * 0.44; // Proportional width
+
+    return StreamBuilder<DatabaseEvent>(
+      stream: FirebaseDatabase.instance.ref('komposter').onValue,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
+          return const SizedBox(
+            height: 150,
+            child: Center(child: CircularProgressIndicator(color: AppColors.adminPrimary)),
+          );
+        }
+
+        final data = Map<String, dynamic>.from(snapshot.data!.snapshot.value as Map);
+        final actuators = Map<String, dynamic>.from(data['actuators'] ?? {});
+        
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05, vertical: 10),
+          child: Row(
+            children: [
+              _buildHistoryItem("Heater", actuators['heater'] == true ? "Aktif" : "Mati", "Suhu: ${data['temperature'] ?? '--'}°C", Colors.orange, itemWidth),
+              SizedBox(width: screenWidth * 0.03),
+              _buildHistoryItem("Exhaust Fan", actuators['fan'] == true ? "Aktif" : "Mati", "Gas: ${data['gas'] ?? '--'}ppm", Colors.blue, itemWidth),
+              SizedBox(width: screenWidth * 0.03),
+              _buildHistoryItem("Pompa Air", actuators['water_pump'] == true ? "Aktif" : "Mati", "Lembap: ${data['soil'] ?? '--'}%", Colors.cyan, itemWidth),
+              SizedBox(width: screenWidth * 0.03),
+              _buildHistoryItem("Pompa EM4", actuators['em4_pump'] == true ? "Aktif" : "Mati", "pH: ${data['ph'] ?? '--'}", Colors.purple, itemWidth),
+              SizedBox(width: screenWidth * 0.03),
+              _buildHistoryItem("Motor Aduk", actuators['motor'] == true ? "Aktif" : "Mati", actuators['motor'] == true ? "Aktif" : "Selesai", Colors.teal, itemWidth),
+            ],
           ),
-        ),
-      ],
+        );
+      },
     );
   }
+
+  Widget _buildHistoryItem(String title, String status, String detail, Color color, double width) {
+    bool isActive = status == "Aktif";
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: isActive ? Colors.green : Colors.red,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Poppins',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            status,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: isActive ? color : Colors.grey,
+              fontFamily: 'Poppins',
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            detail,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+              fontFamily: 'Poppins',
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
   Widget _buildSectionTitle(String title, {Widget? trailing}) {
     return Row(
@@ -490,14 +564,15 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   Widget _buildSuhuCard() {
     return SensorCard(
       title: 'Suhu',
-      value: _sensorData!.temperature.toStringAsFixed(1),
+      value: _isOffline ? '--' : _sensorData!.temperature.toStringAsFixed(1),
       unit: '°C',
-      status: _sensorData!.temperatureStatus,
-      valuePercent: (_sensorData!.temperature - 30) / (80 - 30),
-      actuatorInfo: 'Heater: ${_actuatorStatus['heater'] == true ? 'ON' : 'OFF'}',
+      status: _isOffline ? 'Terputus' : _sensorData!.temperatureStatus,
+      valuePercent: _isOffline ? 0 : (_sensorData!.temperature - 30) / (80 - 30),
+      actuatorInfo: _isOffline ? 'Offline' : 'Heater: ${_actuatorStatus['Heater'] == true ? 'ON' : 'OFF'}',
       icon: Icons.thermostat,
       color: AppColors.temperature,
-      onTap: () => Navigator.push(
+      isActive: !_isOffline,
+      onTap: _isOffline ? null : () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminCategoryTemperatureScreen()),
       ),
@@ -507,14 +582,15 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   Widget _buildKelembabanCard() {
     return SensorCard(
       title: 'Kelembaban',
-      value: _sensorData!.humidity.toStringAsFixed(1),
-      unit: '%',
-      status: _sensorData!.humidityStatus,
-      valuePercent: _sensorData!.humidity / 100,
-      actuatorInfo: 'Pompa Air: ${_actuatorStatus['pompa_air'] == true ? 'ON' : 'OFF'}',
+      value: _isOffline ? '--' : (_sensorData!.isSoilHealthy ? _sensorData!.humidity.toStringAsFixed(1) : 'Gagal'),
+      unit: _sensorData!.isSoilHealthy ? '%' : '',
+      status: _isOffline ? 'Terputus' : _sensorData!.humidityStatus,
+      valuePercent: _isOffline ? 0 : _sensorData!.humidity / 100,
+      actuatorInfo: _isOffline ? 'Offline' : 'Pompa Air: ${_actuatorStatus['Pompa Air'] == true ? 'ON' : 'OFF'}',
       icon: Icons.water_drop,
       color: AppColors.humidity,
-      onTap: () => Navigator.push(
+      isActive: !_isOffline,
+      onTap: _isOffline ? null : () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminCategoryHumidityScreen()),
       ),
@@ -524,14 +600,15 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   Widget _buildPhCard() {
     return SensorCard(
       title: 'pH',
-      value: _sensorData!.ph.toStringAsFixed(1),
+      value: _isOffline ? '--' : (_sensorData!.isPhHealthy ? _sensorData!.ph.toStringAsFixed(1) : 'Gagal'),
       unit: '',
-      status: _sensorData!.phStatus,
-      valuePercent: _sensorData!.ph / 14,
-      actuatorInfo: 'Pompa EM4: ${_actuatorStatus['pompa_em4'] == true ? 'ON' : 'OFF'}',
+      status: _isOffline ? 'Terputus' : _sensorData!.phStatus,
+      valuePercent: _isOffline ? 0 : _sensorData!.ph / 14,
+      actuatorInfo: _isOffline ? 'Offline' : 'Pompa EM4: ${_actuatorStatus['Pompa EM4'] == true ? 'ON' : 'OFF'}',
       icon: Icons.science,
       color: AppColors.ph,
-      onTap: () => Navigator.push(
+      isActive: !_isOffline,
+      onTap: _isOffline ? null : () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminCategoryPhScreen()),
       ),
@@ -541,14 +618,15 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   Widget _buildGasCard() {
     return SensorCard(
       title: 'Gas',
-      value: _sensorData!.mq4.toString(),
+      value: _isOffline ? '--' : _sensorData!.mq4.toString(),
       unit: 'ppm',
-      status: _sensorData!.gasStatus,
-      valuePercent: _sensorData!.mq4 / 800,
-      actuatorInfo: 'Exhaust Fan: ${_actuatorStatus['exhaust_fan'] == true ? 'ON' : 'OFF'}',
+      status: _isOffline ? 'Terputus' : _sensorData!.gasStatus,
+      valuePercent: _isOffline ? 0 : _sensorData!.mq4 / 800,
+      actuatorInfo: _isOffline ? 'Offline' : 'Exhaust Fan: ${_actuatorStatus['Exhaust Fan'] == true ? 'ON' : 'OFF'}',
       icon: Icons.air,
       color: AppColors.gas,
-      onTap: () => Navigator.push(
+      isActive: !_isOffline,
+      onTap: _isOffline ? null : () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminCategoryGasScreen()),
       ),
