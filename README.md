@@ -36,4 +36,7 @@ Sistem dilengkapi dengan logika pintar untuk mengontrol 5 komponen secara otomat
 - **Monitoring QoS**: Visualisasi latensi (delay), packet loss, dan throughput data secara real-time.
 
 ---
-*Dikembangkan untuk Tugas Akhir Aplikasi Monitoring Kompos - Smart IoT Solution.*
+*Dikembangkan untuk Tugas Akhir Aplikasi Monitoring Kompos.*
+*by Muhammad Ilham Ananta & Tubagus Muhammad Rofi Al Faiz*
+*Dari Telkom B 23 Teknik Elektro PNJ Untuk Masyarakat*
+
