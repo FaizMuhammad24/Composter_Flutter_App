@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/reward_model.dart';
-import '../../services/reward_service.dart';
+import '../../services/rewards/reward_service.dart';
 import 'super_admin_create_reward_screen.dart';
 
 class ManageRewardsScreen extends StatefulWidget {

@@ -17,6 +17,7 @@ class SensorCard extends StatelessWidget {
   final Color color;
   final double? valuePercent;
   final VoidCallback? onTap;
+  final bool isActive;
 
   const SensorCard({
     Key? key,
@@ -29,6 +30,7 @@ class SensorCard extends StatelessWidget {
     required this.color,
     this.valuePercent,
     this.onTap,
+    this.isActive = true,
   }) : super(key: key);
 
   @override
@@ -46,7 +48,7 @@ class SensorCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Icon
-              Icon(icon, color: color, size: 36),
+              Icon(icon, color: isActive ? color : Colors.grey[400], size: 36),
               const SizedBox(height: AppSpacing.xs),
 
               // Title
@@ -72,7 +74,7 @@ class SensorCard extends StatelessWidget {
                     style: TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
-                      color: color,
+                      color: isActive ? color : Colors.grey[600],
                       fontFamily: 'Poppins',
                     ),
                   ),
@@ -159,7 +161,11 @@ class SensorCard extends StatelessWidget {
         return AppColors.warning;
       case 'bahaya':
       case 'danger':
+      case 'gagal':
         return AppColors.error;
+      case 'terputus':
+      case 'offline':
+        return Colors.grey;
       default:
         return AppColors.textSecondary;
     }

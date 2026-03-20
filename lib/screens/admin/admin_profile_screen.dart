@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'dart:async';
 import '../../constants/app_colors.dart';
 import '../authentication/login_screen.dart';
 import '../authentication/reset_password_screen.dart';
@@ -12,6 +14,99 @@ class AdminProfileScreen extends StatefulWidget {
 }
 
 class _AdminProfileScreenState extends State<AdminProfileScreen> {
+  StreamSubscription<DatabaseEvent>? _rtdbSubscription;
+  bool _isOffline = true;
+  int _sensorCount = 0;
+  int _activeAlerts = 0;
+  DateTime? _lastUpdate;
+  Timer? _offlineCheckTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToFirebase();
+    _startOfflineTimer();
+  }
+
+  @override
+  void dispose() {
+    _rtdbSubscription?.cancel();
+    _offlineCheckTimer?.cancel();
+    super.dispose();
+  }
+
+  bool _isDataStale(Map<dynamic, dynamic> data) {
+    // 1. Cek via Unix Timestamp (Paling robust)
+    if (data.containsKey('unix_time')) {
+      final int espUnix = (data['unix_time'] as num).toInt();
+      final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final diff = (phoneUnix - espUnix).abs();
+      return diff > 60; // 1 Minute tolerance
+    }
+
+    // 2. Fallback ke String "time" (HH:mm:ss)
+    final String? timeStr = data['time']?.toString();
+    if (timeStr == null || timeStr.isEmpty) return true;
+    try {
+      final parts = timeStr.split(':');
+      if (parts.length != 3) return true;
+      final now = DateTime.now();
+      final dataTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+      return now.difference(dataTime).inSeconds.abs() > 60;
+    } catch (e) {
+      return true;
+    }
+  }
+  void _startOfflineTimer() {
+    _offlineCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_lastUpdate == null) return;
+      final diff = DateTime.now().difference(_lastUpdate!);
+      if (diff.inSeconds > 20 && !_isOffline) {
+        setState(() {
+          _isOffline = true;
+          _sensorCount = 0;
+          _activeAlerts = 0;
+        });
+      }
+    });
+  }
+
+  void _listenToFirebase() {
+    _rtdbSubscription = FirebaseDatabase.instance.ref('komposter').onValue.listen((event) {
+      if (event.snapshot.value != null) {
+        final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
+        final bool stale = _isDataStale(data);
+        
+        final temp = (data['temperature'] as num?)?.toDouble() ?? 0;
+        final soil = (data['soil'] as num?)?.toDouble() ?? 0;
+        final ph = (data['ph'] as num?)?.toDouble() ?? 0;
+        final gas = (data['gas'] as num?)?.toDouble() ?? 0;
+
+
+        int healthyCount = 0;
+        if (temp != 100.0 && temp != 0.0) healthyCount++;
+        if (soil != 100.0 && soil != 0.0) healthyCount++;
+        if (ph != 100.0 && ph != 10.0 && ph != 0.0) healthyCount++;
+        if (gas != 100 && gas != 100.0 && gas != 0.0) healthyCount++;
+
+        // Count active actuators
+        int activeActuators = 0;
+        final actuators = data['actuators'] as Map? ?? {};
+        actuators.forEach((key, value) {
+          if (value == true) activeActuators++;
+        });
+
+        if (mounted) {
+          setState(() {
+            _isOffline = stale;
+            if (!stale) _lastUpdate = DateTime.now();
+            _sensorCount = stale ? 0 : healthyCount; 
+            _activeAlerts = stale ? 0 : activeActuators; // Using same variable name but for actuator count now
+          });
+        }
+      }
+    });
+  }
   @override
   Widget build(BuildContext context) {
     final user = SessionService.getCurrentUser();
@@ -166,11 +261,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStat('Status', 'Online', Colors.green),
+          _buildStat('Status', _isOffline ? 'Offline' : 'Online', _isOffline ? Colors.grey : Colors.green),
           _buildDivider(),
-          _buildStat('Sistem', '5 Sensor', Colors.blue),
+          _buildStat('Sistem', '$_sensorCount Sensor', _sensorCount == 0 ? Colors.grey : (_sensorCount == 4 ? Colors.green : Colors.red)),
           _buildDivider(),
-          _buildStat('Alert', '3 Aktif', Colors.red),
+          _buildStat('Alat', '$_activeAlerts Aktif', _activeAlerts > 0 ? Colors.yellow.shade700 : Colors.grey),
         ],
       ),
     );

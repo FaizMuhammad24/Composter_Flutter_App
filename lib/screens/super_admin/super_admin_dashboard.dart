@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import '../../services/reward_service.dart';
+import '../../services/rewards/reward_service.dart';
 import '../../widgets/common/loading_shimmer.dart';
 
 class SuperAdminDashboard extends StatefulWidget {

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import '../../utils/mocks/mock_notifications.dart';
 import '../../constants/app_colors.dart';
+import '../../services/notifications/notification_service.dart';
 
 class AdminNotificationsScreen extends StatefulWidget {
   const AdminNotificationsScreen({Key? key}) : super(key: key);
@@ -12,27 +12,33 @@ class AdminNotificationsScreen extends StatefulWidget {
 class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   String _filter = 'Semua';
 
+  List<LocalAlert> get _filtered {
+    final all = NotificationService.alerts;
+    if (_filter == 'Belum Dibaca') return all.where((n) => !n.isRead).toList();
+    if (_filter == 'Sudah Dibaca') return all.where((n) => n.isRead).toList();
+    return all;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final allNotifs = MockNotifications.getAllNotifications();
-    final filteredNotifs = _filter == 'Semua' 
-        ? allNotifs 
-        : (_filter == 'Belum Dibaca' 
-            ? allNotifs.where((n) => !n.isRead).toList() 
-            : allNotifs.where((n) => n.isRead).toList());
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
+      backgroundColor: const Color(0xFFFFFDE7),
       appBar: AppBar(
-        title: const Text('Notifikasi', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.admin,
+        title: const Text('Notifikasi',
+            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+        backgroundColor: AppColors.adminPrimary,
         elevation: 0,
         actions: [
           TextButton(
             onPressed: () {
-              setState(() => MockNotifications.markAllAsRead());
+              setState(() {
+                for (var a in NotificationService.alerts) {
+                  a.isRead = true;
+                }
+              });
             },
-            child: const Text('Baca Semua', style: TextStyle(color: Colors.white, fontFamily: 'Poppins')),
+            child: const Text('Baca Semua',
+                style: TextStyle(color: Colors.white, fontFamily: 'Poppins')),
           ),
         ],
       ),
@@ -53,8 +59,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                       Text(
                         cat,
                         style: TextStyle(
-                          color: isSelected ? AppColors.admin : Colors.grey,
-                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isSelected ? AppColors.adminPrimary : Colors.grey,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
                           fontFamily: 'Poppins',
                         ),
                       ),
@@ -62,7 +69,9 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
                       Container(
                         width: 40,
                         height: 2,
-                        color: isSelected ? AppColors.admin : Colors.transparent,
+                        color: isSelected
+                            ? AppColors.adminPrimary
+                            : Colors.transparent,
                       ),
                     ],
                   ),
@@ -70,17 +79,30 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
               }).toList(),
             ),
           ),
-          
+
           // Notifications List
           Expanded(
-            child: filteredNotifs.isEmpty
-                ? const Center(child: Text('Tidak ada notifikasi', style: TextStyle(fontFamily: 'Poppins')))
+            child: _filtered.isEmpty
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: const [
+                        Icon(Icons.notifications_none, size: 64, color: Colors.grey),
+                        SizedBox(height: 12),
+                        Text('Tidak ada notifikasi',
+                            style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)),
+                        SizedBox(height: 4),
+                        Text('Notifikasi akan muncul saat sensor\nmelewati batas parameter.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.grey)),
+                      ],
+                    ),
+                  )
                 : ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: filteredNotifs.length,
+                    itemCount: _filtered.length,
                     itemBuilder: (context, index) {
-                      final notif = filteredNotifs[index];
-                      return _buildNotifCard(notif);
+                      return _buildAlertCard(_filtered[index]);
                     },
                   ),
           ),
@@ -89,12 +111,12 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
     );
   }
 
-  Widget _buildNotifCard(AdminNotification notif) {
+  Widget _buildAlertCard(LocalAlert alert) {
     Color cardColor;
     IconData icon;
     Color iconColor;
 
-    switch (notif.severity) {
+    switch (alert.severity) {
       case 'danger':
         cardColor = Colors.red[50]!;
         icon = Icons.warning_rounded;
@@ -116,39 +138,52 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: notif.isRead ? Colors.transparent : iconColor.withOpacity(0.3)),
+        side: BorderSide(
+            color: alert.isRead ? Colors.transparent : iconColor.withOpacity(0.3)),
       ),
-      color: notif.isRead ? Colors.white : cardColor,
+      color: alert.isRead ? Colors.white : cardColor,
       child: ListTile(
         contentPadding: const EdgeInsets.all(16),
         leading: Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
+          decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
           child: Icon(icon, color: iconColor, size: 28),
         ),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(notif.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins')),
-            if (!notif.isRead)
-              Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle)),
+            Expanded(
+              child: Text(alert.title,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      fontFamily: 'Poppins')),
+            ),
+            if (!alert.isRead)
+              Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                      color: Colors.red, shape: BoxShape.circle)),
           ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 6),
-            Text(notif.message, style: const TextStyle(fontSize: 13, height: 1.4, fontFamily: 'Poppins')),
+            Text(alert.message,
+                style: const TextStyle(
+                    fontSize: 13, height: 1.4, fontFamily: 'Poppins')),
             const SizedBox(height: 8),
             Text(
-              DateFormat('dd MMM yyyy, HH:mm').format(notif.timestamp),
-              style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins'),
+              DateFormat('dd MMM yyyy, HH:mm').format(alert.timestamp),
+              style:
+                  const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins'),
             ),
           ],
         ),
-        onTap: () {
-          setState(() => MockNotifications.markAsRead(notif.id));
-        },
+        onTap: () => setState(() => alert.isRead = true),
       ),
     );
   }

@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../../utils/mocks/mock_sensor_history.dart';
+import 'package:firebase_database/firebase_database.dart';
+import '../../utils/helpers/csv_export_helper.dart';
 
 class AdminCategoryGasScreen extends StatefulWidget {
   const AdminCategoryGasScreen({Key? key}) : super(key: key);
@@ -10,271 +12,293 @@ class AdminCategoryGasScreen extends StatefulWidget {
 
 class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
   bool _isLoading = true;
-  String _selectedPeriod = '24 Jam';
-  late List<SensorDataPoint> _historyData;
-  double _currentValue = 520.0;
+  List<FlSpot> _spots = [];
+  double _currentValue = 0.0;
+  bool _fanStatus = false;
+  bool _isOffline = false;
+  DateTime? _lastUpdate;
+  Timer? _offlineTimer;
+
+  bool _isDataStale(Map<dynamic, dynamic> data) {
+    if (data.containsKey('unix_time')) {
+      final int espUnix = (data['unix_time'] as num).toInt();
+      final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
+      final diff = (phoneUnix - espUnix).abs();
+      return diff > 120;
+    }
+    final String? timeStr = data['time']?.toString();
+    if (timeStr == null || timeStr.isEmpty) return true;
+    try {
+      final parts = timeStr.split(':');
+      if (parts.length != 3) return true;
+      final now = DateTime.now();
+      final dataTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+      return now.difference(dataTime).inSeconds.abs() > 120;
+    } catch (e) {
+      return true;
+    }
+  }
+  
+  StreamSubscription? _rtdbSubLog;
+  StreamSubscription? _rtdbSubLive;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _listenToFirebase();
+    _startOfflineTimer();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    _historyData = MockSensorHistory.getGasHistory(_selectedPeriod);
-    _currentValue = _historyData.last.value;
-    if (mounted) setState(() => _isLoading = false);
+  void _startOfflineTimer() {
+    _offlineTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_lastUpdate == null) return;
+      if (DateTime.now().difference(_lastUpdate!).inSeconds > 20 && !_isOffline) {
+        setState(() => _isOffline = true);
+      }
+    });
   }
+
+  void _listenToFirebase() {
+    // 1. Dapatkan Nilai Live
+    _rtdbSubLive = FirebaseDatabase.instance.ref('komposter').onValue.listen((event) {
+      if (event.snapshot.value != null && mounted) {
+        final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
+        final bool stale = _isDataStale(data);
+        setState(() {
+          _isOffline = stale;
+          if (!stale) _lastUpdate = DateTime.now();
+          _currentValue = stale ? 0.0 : ((data['gas'] as num?)?.toDouble() ?? 0.0);
+          final actuators = data['actuators'] as Map? ?? {};
+          _fanStatus = !stale && actuators['fan'] == true;
+        });
+      }
+    });
+
+    // 2. Dapatkan Riwayat (100 log terakhir)
+    _rtdbSubLog = FirebaseDatabase.instance.ref('komposter_logs').limitToLast(100).onValue.listen((event) {
+      if (mounted) {
+        if (event.snapshot.value != null) {
+          final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
+          List<FlSpot> newSpots = [];
+          
+          final sortedKeys = data.keys.toList()..sort();
+          int xIndex = 0;
+          for (var key in sortedKeys) {
+            final log = Map<dynamic, dynamic>.from(data[key] as Map);
+            final gas = (log['gas'] as num?)?.toDouble() ?? 0.0;
+            newSpots.add(FlSpot(xIndex.toDouble(), gas));
+            xIndex++;
+          }
+
+          setState(() {
+            _spots = newSpots;
+            _isLoading = false;
+          });
+        } else {
+          setState(() => _isLoading = false);
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _rtdbSubLog?.cancel();
+    _rtdbSubLive?.cancel();
+    _offlineTimer?.cancel();
+    super.dispose();
+  }
+
+  double _calculateAvg() => _spots.isNotEmpty ? _spots.map((e) => e.y).reduce((a, b) => a + b) / _spots.length : 0.0;
+  double _calculateMax() => _spots.isNotEmpty ? _spots.map((e) => e.y).reduce((a, b) => a > b ? a : b) : 0.0;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5DC),
+      backgroundColor: const Color(0xFFF5F5F5), // Light grey background
       appBar: AppBar(
-        title: const Text('Monitoring Gas (MQ-4)', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        backgroundColor: const Color(0xFFE53935),
+        title: const Text('Monitoring Gas Metana', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+        backgroundColor: Colors.grey[800], // Dark grey primary
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.file_download_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Data berhasil diekspor ke CSV')),
-              );
-            },
-            tooltip: 'Export CSV',
+            icon: const Icon(Icons.download),
+            tooltip: 'Download CSV',
+            onPressed: () => CsvExportHelper.exportKomposterLogs(context),
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _loadData,
-        color: const Color(0xFFE53935),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Color(0xFFE53935)))
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Warning Banner
-                    if (_currentValue > 500)
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 20),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: Colors.red[100],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red[400]!),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.warning_amber_rounded, color: Color(0xFFE53935), size: 28),
-                            SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('BAHAYA: KADAR GAS TINGGI', style: TextStyle(color: Color(0xFFE53935), fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                                  Text('Kadar gas metana melebihi 500 ppm. Segera menjauh atau pastikan sirkulasi udara baik.', style: TextStyle(color: Color(0xFFE53935), fontSize: 12, fontFamily: 'Poppins')),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
-                    // Header Current Value
-                    Card(
-                      elevation: 4,
-                      color: const Color(0xFFE53935),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(24),
-                        child: Column(
-                          children: [
-                            const Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: Colors.grey[800]))
+          : Stack(
+              children: [
+                Opacity(
+                  opacity: _isOffline ? 0.4 : 1.0,
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Card Header Live
+                        Card(
+                          elevation: 4,
+                          color: Colors.grey[800],
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Column(
                               children: [
-                                Text('Kadar Gas Metana', style: TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Poppins')),
-                                Icon(Icons.waves, color: Colors.white, size: 40),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Text('${_currentValue.toStringAsFixed(0)} ppm', style: const TextStyle(color: Colors.white, fontSize: 48, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                            ),
-                            const SizedBox(height: 20),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text('Exhaust Fan', style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Poppins')),
-                                      const SizedBox(height: 4),
-                                      Text(_currentValue > 500 ? 'AKTIF (ON)' : 'MATI (OFF)', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                                    ],
-                                  ),
+                                const Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Konsentrasi Gas Saat Ini', style: TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Poppins')),
+                                    Icon(Icons.cloud, color: Colors.white, size: 40),
+                                  ],
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withOpacity(0.2),
-                                    borderRadius: BorderRadius.circular(25),
-                                  ),
-                                  child: Text(
-                                    _currentValue > 500 ? 'Bahaya' : (_currentValue > 400 ? 'Waspada' : 'Normal'),
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-                                  ),
+                                const SizedBox(height: 12),
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(_isOffline ? '-- ppm' : '${_currentValue.toStringAsFixed(0)} ppm', style: const TextStyle(color: Colors.white, fontSize: 44, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-                    const Text('Analisis Grafik', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                    const SizedBox(height: 16),
-
-                    // Period Selector
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: ['24 Jam', '7 Hari', '30 Hari'].map((period) {
-                          final isSelected = _selectedPeriod == period;
-                          return Padding(
-                            padding: const EdgeInsets.only(right: 12),
-                            child: FilterChip(
-                              label: Text(period),
-                              selected: isSelected,
-                              onSelected: (_) {
-                                setState(() => _selectedPeriod = period);
-                                _loadData();
-                              },
-                              selectedColor: const Color(0xFFE53935).withOpacity(0.2),
-                              labelStyle: TextStyle(
-                                color: isSelected ? const Color(0xFFE53935) : Colors.black54,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                fontFamily: 'Poppins',
-                              ),
-                              checkmarkColor: const Color(0xFFE53935),
-                              backgroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: isSelected ? const Color(0xFFE53935) : Colors.transparent)),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Chart Card
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 24, 24, 16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Tren Konsentrasi Gas', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              height: 200,
-                              child: LineChart(
-                                LineChartData(
-                                  gridData: const FlGridData(show: true, drawVerticalLine: false, horizontalInterval: 150),
-                                  titlesData: FlTitlesData(
-                                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                    bottomTitles: AxisTitles(
-                                      sideTitles: SideTitles(
-                                        showTitles: true,
-                                        reservedSize: 30,
-                                        interval: _selectedPeriod == '24 Jam' ? 4 : 24,
-                                        getTitlesWidget: (value, meta) {
-                                          if (value % (_selectedPeriod == '24 Jam' ? 4 : 24) == 0) {
-                                            return Padding(
-                                              padding: const EdgeInsets.only(top: 8),
-                                              child: Text('${value.toInt()}:00', style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'Poppins')),
-                                            );
-                                          }
-                                          return const SizedBox();
-                                        },
+                                const SizedBox(height: 20),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text('Exhaust Fan', style: TextStyle(color: Colors.white70, fontSize: 13, fontFamily: 'Poppins')),
+                                          const SizedBox(height: 4),
+                                          Text(_isOffline ? 'TERPUTUS' : (_fanStatus ? 'AKTIF (ON)' : 'MATI (OFF)'), style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                                        ],
                                       ),
                                     ),
-                                  ),
-                                  borderData: FlBorderData(show: false),
-                                  extraLinesData: ExtraLinesData(
-                                    horizontalLines: [
-                                      HorizontalLine(y: 500, color: Colors.red.withOpacity(0.5), strokeWidth: 2, dashArray: [5, 5], label: HorizontalLineLabel(show: true, labelResolver: (line) => 'Bahaya', style: const TextStyle(color: Colors.red, fontSize: 10))),
-                                      HorizontalLine(y: 350, color: Colors.orange.withOpacity(0.5), strokeWidth: 1, dashArray: [5, 5], label: HorizontalLineLabel(show: true, labelResolver: (line) => 'Waspada', style: const TextStyle(color: Colors.orange, fontSize: 10))),
-                                    ],
-                                  ),
-                                  lineBarsData: [
-                                    LineChartBarData(
-                                      spots: _historyData.asMap().entries.map((e) => FlSpot(e.key.toDouble(), e.value.value)).toList(),
-                                      isCurved: true,
-                                      color: const Color(0xFFE53935),
-                                      barWidth: 3,
-                                      isStrokeCapRound: true,
-                                      dotData: const FlDotData(show: false),
-                                      belowBarData: BarAreaData(
-                                        show: true,
-                                        gradient: LinearGradient(
-                                          colors: [const Color(0xFFE53935).withOpacity(0.3), const Color(0xFFE53935).withOpacity(0.0)],
-                                          begin: Alignment.topCenter,
-                                          end: Alignment.bottomCenter,
-                                        ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(25),
+                                      ),
+                                      child: Text(
+                                        _isOffline ? 'Offline' : (_currentValue < 500 ? 'Normal' : 'Bahaya'),
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                    ),
 
-                    const SizedBox(height: 20),
+                        const SizedBox(height: 24),
+                        const Text('Historis Pelepasan Gas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                        const SizedBox(height: 16),
 
-                    // Stats Info
-                    Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Informasi Lanjutan', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                            const SizedBox(height: 16),
-                            _buildStatRow('Rata-rata', '${_calculateAvg().toStringAsFixed(1)} ppm'),
-                            const Divider(),
-                            _buildStatRow('Tertinggi', '${_calculateMax().toStringAsFixed(1)} ppm'),
-                            const Divider(),
-                            _buildStatRow('Fan Runtime', '1.2 Jam hari ini'),
-                            const Divider(),
-                            _buildStatRow('Threshold Fan', '500 ppm'),
-                          ],
+                        // Chart Line
+                        Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 24, 24, 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Grafik Gas (100 Log)', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                                const SizedBox(height: 24),
+                                SizedBox(
+                                  height: 200,
+                                  child: _spots.isEmpty ? const Center(child: Text('Belum ada data')) : LineChart(
+                                    LineChartData(
+                                      minY: 0, maxY: 1000,
+                                      gridData: const FlGridData(show: true, drawVerticalLine: false),
+                                      titlesData: FlTitlesData(
+                                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                        bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                                      ),
+                                      borderData: FlBorderData(show: false),
+                                      extraLinesData: ExtraLinesData(
+                                        horizontalLines: [
+                                          HorizontalLine(y: 500, color: Colors.red.withOpacity(0.5), strokeWidth: 2, dashArray: [5, 5], label: HorizontalLineLabel(show: true, labelResolver: (line) => 'Threshold Bahaya', style: const TextStyle(color: Colors.red, fontSize: 10))),
+                                        ],
+                                      ),
+                                      lineBarsData: [
+                                        LineChartBarData(
+                                          spots: _spots,
+                                          isCurved: true,
+                                          color: Colors.grey[800]!,
+                                          barWidth: 3,
+                                          dotData: const FlDotData(show: false),
+                                          belowBarData: BarAreaData(
+                                            show: true,
+                                            gradient: LinearGradient(
+                                              colors: [Colors.grey[800]!.withOpacity(0.3), Colors.grey[800]!.withOpacity(0.0)],
+                                              begin: Alignment.topCenter,
+                                              end: Alignment.bottomCenter,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                      ),
+
+                        const SizedBox(height: 20),
+
+                        // Statistik
+                        Card(
+                          elevation: 2,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          child: Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text('Statistik', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                                const SizedBox(height: 16),
+                                _buildStatRow('Rata-rata', _isOffline ? '-' : '${_calculateAvg().toStringAsFixed(0)} ppm'),
+                                const Divider(),
+                                _buildStatRow('Tertinggi', _isOffline ? '-' : '${_calculateMax().toStringAsFixed(0)} ppm'),
+                                const Divider(),
+                                _buildStatRow('Kipas Exhaust Sedang Aktif', _isOffline ? 'Terputus' : (_fanStatus ? 'Ya' : 'Tidak')),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
-      ),
+                if (_isOffline)
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.7),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.wifi_off_rounded, color: Colors.white, size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Sensor Terputus (Offline)',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
     );
   }
-
-  double _calculateAvg() => _historyData.map((e) => e.value).reduce((a, b) => a + b) / _historyData.length;
-  double _calculateMax() => _historyData.map((e) => e.value).reduce((a, b) => a > b ? a : b);
 
   Widget _buildStatRow(String label, String value) {
     return Padding(
