@@ -45,3 +45,7 @@ Sistem dilengkapi dengan logika pintar untuk mengontrol 5 komponen secara otomat
 > **Politeknik Negeri Jakarta**  
 > *Didedikasikan untuk Solusi Monitoring Kompos Berbasis IoT bagi Masyarakat.*
 
+---
+**© 2026 i-Composter Project. All rights reserved.**  
+*Dari Telkom B untuk Masyarakat.*
+
