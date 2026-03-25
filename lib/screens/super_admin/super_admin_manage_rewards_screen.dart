@@ -26,9 +26,10 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
   Future<void> _loadRewards() async {
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(milliseconds: 500));
+    final rewards = await RewardService.getAllRewards();
     if (mounted) {
       setState(() {
-        _rewards = RewardService.getAllRewards();
+        _rewards = rewards;
         _filtered = _rewards;
         _isLoading = false;
       });
@@ -40,7 +41,7 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
       _searchQuery = query;
       _filtered = query.isEmpty
           ? _rewards
-          : RewardService.searchRewards(query);
+          : _rewards.where((r) => r.name.toLowerCase().contains(query.toLowerCase())).toList();
     });
   }
 
@@ -132,7 +133,7 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
             children: [
               _buildMiniStat('Total', '${_rewards.length}', Colors.red),
               const SizedBox(width: 8),
-              _buildMiniStat('Poin Total', '${RewardService.getTotalPointsValue()}', Colors.amber[700]!),
+              _buildMiniStat('Poin Total', '${_rewards.fold<int>(0, (sum, r) => sum + r.points)}', Colors.amber[700]!),
               const SizedBox(width: 8),
               Expanded(
                 child: GestureDetector(

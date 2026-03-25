@@ -19,6 +19,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
   final int _totalAdmins = 1;
   final int _totalUsers = 3;
   int _totalRewards = 0;
+  int _totalPoints = 0;
 
   @override
   void initState() {
@@ -46,9 +47,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
     setState(() => _isLoading = true);
     _animationController.reset();
     await Future.delayed(const Duration(milliseconds: 800));
+    final rewardsCount = await RewardService.getTotalRewards();
+    final pointsSum = await RewardService.getTotalPointsValue();
+
     if (mounted) {
       setState(() {
-        _totalRewards = RewardService.getTotalRewards();
+        _totalRewards = rewardsCount;
+        _totalPoints = pointsSum;
         _isLoading = false;
       });
       _animationController.forward();
@@ -343,7 +348,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
       ),
       child: Column(
         children: [
-          _buildSummaryRow('Total Poin Reward', '${RewardService.getTotalPointsValue()} poin', Icons.stars_rounded, Colors.amber),
+          _buildSummaryRow('Total Poin Reward', '$_totalPoints poin', Icons.stars_rounded, Colors.amber),
           const Divider(height: 24, color: Colors.black12),
           _buildSummaryRow('Kategori Reward', categories.join(', '), Icons.category_outlined, Colors.purple),
           const Divider(height: 24, color: Colors.black12),

@@ -1,9 +1,38 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import 'user_redeem_screen.dart';
+import '../../models/user_model.dart';
+import '../../models/reward_model.dart';
+import '../../services/rewards/reward_service.dart';
 
-class UserRewardsScreen extends StatelessWidget {
-  const UserRewardsScreen({Key? key}) : super(key: key);
+class UserRewardsScreen extends StatefulWidget {
+  final UserModel user;
+  const UserRewardsScreen({Key? key, required this.user}) : super(key: key);
+
+  @override
+  State<UserRewardsScreen> createState() => _UserRewardsScreenState();
+}
+
+class _UserRewardsScreenState extends State<UserRewardsScreen> {
+  List<RewardModel> _rewards = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    final rewards = await RewardService.getAllRewards();
+    if (mounted) {
+      setState(() {
+        _rewards = rewards;
+        _isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -32,24 +61,24 @@ class UserRewardsScreen extends StatelessWidget {
                 bottomRight: Radius.circular(32),
               ),
             ),
-            child: const Column(
+            child: Column(
               children: [
-                Text(
+                const Text(
                   'Saldo Poin Saat Ini',
                   style: TextStyle(color: Colors.white70, fontFamily: 'Poppins', fontSize: 13),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.stars, color: Colors.amber, size: 32),
-                    SizedBox(width: 8),
+                    const Icon(Icons.stars, color: Colors.amber, size: 32),
+                    const SizedBox(width: 8),
                     Text(
-                      '2.450',
-                      style: TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                      '${widget.user.points ?? 0}',
+                      style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                     ),
-                    SizedBox(width: 4),
-                    Text(
+                    const SizedBox(width: 4),
+                    const Text(
                       'Pts',
                       style: TextStyle(color: Colors.white70, fontSize: 16, fontFamily: 'Poppins'),
                     ),
@@ -60,43 +89,45 @@ class UserRewardsScreen extends StatelessWidget {
           ),
           
           Expanded(
-            child: GridView.count(
-              padding: const EdgeInsets.all(24),
-              crossAxisCount: 2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              childAspectRatio: 0.75, // Agar kartu terlihat proporsional (tinggi > lebar)
-              children: [
-                _buildRewardCard(
-                  context, 
-                  name: 'Voucher Alfamart 50k', 
-                  points: 500, 
-                  icon: Icons.confirmation_number, 
-                  color: Colors.blue
-                ),
-                _buildRewardCard(
-                  context, 
-                  name: 'Pupuk Kompos 5kg', 
-                  points: 300, 
-                  icon: Icons.grass, 
-                  color: Colors.green
-                ),
-                _buildRewardCard(
-                  context, 
-                  name: 'Bibit Tanaman', 
-                  points: 200, 
-                  icon: Icons.local_florist, 
-                  color: Colors.teal
-                ),
-                _buildRewardCard(
-                  context, 
-                  name: 'Tas Belanja Ramah Lingkungan', 
-                  points: 150, 
-                  icon: Icons.shopping_bag, 
-                  color: Colors.orange
-                ),
-              ],
-            ),
+            child: _isLoading 
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : _rewards.isEmpty 
+                    ? const Center(child: Text('Belum ada reward', style: TextStyle(fontFamily: 'Poppins')))
+                    : GridView.builder(
+                        padding: const EdgeInsets.all(24),
+                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 16,
+                          mainAxisSpacing: 16,
+                          childAspectRatio: 0.75,
+                        ),
+                        itemCount: _rewards.length,
+                        itemBuilder: (context, index) {
+                          final reward = _rewards[index];
+                          // Determine icon/color loosely based on category
+                          IconData icon = Icons.card_giftcard;
+                          Color color = Colors.orange;
+                          
+                          if (reward.category.toLowerCase() == 'voucher') {
+                            icon = Icons.confirmation_number;
+                            color = Colors.blue;
+                          } else if (reward.category.toLowerCase() == 'produk') {
+                            icon = Icons.grass;
+                            color = Colors.green;
+                          } else if (reward.category.toLowerCase() == 'merchandise') {
+                            icon = Icons.shopping_bag;
+                            color = Colors.purple;
+                          }
+                          
+                          return _buildRewardCard(
+                            context,
+                            name: reward.name,
+                            points: reward.points,
+                            icon: icon,
+                            color: color,
+                          );
+                        },
+                      ),
           ),
         ],
       ),
@@ -124,7 +155,7 @@ class UserRewardsScreen extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context, 
-              MaterialPageRoute(builder: (_) => UserRedeemScreen(rewardName: name, pointsPerItem: points, icon: icon, color: color))
+              MaterialPageRoute(builder: (_) => UserRedeemScreen(userEmail: widget.user.email, rewardName: name, pointsPerItem: points, icon: icon, color: color))
             );
           },
           child: Padding(

@@ -1,38 +1,38 @@
-/// 🎁 Reward Model (Updated) - Aplikasi Monitoring Kompos
-/// Model untuk katalog reward yang bisa ditukar dengan poin
-
 class RewardModel {
   final String id;
   final String name;
   final String description;
   final int points;
+  final int stock;
+  final String imageUrl; // URL or local asset path
   final String category;
-  final String imageUrl;
-  final String createdBy;
+  final bool isActive;
   final DateTime createdAt;
 
   RewardModel({
     required this.id,
     required this.name,
-    required this.description,
+    this.description = '',
     required this.points,
-    required this.category,
+    this.stock = 0,
     required this.imageUrl,
-    required this.createdBy,
+    this.category = 'Umum',
+    this.isActive = true,
     required this.createdAt,
   });
 
   factory RewardModel.fromJson(Map<String, dynamic> json) {
     return RewardModel(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      description: json['description'] as String,
-      points: json['points'] as int,
-      category: json['category'] as String,
-      imageUrl: json['imageUrl'] as String? ?? '',
-      createdBy: json['createdBy'] as String? ?? 'superadmin',
-      createdAt: json['createdAt'] != null
-          ? DateTime.parse(json['createdAt'] as String)
+      id: json['id'] ?? '',
+      name: json['name'] ?? '',
+      description: json['description'] ?? '',
+      points: json['points'] ?? 0,
+      stock: json['stock'] ?? 0,
+      imageUrl: json['imageUrl'] ?? '',
+      category: json['category'] ?? 'Umum',
+      isActive: json['isActive'] ?? true,
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'])
           : DateTime.now(),
     );
   }
@@ -43,9 +43,10 @@ class RewardModel {
       'name': name,
       'description': description,
       'points': points,
-      'category': category,
+      'stock': stock,
       'imageUrl': imageUrl,
-      'createdBy': createdBy,
+      'category': category,
+      'isActive': isActive,
       'createdAt': createdAt.toIso8601String(),
     };
   }
@@ -55,9 +56,10 @@ class RewardModel {
     String? name,
     String? description,
     int? points,
-    String? category,
+    int? stock,
     String? imageUrl,
-    String? createdBy,
+    String? category,
+    bool? isActive,
     DateTime? createdAt,
   }) {
     return RewardModel(
@@ -65,17 +67,13 @@ class RewardModel {
       name: name ?? this.name,
       description: description ?? this.description,
       points: points ?? this.points,
-      category: category ?? this.category,
+      stock: stock ?? this.stock,
       imageUrl: imageUrl ?? this.imageUrl,
-      createdBy: createdBy ?? this.createdBy,
+      category: category ?? this.category,
+      isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
     );
   }
 
   bool canRedeem(int userPoints) => userPoints >= points;
-
-  String get categoryDisplay => category;
-
-  @override
-  String toString() => 'Reward($name - $points pts)';
 }
