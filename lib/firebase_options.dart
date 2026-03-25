@@ -53,11 +53,12 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCKUKWcw4iFx07qhRdc79ITEiGVdJM5_D4',
-    appId: '1:941148437603:android:a111be6248393fe1f40c56',
-    messagingSenderId: '941148437603',
-    projectId: 'composter-telkomb23',
-    databaseURL: 'https://composter-telkomb23-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'composter-telkomb23.firebasestorage.app',
+    apiKey: 'AIzaSyCa9ZpfsjzC-2iCRf64RaUCddflDziUTPc',
+    appId: '1:949669109723:android:14d27867ee0d6b4bc011fe',
+    messagingSenderId: '949669109723',
+    projectId: 'icompost-db',
+    databaseURL: 'https://icompost-db-default-rtdb.asia-southeast1.firebasedatabase.app',
+    storageBucket: 'icompost-db.firebasestorage.app',
   );
+
 }

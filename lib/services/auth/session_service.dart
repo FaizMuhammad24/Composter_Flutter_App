@@ -1,7 +1,8 @@
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/user_model.dart';
-import '../database/fake_database.dart';
 
 class SessionService {
 
@@ -14,10 +15,22 @@ class SessionService {
     
     if (sessionData != null) {
       final Map<String, dynamic> userMap = json.decode(sessionData);
-      // Validasi ulang dengan database (simulasi)
-      final email = userMap['email'];
-      if (FakeDatabase.users.containsKey(email)) {
-        _currentUser = UserModel.fromJson(FakeDatabase.users[email]!);
+      _currentUser = UserModel.fromJson(userMap);
+
+      // Sinkronisasi dengan Firestore jika user masih login di Firebase Auth
+      var fUser = FirebaseAuth.instance.currentUser;
+      if (fUser != null) {
+        try {
+          var doc = await FirebaseFirestore.instance.collection('users').doc(fUser.uid).get();
+          if (doc.exists) {
+            _currentUser = UserModel.fromJson(doc.data()!);
+            await setCurrentUser(_currentUser!);
+          }
+        } catch (e) {
+          // Abaikan jika offline
+        }
+      } else {
+        await logout();
       }
     }
   }
@@ -33,11 +46,12 @@ class SessionService {
   }
 
   static bool isLoggedIn() {
-    return _currentUser != null;
+    return _currentUser != null && FirebaseAuth.instance.currentUser != null;
   }
 
   static Future<void> logout() async {
     _currentUser = null;
+    await FirebaseAuth.instance.signOut();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_sessionKey);
   }

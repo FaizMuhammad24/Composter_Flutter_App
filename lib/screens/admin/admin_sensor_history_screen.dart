@@ -91,9 +91,10 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
     final timeStr = log['time']?.toString() ?? 'Pukul ?';
 
     // QoS Data (Baru)
-    final int? wifi = log['wifi'] is int ? log['wifi'] as int : null;
-    final int? heap = log['heap'] is int ? log['heap'] as int : null;
-    final int? uptime = log['uptime'] is int ? log['uptime'] as int : null;
+    final qos = log['qos'] is Map ? Map<String, dynamic>.from(log['qos']) : null;
+    final int? wifi = qos?['wifi_strength'] is num ? (qos?['wifi_strength'] as num).toInt() : (int.tryParse(qos?['wifi_strength']?.toString() ?? ''));
+    final int? heap = qos?['free_heap'] is num ? (qos?['free_heap'] as num).toInt() : null;
+    final int? uptime = qos?['uptime_ms'] is num ? (qos?['uptime_ms'] as num).toInt() : null;
 
     return Card(
       elevation: 2,

@@ -20,7 +20,7 @@ class UserModel {
   });
 
   // Cek role
-  bool get isSuperAdmin => role == 'super_admin';
+  bool get isSuperAdmin => role == 'super_admin' || role == 'superadmin';
   bool get isAdmin => role == 'admin';
   bool get isUser => role == 'user';
 

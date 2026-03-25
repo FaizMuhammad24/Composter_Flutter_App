@@ -1,14 +1,14 @@
 {
   "project_info": {
-    "project_number": "941148437603",
-    "firebase_url": "https://composter-telkomb23-default-rtdb.asia-southeast1.firebasedatabase.app",
-    "project_id": "composter-telkomb23",
-    "storage_bucket": "composter-telkomb23.firebasestorage.app"
+    "project_number": "949669109723",
+    "firebase_url": "https://icompost-db-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "icompost-db",
+    "storage_bucket": "icompost-db.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:941148437603:android:a111be6248393fe1f40c56",
+        "mobilesdk_app_id": "1:949669109723:android:14d27867ee0d6b4bc011fe",
         "android_client_info": {
           "package_name": "com.example.kompos_app"
         }
@@ -16,7 +16,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyCKUKWcw4iFx07qhRdc79ITEiGVdJM5_D4"
+          "current_key": "AIzaSyCa9ZpfsjzC-2iCRf64RaUCddflDziUTPc"
         }
       ],
       "services": {

@@ -1,50 +1,35 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/compost_model.dart';
-import '../database/fake_database.dart';
 
 class DashboardService {
 
-  // ==================== TOTAL USERS ====================
-  static int getTotalUsers() {
-    return FakeDatabase.users.values
-        .where((user) => user['role'] == 'user')
-        .length;
+  static Future<int> getTotalUsers() async {
+    var snap = await FirebaseFirestore.instance.collection('users').where('role', isEqualTo: 'user').count().get();
+    return snap.count ?? 0;
   }
 
-  // ==================== TOTAL ADMINS ====================
-  static int getTotalAdmins() {
-    return FakeDatabase.users.values
-        .where((user) => user['role'] == 'admin')
-        .length;
+  static Future<int> getTotalAdmins() async {
+    var snap = await FirebaseFirestore.instance.collection('users').where('role', isEqualTo: 'admin').count().get();
+    return snap.count ?? 0;
   }
 
-  // ==================== TOTAL COMPOSTS ====================
-  static int getTotalComposts() {
-    return FakeDatabase.composts.length;
+  static Future<int> getTotalComposts() async {
+    var snap = await FirebaseFirestore.instance.collection('composts').count().get();
+    return snap.count ?? 0;
   }
 
-  // ==================== TOTAL POINTS ====================
-  static int getTotalPoints() {
-
+  static Future<int> getTotalPoints() async {
+    var snap = await FirebaseFirestore.instance.collection('users').where('role', isEqualTo: 'user').get();
     int total = 0;
-
-    for (var user in FakeDatabase.users.values) {
-      if (user['role'] == 'user') {
-        total += (user['points'] ?? 0) as int;
-      }
+    for (var doc in snap.docs) {
+      total += (doc.data()['points'] ?? 0) as int;
     }
-
     return total;
   }
 
-  // ==================== RECENT TRANSACTIONS ====================
-  static List<CompostModel> getRecentTransactions({int limit = 5}) {
-
-    List<CompostModel> composts = FakeDatabase.composts
-        .map((c) => CompostModel.fromJson(c))
-        .toList();
-
-    composts.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    return composts.take(limit).toList();
+  static Future<List<CompostModel>> getRecentTransactions({int limit = 5}) async {
+    var snap = await FirebaseFirestore.instance.collection('composts').orderBy('createdAt', descending: true).limit(limit).get();
+    return snap.docs.map((doc) => CompostModel.fromJson(doc.data())).toList();
   }
+  
 }

@@ -1,79 +1,63 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/compost_model.dart';
-import '../database/fake_database.dart';
 import '../user/points_service.dart';
 
 class CompostService {
 
-  // ==================== CALCULATE POINTS ====================
   static int calculatePoints(double weight) {
-
-    // contoh konversi
-    // 1 kg = 10 poin
-
     return (weight * 10).toInt();
   }
 
-  // ==================== ADD COMPOST ====================
   static Future<Map<String, dynamic>> addCompost({
     required String userEmail,
     required String wasteType,
     required double weight,
   }) async {
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      var users = await FirebaseFirestore.instance.collection('users').where('email', isEqualTo: userEmail).limit(1).get();
+      if (users.docs.isEmpty) {
+        return {'success': false, 'message': 'User tidak ditemukan'};
+      }
+      
+      int points = calculatePoints(weight);
 
-    if (!FakeDatabase.users.containsKey(userEmail)) {
-      return {
-        'success': false,
-        'message': 'User tidak ditemukan'
+      var compostRef = FirebaseFirestore.instance.collection('composts').doc();
+      var compost = {
+        'id': compostRef.id,
+        'userEmail': userEmail,
+        'wasteType': wasteType,
+        'weight': weight,
+        'points': points,
+        'createdAt': DateTime.now().toIso8601String(),
       };
+      
+      await compostRef.set(compost);
+      await PointsService.addUserPoints(userEmail: userEmail, pointsToAdd: points);
+
+      return {
+        'success': true,
+        'message': 'Setoran kompos berhasil',
+        'data': CompostModel.fromJson(compost),
+      };
+    } catch (e) {
+      return {'success': false, 'message': 'Gagal menyimpan data'};
     }
-
-    int points = calculatePoints(weight);
-
-    var compost = {
-      'id': 'compost_${DateTime.now().millisecondsSinceEpoch}',
-      'userEmail': userEmail,
-      'wasteType': wasteType,
-      'weight': weight,
-      'points': points,
-      'createdAt': DateTime.now().toIso8601String(),
-    };
-
-    FakeDatabase.composts.add(compost);
-
-    // tambahkan poin ke user
-    await PointsService.addUserPoints(
-      userEmail: userEmail,
-      pointsToAdd: points,
-    );
-
-    return {
-      'success': true,
-      'message': 'Setoran kompos berhasil',
-      'data': CompostModel.fromJson(compost),
-    };
   }
 
-  // ==================== GET USER COMPOSTS ====================
   static Future<List<CompostModel>> getUserComposts(String email) async {
-
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    return FakeDatabase.composts
-        .where((c) => c['userEmail'] == email)
-        .map((c) => CompostModel.fromJson(c))
-        .toList();
+    var snap = await FirebaseFirestore.instance.collection('composts')
+      .where('userEmail', isEqualTo: email)
+      .orderBy('createdAt', descending: true)
+      .get();
+    return snap.docs.map((doc) => CompostModel.fromJson(doc.data())).toList();
   }
 
-  // ==================== GET ALL COMPOSTS ====================
   static Future<List<CompostModel>> getAllComposts() async {
-
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    return FakeDatabase.composts
-        .map((c) => CompostModel.fromJson(c))
-        .toList();
+    var snap = await FirebaseFirestore.instance.collection('composts')
+      .orderBy('createdAt', descending: true)
+      .get();
+    return snap.docs.map((doc) => CompostModel.fromJson(doc.data())).toList();
   }
 
 }

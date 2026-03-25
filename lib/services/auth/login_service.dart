@@ -1,6 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
-import '../database/fake_database.dart';
-import 'password_service.dart';
 import 'session_service.dart';
 
 class LoginService {
@@ -9,8 +9,6 @@ class LoginService {
       String email,
       String password
   ) async {
-
-    await Future.delayed(const Duration(seconds: 1));
 
     email = email.toLowerCase().trim();
 
@@ -21,35 +19,39 @@ class LoginService {
       };
     }
 
-    if (!FakeDatabase.users.containsKey(email)) {
-      return {
-        'success': false,
-        'message': 'Email tidak terdaftar',
-      };
+    try {
+      UserCredential cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (cred.user != null) {
+        var doc = await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).get();
+        if (doc.exists) {
+          var userData = doc.data()!;
+          var user = UserModel.fromJson(userData);
+          // Update last_login
+          user = user.copyWith(lastLogin: DateTime.now());
+          await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).update({
+            'last_login': user.lastLogin?.toIso8601String()
+          });
+          
+          await SessionService.setCurrentUser(user);
+          return {'success': true, 'message': 'Login berhasil', 'user': user};
+        } else {
+          return {'success': false, 'message': 'Data profil tidak ditemukan di sistem'};
+        }
+      }
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        return {'success': false, 'message': 'Email atau password salah'};
+      }
+      return {'success': false, 'message': e.message ?? 'Gagal login'};
+    } catch (e) {
+      return {'success': false, 'message': 'Terjadi kesalahan sistem'};
     }
 
-    var userData = FakeDatabase.users[email]!;
-
-    String hashedPassword = PasswordService.hashPassword(password);
-
-    if (userData['password'] != hashedPassword) {
-      return {
-        'success': false,
-        'message': 'Password salah',
-      };
-    }
-
-    userData['last_login'] = DateTime.now().toIso8601String();
-
-    var user = UserModel.fromJson(userData);
-
-    await SessionService.setCurrentUser(user);
-
-    return {
-      'success': true,
-      'message': 'Login berhasil',
-      'user': user,
-    };
+    return {'success': false, 'message': 'Gagal login'};
   }
 
 }

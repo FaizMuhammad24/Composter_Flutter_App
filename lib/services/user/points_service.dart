@@ -1,78 +1,53 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
-import '../database/fake_database.dart';
 
 class PointsService {
 
-  // ==================== UPDATE USER POINTS ====================
   static Future<Map<String, dynamic>> updateUserPoints({
     required String userEmail,
     required int points,
   }) async {
-
-    await Future.delayed(const Duration(milliseconds: 300));
-
     userEmail = userEmail.toLowerCase().trim();
-
-    if (!FakeDatabase.users.containsKey(userEmail)) {
-      return {
-        'success': false,
-        'message': 'User tidak ditemukan',
-      };
-    }
-
-    var user = FakeDatabase.users[userEmail]!;
-
-    if (user['role'] != 'user') {
-      return {
-        'success': false,
-        'message': 'Hanya user yang memiliki poin',
-      };
-    }
-
-    user['points'] = points;
-
+    var snap = await FirebaseFirestore.instance.collection('users').where('email', isEqualTo: userEmail).limit(1).get();
+    
+    if (snap.docs.isEmpty) { return {'success': false, 'message': 'User tidak ditemukan'}; }
+    
+    var doc = snap.docs.first;
+    if (doc.data()['role'] != 'user') { return {'success': false, 'message': 'Hanya user yang memiliki poin'}; }
+    
+    await FirebaseFirestore.instance.collection('users').doc(doc.id).update({'points': points});
+    var updatedDoc = await FirebaseFirestore.instance.collection('users').doc(doc.id).get();
+    
     return {
       'success': true,
       'message': 'Poin berhasil diupdate',
-      'user': UserModel.fromJson(user),
+      'user': UserModel.fromJson(updatedDoc.data()!),
     };
   }
 
-  // ==================== ADD USER POINTS ====================
   static Future<Map<String, dynamic>> addUserPoints({
     required String userEmail,
     required int pointsToAdd,
   }) async {
-
-    await Future.delayed(const Duration(milliseconds: 300));
-
     userEmail = userEmail.toLowerCase().trim();
-
-    if (!FakeDatabase.users.containsKey(userEmail)) {
-      return {
-        'success': false,
-        'message': 'User tidak ditemukan',
-      };
-    }
-
-    var user = FakeDatabase.users[userEmail]!;
-
-    if (user['role'] != 'user') {
-      return {
-        'success': false,
-        'message': 'Hanya user yang memiliki poin',
-      };
-    }
-
-    int currentPoints = user['points'] ?? 0;
-
-    user['points'] = currentPoints + pointsToAdd;
-
+    var snap = await FirebaseFirestore.instance.collection('users').where('email', isEqualTo: userEmail).limit(1).get();
+    
+    if (snap.docs.isEmpty) { return {'success': false, 'message': 'User tidak ditemukan'}; }
+    
+    var doc = snap.docs.first;
+    if (doc.data()['role'] != 'user') { return {'success': false, 'message': 'Hanya user yang memiliki poin'}; }
+    
+    int currentPoints = doc.data()['points'] ?? 0;
+    int newPoints = currentPoints + pointsToAdd;
+    
+    await FirebaseFirestore.instance.collection('users').doc(doc.id).update({'points': newPoints});
+    var updatedDoc = await FirebaseFirestore.instance.collection('users').doc(doc.id).get();
+    
     return {
       'success': true,
       'message': 'Poin berhasil ditambahkan',
-      'points': user['points'],
-      'user': UserModel.fromJson(user),
+      'points': newPoints,
+      'user': UserModel.fromJson(updatedDoc.data()!),
     };
   }
 
