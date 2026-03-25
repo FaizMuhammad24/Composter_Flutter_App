@@ -5,13 +5,14 @@ import '../user/points_service.dart';
 class CompostService {
 
   static int calculatePoints(double weight) {
+    // 1 kg = 10 points
     return (weight * 10).toInt();
   }
 
   static Future<Map<String, dynamic>> addCompost({
     required String userEmail,
-    required String wasteType,
     required double weight,
+    required String imageUrl,
   }) async {
 
     try {
@@ -26,10 +27,11 @@ class CompostService {
       var compost = {
         'id': compostRef.id,
         'userEmail': userEmail,
-        'wasteType': wasteType,
         'weight': weight,
         'points': points,
+        'imageUrl': imageUrl,
         'createdAt': DateTime.now().toIso8601String(),
+        'status': 'pending',
       };
       
       await compostRef.set(compost);

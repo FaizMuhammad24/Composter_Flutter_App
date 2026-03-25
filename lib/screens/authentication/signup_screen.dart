@@ -3,7 +3,8 @@ import '../user/user_main_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/auth/signup_service.dart';
-
+import '../super_admin/super_admin_main_screen.dart';
+import '../admin/admin_main_screen.dart';
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
 
@@ -99,9 +100,18 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
           ),
         );
 
+        Widget nextScreen;
+        if (user.isSuperAdmin) {
+          nextScreen = const SuperAdminMainScreen();
+        } else if (user.isAdmin) {
+          nextScreen = const AdminMainScreen();
+        } else {
+          nextScreen = UserMainScreen(user: user);
+        }
+
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => UserMainScreen(user: user)),
+          MaterialPageRoute(builder: (_) => nextScreen),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

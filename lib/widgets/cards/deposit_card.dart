@@ -9,7 +9,6 @@ import '../../utils/helpers/date_formatter.dart';
 /// Reusable card untuk menampilkan history deposit sampah
 
 class DepositCard extends StatelessWidget {
-  final String wasteType;
   final double weight;
   final int points;
   final String location;
@@ -19,7 +18,6 @@ class DepositCard extends StatelessWidget {
 
   const DepositCard({
     Key? key,
-    required this.wasteType,
     required this.weight,
     required this.points,
     required this.location,
@@ -51,6 +49,7 @@ class DepositCard extends StatelessWidget {
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textSecondary,
+                      fontFamily: 'Poppins',
                     ),
                   ),
                   Container(
@@ -59,7 +58,7 @@ class DepositCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: AppColors.success.withOpacity(0.1),
+                      color: Colors.orange.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Row(
@@ -68,7 +67,7 @@ class DepositCard extends StatelessWidget {
                         const Icon(
                           Icons.star,
                           size: 14,
-                          color: AppColors.success,
+                          color: Colors.orange,
                         ),
                         const SizedBox(width: 4),
                         Text(
@@ -76,7 +75,8 @@ class DepositCard extends StatelessWidget {
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
-                            color: AppColors.success,
+                            color: Colors.orange,
+                            fontFamily: 'Poppins',
                           ),
                         ),
                       ],
@@ -86,21 +86,22 @@ class DepositCard extends StatelessWidget {
               ),
               const SizedBox(height: AppSpacing.sm),
 
-              // Waste Type & Weight
+              // Weight
               Row(
                 children: [
                   const Icon(
-                    Icons.delete_outline,
+                    Icons.recycling,
                     size: 20,
-                    color: AppColors.textSecondary,
+                    color: AppColors.primary,
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Text(
-                    '$wasteType - ${weight.toStringAsFixed(1)} kg',
+                    'Setor Sampah: ${weight.toStringAsFixed(1)} kg',
                     style: const TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textPrimary,
+                      fontFamily: 'Poppins',
                     ),
                   ),
                   if (hasImage) ...[
@@ -108,7 +109,7 @@ class DepositCard extends StatelessWidget {
                     const Icon(
                       Icons.image,
                       size: 16,
-                      color: AppColors.textSecondary,
+                      color: Colors.blue,
                     ),
                   ],
                 ],
@@ -130,6 +131,7 @@ class DepositCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
+                        fontFamily: 'Poppins',
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

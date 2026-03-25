@@ -24,8 +24,8 @@ class _UserMainScreenState extends State<UserMainScreen> {
     super.initState();
     _pages = [
       UserDashboard(user: widget.user),
-      const UserHistoryScreen(),
-      const UserProfileScreen(),
+      UserHistoryScreen(user: widget.user),
+      UserProfileScreen(user: widget.user),
     ];
   }
 

@@ -1,20 +1,57 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import 'widgets/user_header.dart';
+import '../../models/user_model.dart';
+import '../../services/history/history_service.dart';
+import '../../models/compost_model.dart';
+import 'package:intl/intl.dart';
 
 class UserHistoryScreen extends StatefulWidget {
-  const UserHistoryScreen({Key? key}) : super(key: key);
+  final UserModel user;
+  const UserHistoryScreen({Key? key, required this.user}) : super(key: key);
 
   @override
   State<UserHistoryScreen> createState() => _UserHistoryScreenState();
 }
 
 class _UserHistoryScreenState extends State<UserHistoryScreen> {
+  bool _isLoading = true;
+  List<CompostModel> _recentTransactions = [];
+  double _totalWeight = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final history = await HistoryService.getUserHistory(widget.user.email);
+      double weightSum = 0;
+      for (var item in history) {
+        weightSum += item.weight;
+      }
+      setState(() {
+        _recentTransactions = history.take(10).toList();
+        _totalWeight = weightSum;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const UserHeader(),
+      appBar: AppBar(
+        title: const Text('Profil & Riwayat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+        backgroundColor: AppColors.primary,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
       body: Container(
         color: AppColors.primary,
         child: Column(
@@ -26,91 +63,26 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
                 children: [
                   const Text(
                     'Total Poin Anda',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 14,
-                      fontFamily: 'Poppins',
-                    ),
+                    style: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Poppins'),
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    '2.450 Pts',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Poppins',
-                    ),
+                  Text(
+                    '${widget.user.points ?? 0} Pts',
+                    style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                   ),
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      // Card Kiri (Light Blue seperti gambar)
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF81D4FA),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '15 kg',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Total Setor',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      _buildStatCard(
+                        value: '${_totalWeight.toStringAsFixed(1)} kg',
+                        label: 'Total Setor',
+                        color: const Color(0xFF81D4FA),
                       ),
                       const SizedBox(width: 16),
-                      // Card Kanan (Orange seperti gambar)
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFB74D),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: const Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '3x',
-                                style: TextStyle(
-                                  fontSize: 22,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Reward Ditukar',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.black54,
-                                  fontFamily: 'Poppins',
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                      _buildStatCard(
+                        value: '0x', // Placeholder for now
+                        label: 'Reward Ditukar',
+                        color: const Color(0xFFFFB74D),
                       ),
                     ],
                   ),
@@ -123,69 +95,57 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
                 width: double.infinity,
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(30),
-                    topRight: Radius.circular(30),
-                  ),
+                  borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Padding(
                       padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
-                      child: Text(
-                        'Riwayat Transaksi',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
+                      child: Text('Riwayat Transaksi Terakhir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                     ),
                     Expanded(
-                      child: ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 24),
-                        children: [
-                          _buildTransactionItem(
-                            icon: Icons.recycling,
-                            iconColor: const Color(0xFF4CAF50),
-                            title: 'Setor Sampah Organik',
-                            subtitle: 'Dapur & Sisa Makanan',
-                            amount: '+150 Pts',
-                            amountColor: Colors.black87,
-                          ),
-                          _buildTransactionItem(
-                            icon: Icons.card_giftcard,
-                            iconColor: const Color(0xFF3F51B5),
-                            title: 'Voucher Alfamart',
-                            subtitle: 'Reward Ditukar',
-                            amount: '-500 Pts',
-                            amountColor: Colors.black87,
-                          ),
-                          _buildTransactionItem(
-                            icon: Icons.local_florist,
-                            iconColor: const Color(0xFFFF5722),
-                            title: 'Pupuk Kompos',
-                            subtitle: 'Reward Ditukar',
-                            amount: '-250 Pts',
-                            amountColor: Colors.black87,
-                          ),
-                          _buildTransactionItem(
-                            icon: Icons.delete_outline,
-                            iconColor: const Color(0xFF26C6DA),
-                            title: 'Setor Daun Kering',
-                            subtitle: 'Sampah Cokelat',
-                            amount: '+50 Pts',
-                            amountColor: Colors.black87,
-                          ),
-                          const SizedBox(height: 120),
-                        ],
-                      ),
+                      child: _isLoading 
+                        ? const Center(child: CircularProgressIndicator())
+                        : _recentTransactions.isEmpty
+                          ? const Center(child: Text('Belum ada transaksi.', style: TextStyle(fontFamily: 'Poppins')))
+                          : ListView.builder(
+                              padding: const EdgeInsets.symmetric(horizontal: 24),
+                              itemCount: _recentTransactions.length,
+                              itemBuilder: (context, index) {
+                                final tx = _recentTransactions[index];
+                                return _buildTransactionItem(
+                                  icon: Icons.recycling,
+                                  iconColor: AppColors.primary,
+                                  title: 'Setor Sampah',
+                                  subtitle: DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(tx.createdAt)),
+                                  amount: '+${tx.points} Pts',
+                                  amountColor: Colors.orange,
+                                );
+                              },
+                            ),
                     ),
                   ],
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatCard({required String value, required String label, required Color color}) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87, fontFamily: 'Poppins')),
+            const SizedBox(height: 4),
+            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54, fontFamily: 'Poppins')),
           ],
         ),
       ),
@@ -207,46 +167,21 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
           Container(
             width: 52,
             height: 52,
-            decoration: BoxDecoration(
-              color: iconColor,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: Colors.white, size: 26),
+            decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), shape: BoxShape.circle),
+            child: Icon(icon, color: iconColor, size: 26),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
+                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins')),
                 const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                    fontFamily: 'Poppins',
-                  ),
-                ),
+                Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins')),
               ],
             ),
           ),
-          Text(
-            amount,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 15,
-              color: amountColor,
-              fontFamily: 'Poppins',
-            ),
-          ),
+          Text(amount, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: amountColor, fontFamily: 'Poppins')),
         ],
       ),
     );

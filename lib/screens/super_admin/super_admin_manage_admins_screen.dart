@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
+import '../../models/user_model.dart';
+import '../../services/admin/admin_service.dart';
+import '../../services/auth/session_service.dart';
 
 class ManageAdminsScreen extends StatefulWidget {
   const ManageAdminsScreen({Key? key}) : super(key: key);
@@ -14,17 +17,35 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
   final _passwordCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _isFetching = true;
   bool _showForm = false;
 
-  final List<Map<String, String>> _admins = [
-    {'name': 'Admin Default', 'email': 'admin@kompos.com', 'created_by': 'superadmin@kompos.com'},
-  ];
-  List<Map<String, String>> _filtered = [];
+  List<UserModel> _admins = [];
+  List<UserModel> _filtered = [];
+
+  UserModel? _currentSuperAdmin;
 
   @override
   void initState() {
     super.initState();
-    _filtered = _admins;
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isFetching = true);
+    try {
+      _currentSuperAdmin = await SessionService.getCurrentUser();
+      _admins = await AdminService.getAllAdmins();
+      _filtered = _admins;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat admin: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isFetching = false);
+      }
+    }
   }
 
   void _onSearch(String q) {
@@ -32,54 +53,89 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
       _filtered = q.isEmpty
           ? _admins
           : _admins.where((a) =>
-              a['name']!.toLowerCase().contains(q.toLowerCase()) ||
-              a['email']!.toLowerCase().contains(q.toLowerCase())).toList();
+              a.name.toLowerCase().contains(q.toLowerCase()) ||
+              a.email.toLowerCase().contains(q.toLowerCase())).toList();
     });
   }
 
   Future<void> _createAdmin() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    if (_currentSuperAdmin == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sesi tidak valid. Harap login ulang.')));
+      return;
+    }
+
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(seconds: 1));
-    final newAdmin = {
-      'name': _nameCtrl.text.trim(),
-      'email': _emailCtrl.text.trim(),
-      'created_by': 'superadmin@kompos.com',
-    };
-    setState(() {
-      _admins.add(newAdmin);
-      _filtered = _admins;
-      _isLoading = false;
-      _showForm = false;
-    });
-    _nameCtrl.clear();
-    _emailCtrl.clear();
-    _passwordCtrl.clear();
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Admin berhasil dibuat!'), backgroundColor: Colors.green),
+    
+    final result = await AdminService.createAdminBySuperAdmin(
+      superAdminEmail: _currentSuperAdmin!.email,
+      name: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      password: _passwordCtrl.text,
     );
+
+    if (!mounted) return;
+
+    if (result['success']) {
+      _nameCtrl.clear();
+      _emailCtrl.clear();
+      _passwordCtrl.clear();
+      
+      setState(() {
+        _showForm = false;
+      });
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message']), backgroundColor: Colors.green),
+      );
+      
+      _loadData(); // Reload the list
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result['message']), backgroundColor: Colors.red),
+      );
+    }
+    
+    setState(() => _isLoading = false);
   }
 
   void _deleteAdmin(int index) {
+    final admin = _filtered[index];
+    
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Hapus Admin', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        content: Text('Yakin hapus "${_admins[index]['name']}"?', style: const TextStyle(fontFamily: 'Poppins')),
+        content: Text('Yakin hapus "${admin.name}"?', style: const TextStyle(fontFamily: 'Poppins')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _admins.removeAt(index);
-                _filtered = _admins;
-              });
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Admin dihapus'), backgroundColor: Colors.orange),
+            onPressed: () async {
+              Navigator.pop(context); // Close dialog
+              
+              if (_currentSuperAdmin == null) return;
+              
+              setState(() => _isFetching = true);
+              final result = await AdminService.deleteAdmin(
+                superAdminEmail: _currentSuperAdmin!.email,
+                adminUid: admin.uid,
               );
+              
+              if (!mounted) return;
+              
+              if (result['success']) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(result['message']), backgroundColor: Colors.orange),
+                );
+                _loadData();
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(result['message']), backgroundColor: Colors.red),
+                );
+                setState(() => _isFetching = false);
+              }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red[400], shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
             child: const Text('Hapus', style: TextStyle(color: Colors.white)),
@@ -98,13 +154,15 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
           _buildToolbar(),
           if (_showForm) _buildForm(),
           Expanded(
-            child: _filtered.isEmpty
-                ? _buildEmpty('Belum ada admin')
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
-                    itemCount: _filtered.length,
-                    itemBuilder: (_, i) => _buildAdminCard(i),
-                  ),
+            child: _isFetching 
+                ? const Center(child: CircularProgressIndicator())
+                : _filtered.isEmpty
+                  ? _buildEmpty('Belum ada admin')
+                  : ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                      itemCount: _filtered.length,
+                      itemBuilder: (_, i) => _buildAdminCard(i),
+                    ),
           ),
         ],
       ),
@@ -216,7 +274,6 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
 
   Widget _buildAdminCard(int index) {
     final admin = _filtered[index];
-    final realIndex = _admins.indexOf(admin);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -236,7 +293,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
             ),
             child: Center(
               child: Text(
-                admin['name']![0].toUpperCase(),
+                admin.name.isNotEmpty ? admin.name[0].toUpperCase() : '?',
                 style: const TextStyle(color: AppColors.superAdminPrimary, fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
               ),
             ),
@@ -246,8 +303,8 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(admin['name']!, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 14)),
-                Text(admin['email']!, style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'Poppins')),
+                Text(admin.name, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 14)),
+                Text(admin.email, style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'Poppins')),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -255,14 +312,14 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
                     color: Colors.green[50],
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text('● Aktif', style: TextStyle(fontSize: 10, color: Colors.green[700], fontFamily: 'Poppins')),
+                  child: Text('● Aktif (Cloud)', style: TextStyle(fontSize: 10, color: Colors.green[700], fontFamily: 'Poppins')),
                 ),
               ],
             ),
           ),
           IconButton(
             icon: Icon(Icons.delete_outline, color: Colors.red[400], size: 22),
-            onPressed: () => _deleteAdmin(realIndex),
+            onPressed: () => _deleteAdmin(index),
           ),
         ],
       ),

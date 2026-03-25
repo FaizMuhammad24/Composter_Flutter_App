@@ -1,5 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../constants/app_colors.dart';
+import '../../services/compost/compost_service.dart';
+import '../../services/database/storage_service.dart';
 
 class UserDepositScreen extends StatefulWidget {
   final String userEmail;
@@ -11,64 +15,114 @@ class UserDepositScreen extends StatefulWidget {
 
 class _UserDepositScreenState extends State<UserDepositScreen> {
   final _formKey = GlobalKey<FormState>();
-  
-  // Controllers
-  final _basahController = TextEditingController();
-  final _keringController = TextEditingController();
-  final _campuranController = TextEditingController();
-  
+  final _weightController = TextEditingController();
+  final ImagePicker _picker = ImagePicker();
+  final StorageService _storageService = StorageService();
+
+  File? _selectedImage;
   int _poinDidapat = 0;
   bool _isSubmitting = false;
-  bool _isImageUploaded = false; // Simulasi upload foto
 
   @override
   void dispose() {
-    _basahController.dispose();
-    _keringController.dispose();
-    _campuranController.dispose();
+    _weightController.dispose();
     super.dispose();
   }
 
-  void _calculatePoints() {
-    final basah = double.tryParse(_basahController.text) ?? 0;
-    final kering = double.tryParse(_keringController.text) ?? 0;
-    final campuran = double.tryParse(_campuranController.text) ?? 0;
-
+  void _calculatePoints(String value) {
+    final weight = double.tryParse(value) ?? 0;
     setState(() {
-      _poinDidapat = ((basah * 10) + (kering * 8) + (campuran * 6)).toInt();
+      _poinDidapat = (weight * 10).toInt();
     });
   }
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        imageQuality: 70, // Kompresi agar hemat storage
+        maxWidth: 1080,
+      );
+
+      if (image != null) {
+        setState(() {
+          _selectedImage = File(image.path);
+        });
+      }
+    } catch (e) {
+      _showErrorSnackBar('Gagal mengambil gambar: $e');
+    }
+  }
+
+  void _showPickerOptions() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Kamera', style: TextStyle(fontFamily: 'Poppins')),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Galeri', style: TextStyle(fontFamily: 'Poppins')),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _submitDeposit() async {
-    // Validasi Foto
-    if (!_isImageUploaded) {
-      _showErrorSnackBar('Mohon unggah foto bukti setor sampah terlebih dahulu.');
+    if (_weightController.text.isEmpty || (double.tryParse(_weightController.text) ?? 0) <= 0) {
+      _showErrorSnackBar('Masukkan berat sampah yang valid.');
       return;
     }
 
-    final basah = double.tryParse(_basahController.text) ?? 0;
-    final kering = double.tryParse(_keringController.text) ?? 0;
-    final campuran = double.tryParse(_campuranController.text) ?? 0;
-
-    if (basah == 0 && kering == 0 && campuran == 0) {
-      _showErrorSnackBar('Masukkan setidaknya satu jenis sampah yang disetor.');
+    if (_selectedImage == null) {
+      _showErrorSnackBar('Mohon ambil foto bukti setor sampah.');
       return;
     }
 
     setState(() => _isSubmitting = true);
 
-    // Simulasi Network Request
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      // 1. Upload ke Firebase Storage
+      final imageUrl = await _storageService.uploadCompostPhoto(
+        userEmail: widget.userEmail,
+        imageFile: _selectedImage!,
+      );
 
-    if (!mounted) return;
-    setState(() => _isSubmitting = false);
+      if (imageUrl == null) {
+        throw Exception('Gagal mengunggah foto ke storage.');
+      }
 
-    // Simulasi: Jika total berat lebih dari 50kg, kita anggap gagal (contoh gagal)
-    final totalBerat = basah + kering + campuran;
-    if (totalBerat > 50) {
-      _showFailureDialog('Gagal Setor Sampah', 'Kapasitas Drop Point penuh atau melebihi batas harian. (Simulasi Gagal)');
-    } else {
-      _showSuccessDialog();
+      // 2. Simpan ke Firestore
+      final result = await CompostService.addCompost(
+        userEmail: widget.userEmail,
+        weight: double.parse(_weightController.text),
+        imageUrl: imageUrl,
+      );
+
+      if (result['success']) {
+        _showSuccessDialog();
+      } else {
+        _showFailureDialog('Gagal', result['message'] ?? 'Terjadi kesalahan sistem.');
+      }
+    } catch (e) {
+      _showFailureDialog('Kesalahan', e.toString());
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
@@ -84,39 +138,23 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
               child: const Icon(Icons.check_circle, color: Colors.green, size: 64),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'Berhasil!',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-            ),
+            const Text('Berhasil!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
             const SizedBox(height: 8),
-            const Text(
-              'Sampah berhasil disetorkan. Poin Anda telah ditambahkan.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
-            ),
+            const Text('Sampah berhasil disetorkan. Poin Anda telah ditambahkan.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
             const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
+              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(16)),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.star, color: Colors.orange, size: 28),
                   const SizedBox(width: 8),
-                  Text(
-                    '+$_poinDidapat Pts',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange, fontFamily: 'Poppins'),
-                  ),
+                  Text('+$_poinDidapat Pts', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.orange, fontFamily: 'Poppins')),
                 ],
               ),
             ),
@@ -127,20 +165,13 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
                 onPressed: () {
                   Navigator.pop(context); // Tutup dialog
                   Navigator.pop(context); // Kembali ke Dashboard
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Notifikasi & Riwayat Transaksi diperbarui (Simulasi)'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
                 ),
-                child: const Text('Kembali ke Beranda', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
+                child: const Text('Tutup', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
           ],
@@ -154,43 +185,16 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        contentPadding: const EdgeInsets.all(32),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.cancel, color: Colors.red, size: 64),
-            ),
+            const Icon(Icons.error_outline, color: Colors.red, size: 64),
+            const SizedBox(height: 16),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, fontFamily: 'Poppins')),
+            const SizedBox(height: 12),
+            Text(message, textAlign: TextAlign.center, style: const TextStyle(fontFamily: 'Poppins')),
             const SizedBox(height: 24),
-            Text(
-              title,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.grey, fontFamily: 'Poppins'),
-            ),
-            const SizedBox(height: 32),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
-                ),
-                child: const Text('Tutup', style: TextStyle(fontFamily: 'Poppins', color: Colors.white, fontWeight: FontWeight.bold)),
-              ),
-            ),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold))),
           ],
         ),
       ),
@@ -199,12 +203,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message, style: const TextStyle(fontFamily: 'Poppins')),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
+      SnackBar(content: Text(message, style: const TextStyle(fontFamily: 'Poppins')), backgroundColor: Colors.red, behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -213,210 +212,142 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text(
-          'Setor Sampah',
-          style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.white),
-        ),
+        title: const Text('Setor Sampah', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.white)),
         backgroundColor: AppColors.primary,
         elevation: 0,
         centerTitle: true,
         leading: const BackButton(color: Colors.white),
       ),
-      body: Container(
-        color: AppColors.primary, // Latar atas agar header menyatu
+      body: SingleChildScrollView(
         child: Column(
           children: [
-            // INFO CARD ATAS
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-              child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-                      child: const Icon(Icons.info_outline, color: Colors.white, size: 24),
-                    ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Text(
-                        'Isi berat (kg) pada jenis sampah yang Anda bawa. Kosongkan jika tidak ada.',
-                        style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: 13, height: 1.5),
-                      ),
-                    ),
-                  ],
-                ),
+            // Header Section
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+              color: AppColors.primary,
+              child: const Column(
+                children: [
+                  Icon(Icons.recycling, color: Colors.white, size: 48),
+                  SizedBox(height: 12),
+                  Text(
+                    'Ubah Sampah Jadi Berkah!',
+                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                  ),
+                ],
               ),
             ),
-            
-            // BODY KONTEN FORM
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(32), topRight: Radius.circular(32)),
-                ),
-                child: Form(
-                  key: _formKey,
-                  child: ListView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.only(top: 32, bottom: 40),
-                    children: [
-                      // TEXT FIELDS INPUT SAMPAH
-                      _buildWasteInput(
-                        title: 'Organik Basah',
-                        subtitle: 'Sisa makanan, sayur, buah',
-                        pointsPerKg: 10,
-                        controller: _basahController,
-                        icon: Icons.eco,
-                        iconColor: Colors.green,
+
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // SOP SECTION
+                    const Text('SOP Setor Sampah', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                    const SizedBox(height: 12),
+                    _buildSopStep(1, 'Pilah: Pastikan hanya sampah organik.', Icons.check_circle_outline),
+                    _buildSopStep(2, 'Timbang: Masukkan berat sampah (kg).', Icons.scale_outlined),
+                    _buildSopStep(3, 'Masukkan: Masukkan sampah ke corong.', Icons.input_rounded),
+                    _buildSopStep(4, 'Foto: Ambil foto sebagai bukti menggunakan timestamp.', Icons.camera_alt_outlined),
+                    
+                    const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider()),
+
+                    // INPUT SECTON
+                    const Text('Input Berat Sampah', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _weightController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                      decoration: InputDecoration(
+                        hintText: '0.0',
+                        suffixText: 'kg',
+                        prefixIcon: const Icon(Icons.monitor_weight_outlined),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(16)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
                       ),
-                      const SizedBox(height: 16),
-                      _buildWasteInput(
-                        title: 'Organik Kering',
-                        subtitle: 'Daun kering, ranting kecil',
-                        pointsPerKg: 8,
-                        controller: _keringController,
-                        icon: Icons.energy_savings_leaf,
-                        iconColor: Colors.orange,
-                      ),
-                      const SizedBox(height: 16),
-                      _buildWasteInput(
-                        title: 'Campuran',
-                        subtitle: 'Sampah kebun bercampur',
-                        pointsPerKg: 6,
-                        controller: _campuranController,
-                        icon: Icons.recycling,
-                        iconColor: Colors.blue,
-                      ),
-                      
-                      const SizedBox(height: 32),
-                      
-                      // BAGIAN UNGGAH FOTO
-                      const Text(
-                        'Bukti Foto Penyetoran',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.black87),
-                      ),
-                      const SizedBox(height: 12),
-                      GestureDetector(
-                        onTap: () {
-                          // Simulasi pilih foto
-                          setState(() => _isImageUploaded = !_isImageUploaded);
-                        },
-                        child: Container(
-                          height: 140,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            color: Colors.grey[50],
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: _isImageUploaded ? Colors.green : Colors.grey[300]!,
-                              width: 2,
-                              style: BorderStyle.solid,
-                            ),
-                          ),
-                          child: _isImageUploaded
-                              ? Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(Icons.check_circle, color: Colors.green, size: 40),
-                                    const SizedBox(height: 8),
-                                    const Text('Foto Berhasil Diunggah', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                                    const SizedBox(height: 4),
-                                    Text('Tap untuk mengubah foto', style: TextStyle(color: Colors.grey[500], fontSize: 12, fontFamily: 'Poppins')),
-                                  ],
-                                )
-                              : Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(color: Colors.blue.withValues(alpha: 0.1), shape: BoxShape.circle),
-                                      child: const Icon(Icons.camera_alt, color: Colors.blue, size: 28),
-                                    ),
-                                    const SizedBox(height: 12),
-                                    const Text('Tap untuk ambil foto sampah', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w500, fontFamily: 'Poppins')),
-                                    const SizedBox(height: 4),
-                                    Text('Pastikan foto jelas & terang', style: TextStyle(color: Colors.grey[500], fontSize: 12, fontFamily: 'Poppins')),
-                                  ],
-                                ),
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 40),
-                      
-                      // PREVIEW TOTAL POIN
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Estimasi Poin Didapat', style: TextStyle(color: Colors.black54, fontSize: 13, fontFamily: 'Poppins')),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.star, color: Colors.orange, size: 24),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      '$_poinDidapat Pts',
-                                      style: const TextStyle(color: Colors.black87, fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.1), shape: BoxShape.circle),
-                              child: const Icon(Icons.calculate, color: AppColors.primary, size: 28),
-                            )
-                          ],
-                        ),
-                      ),
-                      
-                      const SizedBox(height: 32),
-                      
-                      // TOMBOL SUBMIT
-                      SizedBox(
+                      onChanged: _calculatePoints,
+                    ),
+                    const SizedBox(height: 8),
+                    Text('1 kg = 10 Pts', style: TextStyle(color: Colors.grey[600], fontSize: 12, fontFamily: 'Poppins')),
+
+                    const SizedBox(height: 32),
+
+                    // PHOTO SECTION
+                    const Text('Foto Bukti', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: _isSubmitting ? null : _showPickerOptions,
+                      child: Container(
+                        height: 200,
                         width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: _isSubmitting ? null : _submitDeposit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                            elevation: 0,
-                          ),
-                          child: _isSubmitting
-                              ? const SizedBox(
-                                  height: 24,
-                                  width: 24,
-                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 3),
-                                )
-                              : const Text(
-                                  'Proses Setor Sampah',
-                                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.white),
-                                ),
+                        decoration: BoxDecoration(
+                          color: Colors.grey[100],
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: _selectedImage != null ? Colors.green : Colors.grey[300]!, width: 2),
                         ),
+                        child: _selectedImage != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(18),
+                                child: Image.file(_selectedImage!, fit: BoxFit.cover),
+                              )
+                            : const Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
+                                  SizedBox(height: 12),
+                                  Text('Ambil Foto / Pilih Galeri', style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
+                                ],
+                              ),
                       ),
-                    ],
-                  ),
+                    ),
+
+                    const SizedBox(height: 40),
+
+                    // SUMMARY & SUBMIT
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: AppColors.primary.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Estimasi Poin', style: TextStyle(color: Colors.black54, fontSize: 13, fontFamily: 'Poppins')),
+                              Text('$_poinDidapat Pts', style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.orange, fontFamily: 'Poppins')),
+                            ],
+                          ),
+                          const Icon(Icons.stars, color: Colors.orange, size: 40),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 32),
+                    
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _submitDeposit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 18),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        ),
+                        child: _isSubmitting
+                            ? const CircularProgressIndicator(color: Colors.white)
+                            : const Text('SETOR SEKARANG', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, fontFamily: 'Poppins')),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                 ),
               ),
             ),
@@ -426,79 +357,16 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
     );
   }
 
-  Widget _buildWasteInput({
-    required String title,
-    required String subtitle,
-    required int pointsPerKg,
-    required TextEditingController controller,
-    required IconData icon,
-    required Color iconColor,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[200]!),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+  Widget _buildSopStep(int number, String text, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          // Icon Box
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          const SizedBox(width: 16),
-          // Info Texts
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, fontFamily: 'Poppins', color: Colors.black87)),
-                const SizedBox(height: 2),
-                Text('$pointsPerKg Pts / kg • $subtitle', style: const TextStyle(color: Colors.grey, fontSize: 11, fontFamily: 'Poppins')),
-              ],
-            ),
-          ),
+          CircleAvatar(radius: 12, backgroundColor: AppColors.primary, child: Text(number.toString(), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))),
           const SizedBox(width: 12),
-          // Input Field
-          SizedBox(
-            width: 80,
-            child: TextFormField(
-              controller: controller,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 16),
-              decoration: InputDecoration(
-                hintText: '0',
-                suffixText: 'kg',
-                suffixStyle: const TextStyle(color: Colors.grey, fontSize: 12),
-                contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-                filled: true,
-                fillColor: Colors.grey[50],
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: Colors.grey[300]!),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                ),
-              ),
-              onChanged: (_) => _calculatePoints(),
-            ),
-          ),
+          Icon(icon, size: 20, color: Colors.grey[600]),
+          const SizedBox(width: 8),
+          Expanded(child: Text(text, style: const TextStyle(fontFamily: 'Poppins', fontSize: 13))),
         ],
       ),
     );

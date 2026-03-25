@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
+import '../../services/history/history_service.dart';
 import 'user_deposit_screen.dart';
 import 'user_deposit_history_screen.dart';
 import 'user_rewards_screen.dart';
 import 'widgets/user_header.dart';
+import '../../services/user/user_service.dart';
 import '../../widgets/common/loading_shimmer.dart';
+import '../../services/rewards/reward_service.dart';
+import '../../models/reward_model.dart';
 
 class UserDashboard extends StatefulWidget {
   final UserModel user;
@@ -17,6 +21,11 @@ class UserDashboard extends StatefulWidget {
 
 class _UserDashboardState extends State<UserDashboard> with SingleTickerProviderStateMixin {
   bool _isLoading = true;
+  double _totalWeight = 0.0;
+  int _totalExchanged = 0;
+  late UserModel _currentUser;
+  List<RewardModel> _popularRewards = [];
+
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
@@ -24,6 +33,7 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
+    _currentUser = widget.user;
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 800),
@@ -41,8 +51,36 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
     setState(() => _isLoading = true);
     _animationController.reset();
     
-    // Simulate API fetch delay
-    await Future.delayed(const Duration(milliseconds: 1000));
+    try {
+      // 0. Seed data if needed
+      await RewardService.seedInitialData();
+
+      // 1. Reload user data for points
+      final freshUser = await UserService.getUserByEmail(_currentUser.email);
+      if (freshUser != null && mounted) {
+        setState(() => _currentUser = freshUser);
+      }
+
+      // 2. Reload history for total weight
+      final history = await HistoryService.getUserHistory(_currentUser.email);
+      double weightSum = 0;
+      for (var item in history) {
+        weightSum += item.weight;
+      }
+
+      // 3. Load Popular Rewards
+      final rewards = await RewardService.getPopularRewards();
+
+      if (mounted) {
+        setState(() {
+          _totalWeight = weightSum;
+          _popularRewards = rewards;
+        });
+      }
+    } catch(e) {
+      // Ignore errors for now
+      print('Dashboard load error: $e');
+    }
     
     if (mounted) {
       setState(() => _isLoading = false);
@@ -59,18 +97,13 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // HEADER
-      appBar: const UserHeader(),
-
+      appBar: UserHeader(userEmail: _currentUser.email),
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFE8F5E9), // Light green top
-              Color(0xFFF5F5DC), // Beige bottom
-            ],
+            colors: [Color(0xFFE8F5E9), Color(0xFFF5F5DC)],
             stops: [0.0, 0.4],
           ),
         ),
@@ -124,22 +157,12 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
           child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. HERO CARD (dengan statistik di dalamnya)
                 _buildHeroCard(),
-
             const SizedBox(height: 24),
-
-            // 2. QUICK ACTION
             _buildQuickActions(),
-
             const SizedBox(height: 24),
-
-            // 3. REWARD TERPOPULER
             _buildPopularRewards(),
-
             const SizedBox(height: 24),
-
-            // 4. TIPS KOMPOS
             _buildKomposTips(),
             const SizedBox(height: 120),
               ],
@@ -149,7 +172,6 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
     );
   }
 
-  // ========== 1. HERO CARD ==========
   Widget _buildHeroCard() {
     final screenHeight = MediaQuery.of(context).size.height;
     final cardHeight = (screenHeight * 0.38).clamp(260.0, 310.0);
@@ -174,7 +196,6 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
       ),
       child: Stack(
         children: [
-          // Dekorasi background
           Positioned(
             top: 16,
             right: 16,
@@ -193,8 +214,6 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
               color: Colors.white.withValues(alpha: 0.1),
             ),
           ),
-
-          // Greeting
           Positioned(
             top: 24,
             left: 20,
@@ -211,7 +230,7 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
                   ),
                 ),
                 Text(
-                  widget.user.name,
+                  _currentUser.name,
                   style: const TextStyle(
                     fontSize: 30,
                     color: Colors.white,
@@ -222,8 +241,6 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
               ],
             ),
           ),
-
-          // Statistik Bulan Ini (di dalam hero)
           Positioned(
             bottom: 20,
             left: 16,
@@ -232,7 +249,7 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Statistik Bulan Ini',
+                  'Statistik Keseluruhan',
                   style: TextStyle(
                     fontSize: 12,
                     color: Colors.white70,
@@ -243,11 +260,11 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    _buildHeroStatCard('🗑️', '12 kg', 'Disetor'),
+                    _buildHeroStatCard(Icons.delete_outline, '${_totalWeight.toStringAsFixed(1).replaceAll('.0', '')} kg', 'Disetor'),
                     const SizedBox(width: 10),
-                    _buildHeroStatCard('⭐', '${widget.user.points ?? 0}', 'Poin'),
+                    _buildHeroStatCard(Icons.star_outline, '${_currentUser.points ?? 0}', 'Poin'),
                     const SizedBox(width: 10),
-                    _buildHeroStatCard('🎁', '2x', 'Ditukar'),
+                    _buildHeroStatCard(Icons.card_giftcard, '${_totalExchanged}x', 'Ditukar'),
                   ],
                 ),
               ],
@@ -258,7 +275,7 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
     );
   }
 
-  Widget _buildHeroStatCard(String icon, String value, String label) {
+  Widget _buildHeroStatCard(IconData icon, String value, String label) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -269,7 +286,7 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
         ),
         child: Column(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
+            Icon(icon, size: 22, color: Colors.white),
             const SizedBox(height: 4),
             Text(
               value,
@@ -314,32 +331,37 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
           Row(
             children: [
               _buildActionButton(
-                icon: '🗑️',
+                icon: Icons.delete_sweep,
                 label: 'Setor\nSampah',
                 color: const Color(0xFF4CAF50),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => UserDepositScreen(userEmail: widget.user.email),
-                  ),
-                ),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => UserDepositScreen(userEmail: _currentUser.email),
+                    ),
+                  );
+                  _loadData(); // REFRESH AFTER RETURN
+                },
               ),
               _buildActionButton(
-                icon: '📊',
+                icon: Icons.history,
                 label: 'Riwayat Setor Sampah',
                 color: const Color(0xFF2196F3),
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const UserDepositHistoryScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => UserDepositHistoryScreen(userEmail: _currentUser.email),
+                  ),
                 ),
               ),
               _buildActionButton(
-                icon: '🎁',
+                icon: Icons.redeem,
                 label: 'Tukar\nPoin',
                 color: const Color(0xFFFF9800),
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const UserRewardsScreen()),
+                  MaterialPageRoute(builder: (_) => UserRewardsScreen(user: _currentUser)),
                 ),
               ),
             ],
@@ -350,7 +372,7 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
   }
 
   Widget _buildActionButton({
-    required String icon,
+    required IconData icon,
     required String label,
     required Color color,
     required VoidCallback onTap,
@@ -369,7 +391,7 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(
                 children: [
-                  Text(icon, style: const TextStyle(fontSize: 30)),
+                  Icon(icon, size: 30, color: Colors.white),
                   const SizedBox(height: 8),
                   Text(
                     label,
@@ -393,12 +415,12 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
 
   // ========== 4. REWARD TERPOPULER ==========
   Widget _buildPopularRewards() {
-    final rewards = [
-      {'name': 'Voucher\nAlfamart', 'points': '500', 'stars': 5, 'image': '🎫'},
-      {'name': 'Pupuk\nOrganik', 'points': '300', 'stars': 4, 'image': '🌱'},
-      {'name': 'Bibit\nTanaman', 'points': '200', 'stars': 5, 'image': '🌿'},
-      {'name': 'Tas\nBelanja', 'points': '150', 'stars': 4, 'image': '👜'},
-    ];
+    if (_popularRewards.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Center(child: Text('Belum ada reward populer', style: TextStyle(fontFamily: 'Poppins'))),
+      );
+    }
 
     return Column(
       children: [
@@ -407,19 +429,25 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                '🎁 Reward Terpopuler',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2D5016),
-                  fontFamily: 'Poppins',
-                ),
+              const Row(
+                children: [
+                  Icon(Icons.redeem, color: Color(0xFF2D5016)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Reward Terpopuler',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2D5016),
+                      fontFamily: 'Poppins',
+                    ),
+                  ),
+                ],
               ),
               TextButton(
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const UserRewardsScreen()),
+                  MaterialPageRoute(builder: (_) => UserRewardsScreen(user: _currentUser)),
                 ),
                 child: const Text(
                   'Lihat Semua →',
@@ -435,14 +463,14 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: rewards.length,
+            itemCount: _popularRewards.length,
             itemBuilder: (context, index) {
-              final reward = rewards[index];
+              final reward = _popularRewards[index];
               return _buildRewardCard(
-                name: reward['name'] as String,
-                points: reward['points'] as String,
-                stars: reward['stars'] as int,
-                image: reward['image'] as String,
+                name: reward.name,
+                points: reward.points.toString(),
+                stars: 5,
+                imageUrl: reward.imageUrl,
               );
             },
           ),
@@ -455,8 +483,11 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
     required String name,
     required String points,
     required int stars,
-    required String image,
+    required String imageUrl,
   }) {
+    final colors = [Colors.orange, Colors.blue, Colors.green, Colors.purple];
+    final MaterialColor color = colors[name.length % colors.length];
+
     return Container(
       width: 150,
       margin: const EdgeInsets.only(right: 12),
@@ -477,13 +508,11 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
           Container(
             height: 110,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.orange[200]!, Colors.orange[100]!],
-              ),
+              color: color.withValues(alpha: 0.15),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Center(
-              child: Text(image, style: const TextStyle(fontSize: 50)),
+              child: Icon(Icons.card_giftcard, size: 50, color: color),
             ),
           ),
           Padding(
@@ -532,25 +561,25 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
   Widget _buildKomposTips() {
     final tips = [
       {
-        'icon': '🌿',
+        'icon': Icons.eco,
         'title': 'Campur Hijau & Coklat',
         'desc': 'Padukan sampah hijau (sisa makanan) dan coklat (daun kering).',
         'color': const Color(0xFF4CAF50),
       },
       {
-        'icon': '💧',
+        'icon': Icons.water_drop,
         'title': 'Jaga Kelembaban',
         'desc': 'Pastikan kompos lembab seperti spons basah, tidak terlalu kering atau becek.',
         'color': const Color(0xFF2196F3),
       },
       {
-        'icon': '🔄',
+        'icon': Icons.sync,
         'title': 'Aduk Rutin',
         'desc': 'Aduk tumpukan kompos setiap 2-3x/hari agar oksigen merata',
         'color': const Color(0xFFFF9800),
       },
       {
-        'icon': '🌡️',
+        'icon': Icons.thermostat,
         'title': 'Suhu Ideal',
         'desc': 'Kompos aktif bisa mencapai 55–65°C — itu tanda fermentasi berhasil!',
         'color': const Color(0xFFE91E63),
@@ -562,14 +591,20 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
       children: [
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            '💡 Tips Kompos Hari Ini',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2D5016),
-              fontFamily: 'Poppins',
-            ),
+          child: Row(
+            children: [
+               Icon(Icons.lightbulb_outline, color: Color(0xFF2D5016)),
+               SizedBox(width: 8),
+               Text(
+                'Tips Kompos Hari Ini',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D5016),
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
@@ -609,9 +644,10 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
                             color: color.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text(
-                            tip['icon'] as String,
-                            style: const TextStyle(fontSize: 18),
+                          child: Icon(
+                            tip['icon'] as IconData,
+                            size: 18,
+                            color: color,
                           ),
                         ),
                         const SizedBox(width: 8),

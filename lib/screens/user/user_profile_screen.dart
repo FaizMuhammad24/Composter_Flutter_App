@@ -1,20 +1,58 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
+import '../../models/user_model.dart';
 import '../authentication/login_screen.dart';
 import '../authentication/reset_password_screen.dart';
 import '../../services/auth/session_service.dart';
+import '../../services/history/history_service.dart';
+import '../../services/user/user_service.dart';
 
 class UserProfileScreen extends StatefulWidget {
-  const UserProfileScreen({Key? key}) : super(key: key);
+  final UserModel user;
+  const UserProfileScreen({Key? key, required this.user}) : super(key: key);
 
   @override
   State<UserProfileScreen> createState() => _UserProfileScreenState();
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
+  double _totalWeight = 0;
+  late UserModel _currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUser = widget.user;
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      // 1. Reload user data for points
+      final freshUser = await UserService.getUserByEmail(_currentUser.email);
+      if (freshUser != null && mounted) {
+        setState(() => _currentUser = freshUser);
+      }
+
+      // 2. Reload history for stats
+      final history = await HistoryService.getUserHistory(_currentUser.email);
+      double weightSum = 0;
+      for (var item in history) {
+        weightSum += item.weight;
+      }
+      if (mounted) {
+        setState(() {
+          _totalWeight = weightSum;
+        });
+      }
+    } catch (e) {
+      // Error loading stats
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final user = SessionService.getCurrentUser();
+    final user = widget.user;
     final screenHeight = MediaQuery.of(context).size.height;
     // Dynamic header height: 36% of screen, clamped between 230–300px
     final headerH = (screenHeight * 0.38).clamp(230.0, 300.0);
@@ -46,7 +84,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 child: Column(
                   children: [
                     // Stats card
-                    _buildStatsCard(),
+                    _buildStatsCard(user),
                     const SizedBox(height: 28),
 
                     // Menu: Ubah Password
@@ -58,7 +96,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ResetPasswordScreen(email: user?.email),
+                          builder: (_) => ResetPasswordScreen(email: user.email),
                         ),
                       ),
                     ),
@@ -84,7 +122,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   // ─────────────────────────── Header ────────────────────────────────
-  Widget _buildHeader(dynamic user) {
+  Widget _buildHeader(UserModel user) {
     return SafeArea(
       bottom: false,
       child: Padding(
@@ -114,9 +152,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
             const SizedBox(height: 14),
 
-            // Name from session
+            // Name
             Text(
-              user?.name ?? 'Pengguna',
+              user.name,
               style: const TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -126,9 +164,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
             const SizedBox(height: 3),
 
-            // Email from session
+            // Email
             Text(
-              user?.email ?? 'user@kompos.com',
+              user.email,
               style: const TextStyle(
                 color: Colors.white70,
                 fontFamily: 'Poppins',
@@ -162,7 +200,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   // ─────────────────────────── Stats Card ─────────────────────────────
-  Widget _buildStatsCard() {
+  Widget _buildStatsCard(UserModel user) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
       decoration: BoxDecoration(
@@ -180,11 +218,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStat('Poin', '450', Colors.orange),
+          _buildStat('Poin', '${_currentUser.points ?? 0}', Colors.orange),
           _buildDivider(),
-          _buildStat('Disetor', '45 kg', Colors.green),
+          _buildStat('Disetor', '${_totalWeight.toStringAsFixed(1)} kg', Colors.green),
           _buildDivider(),
-          _buildStat('Reward', '3x', Colors.blue),
+          _buildStat('Reward', '0x', Colors.blue), // Hardcoded for now till RewardService
         ],
       ),
     );
