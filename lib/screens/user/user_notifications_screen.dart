@@ -1,8 +1,24 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
+import '../../models/app_notification_model.dart';
+import '../../services/notifications/app_notification_service.dart';
+import 'package:intl/intl.dart';
 
-class UserNotificationsScreen extends StatelessWidget {
-  const UserNotificationsScreen({Key? key}) : super(key: key);
+class UserNotificationsScreen extends StatefulWidget {
+  final String userEmail;
+  const UserNotificationsScreen({Key? key, required this.userEmail}) : super(key: key);
+
+  @override
+  State<UserNotificationsScreen> createState() => _UserNotificationsScreenState();
+}
+
+class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Mark all as read when opened
+    AppNotificationService.markAllAsRead(widget.userEmail);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,68 +38,44 @@ class UserNotificationsScreen extends StatelessWidget {
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white), // Tombol back warna putih
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const Text(
-            'Hari ini',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildNotificationCard(
-            title: 'Berhasil Setor Sampah 🎉',
-            description: 'Hebat! Sampah organik seberat 5kg telah berhasil divalidasi dan ditambahkan ke riwayatmu. Terus semangat ya!',
-            date: '18 Mar 2026 • 14:30',
-            icon: Icons.check_circle,
-            iconColor: Colors.green,
-            backgroundColor: Colors.green.withValues(alpha: 0.1),
-            isUnread: true,
-          ),
-          _buildNotificationCard(
-            title: 'Reward Berhasil Ditukar',
-            description: 'Kamu baru saja menukarkan 500 Pts dengan Voucher Alfamart Rp50.000. Cek detail tiketmu segera.',
-            date: '18 Mar 2026 • 09:15',
-            icon: Icons.card_giftcard,
-            iconColor: Colors.blue,
-            backgroundColor: Colors.blue.withValues(alpha: 0.1),
-            isUnread: false,
-          ),
+      body: StreamBuilder<List<AppNotificationModel>>(
+        stream: AppNotificationService.getUserNotificationsStream(widget.userEmail),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return const Center(
+              child: Text(
+                'Belum ada notifikasi.',
+                style: TextStyle(fontFamily: 'Poppins', color: Colors.grey),
+              ),
+            );
+          }
+
+          final notifications = snapshot.data!;
           
-          const SizedBox(height: 24),
-          const Text(
-            'Kemarin',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: 'Poppins',
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildNotificationCard(
-            title: 'Gagal Setor Sampah ⚠️',
-            description: 'Mohon maaf, setoran kamu dibatalkan karena terdeteksi banyak sampah plastik (anorganik) di dalam kresek hijau.',
-            date: '17 Mar 2026 • 16:45',
-            icon: Icons.cancel,
-            iconColor: Colors.red,
-            backgroundColor: Colors.red.withValues(alpha: 0.1),
-            isUnread: false,
-          ),
-          _buildNotificationCard(
-            title: 'Peringatan Sistem',
-            description: 'Ada jadwal perbaikan alat komposter area kecamatanmu besok pagi. Mesin mungkin tidak dapat digunakan dari jam 08:00 - 12:00.',
-            date: '17 Mar 2026 • 10:00',
-            icon: Icons.warning_rounded,
-            iconColor: Colors.orange,
-            backgroundColor: Colors.orange.withValues(alpha: 0.1),
-            isUnread: false,
-          ),
-        ],
+          return ListView.builder(
+            padding: const EdgeInsets.all(20),
+            itemCount: notifications.length,
+            itemBuilder: (context, index) {
+              final notif = notifications[index];
+              return _buildNotificationCard(
+                title: notif.title,
+                description: notif.message,
+                date: DateFormat('dd MMM yyyy • HH:mm').format(notif.createdAt),
+                type: notif.type,
+                isUnread: notif.isRead == false,
+                onTap: () {
+                  if (!notif.isRead) {
+                    AppNotificationService.markAsRead(notif.id);
+                  }
+                },
+              );
+            },
+          );
+        },
       ),
     );
   }
@@ -92,12 +84,41 @@ class UserNotificationsScreen extends StatelessWidget {
     required String title,
     required String description,
     required String date,
-    required IconData icon,
-    required Color iconColor,
-    required Color backgroundColor,
+    required String type,
     required bool isUnread,
+    required VoidCallback onTap,
   }) {
-    return Container(
+    IconData icon;
+    Color iconColor;
+    Color backgroundColor;
+
+    switch (type) {
+      case 'success':
+        icon = Icons.check_circle;
+        iconColor = Colors.green;
+        backgroundColor = Colors.green.withValues(alpha: 0.1);
+        break;
+      case 'error':
+        icon = Icons.cancel;
+        iconColor = Colors.red;
+        backgroundColor = Colors.red.withValues(alpha: 0.1);
+        break;
+      case 'reward':
+        icon = Icons.card_giftcard;
+        iconColor = Colors.blue;
+        backgroundColor = Colors.blue.withValues(alpha: 0.1);
+        break;
+      case 'system':
+      default:
+        icon = Icons.warning_rounded;
+        iconColor = Colors.orange;
+        backgroundColor = Colors.orange.withValues(alpha: 0.1);
+        break;
+    }
+
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -192,6 +213,7 @@ class UserNotificationsScreen extends StatelessWidget {
             ),
         ],
       ),
-    );
+    ));
   }
 }
+

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
+import '../../services/notifications/app_notification_service.dart';
 
 class UserRedeemScreen extends StatefulWidget {
+  final String userEmail;
   final String rewardName;
   final int pointsPerItem;
   final IconData icon;
@@ -9,6 +11,7 @@ class UserRedeemScreen extends StatefulWidget {
 
   const UserRedeemScreen({
     Key? key, 
+    required this.userEmail,
     required this.rewardName, 
     required this.pointsPerItem,
     required this.icon,
@@ -197,8 +200,17 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: remainingPoints >= 0 ? () {
+                  onPressed: remainingPoints >= 0 ? () async {
+                    // Memicu Notifikasi
+                    await AppNotificationService.createNotification(
+                      userEmail: widget.userEmail,
+                      title: 'Reward Berhasil Ditukar 🎉',
+                      message: 'Kamu berhasil menukarkan ${totalRequired} Pts dengan $_quantity ${widget.rewardName}. Harap tunjukkan bukti ke Loket / Drop Point.',
+                      type: 'reward',
+                    );
+
                     // Simulasi Berhasil
+                    if (!mounted) return;
                     showDialog(
                       context: context,
                       barrierDismissible: false,
