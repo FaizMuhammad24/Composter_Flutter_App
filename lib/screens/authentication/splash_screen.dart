@@ -5,6 +5,7 @@ import '../user/user_main_screen.dart';
 import '../admin/admin_main_screen.dart';
 import '../super_admin/super_admin_main_screen.dart';
 import '../../services/auth/session_service.dart';
+import '../../services/notifications/notification_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -31,6 +32,10 @@ class _SplashScreenState extends State<SplashScreen> {
     if (SessionService.isLoggedIn()) {
       final user = SessionService.getCurrentUser()!;
       Widget nextScreen;
+
+      if (user.role == 'super_admin' || user.role == 'admin') {
+        await NotificationService().init();
+      }
 
       if (user.role == 'super_admin') {
         nextScreen = const SuperAdminMainScreen();

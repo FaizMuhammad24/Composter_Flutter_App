@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart'; // File ini terbuat setelah run flutterfire configure
+import 'firebase_options.dart'; 
 import 'constants/app_colors.dart';
 import 'screens/authentication/splash_screen.dart';
-import 'services/notifications/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,9 +15,6 @@ void main() async {
   } catch (e) {
     debugPrint("Firebase Init Error: $e");
   }
-  
-  // Initialize Local Notifications
-  await NotificationService().init();
   
   runApp(const KomposApp());
 }
@@ -33,16 +29,13 @@ class KomposApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       
       theme: ThemeData(
-        // ✅ PRIMARY COLOR
         primaryColor: AppColors.primary,
         scaffoldBackgroundColor: AppColors.background,
         
-        // ✅ POPPINS FONT sebagai default
         textTheme: GoogleFonts.poppinsTextTheme(
           Theme.of(context).textTheme,
         ),
         
-        // ✅ COLOR SCHEME
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           primary: AppColors.primary,
@@ -52,7 +45,6 @@ class KomposApp extends StatelessWidget {
           background: AppColors.background,
         ),
         
-        // ✅ APP BAR THEME
         appBarTheme: AppBarTheme(
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
@@ -65,61 +57,43 @@ class KomposApp extends StatelessWidget {
           ),
         ),
         
-        // ✅ INPUT DECORATION THEME (untuk login & signup screens)
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.grey[50],
-          
-          // Border default
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
             borderSide: BorderSide(color: Colors.grey[300]!),
           ),
-          
-          // Border saat tidak focus
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
             borderSide: BorderSide(color: Colors.grey[300]!),
           ),
-          
-          // Border saat focus
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
             borderSide: const BorderSide(color: Color(0xFFFFA726), width: 2),
           ),
-          
-          // Border saat error
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
             borderSide: const BorderSide(color: Colors.red),
           ),
-          
-          // Border saat focus + error
           focusedErrorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
             borderSide: const BorderSide(color: Colors.red, width: 2),
           ),
-          
-          // Padding dalam input
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 24,
             vertical: 20,
           ),
-          
-          // Label style
           labelStyle: GoogleFonts.poppins(
             fontSize: 14,
             color: Colors.grey[600],
           ),
-          
-          // Hint style
           hintStyle: GoogleFonts.poppins(
             fontSize: 14,
             color: Colors.grey[400],
           ),
         ),
         
-        // ✅ ELEVATED BUTTON THEME
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
@@ -141,7 +115,6 @@ class KomposApp extends StatelessWidget {
           ),
         ),
         
-        // ✅ OUTLINED BUTTON THEME (untuk "Create an account")
         outlinedButtonTheme: OutlinedButtonThemeData(
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.primary,
@@ -161,7 +134,6 @@ class KomposApp extends StatelessWidget {
           ),
         ),
         
-        // ✅ TEXT BUTTON THEME
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: AppColors.primary,
@@ -172,7 +144,6 @@ class KomposApp extends StatelessWidget {
           ),
         ),
         
-        // ✅ CARD THEME
         cardTheme: CardThemeData(
           elevation: 2,
           shape: RoundedRectangleBorder(
@@ -184,14 +155,12 @@ class KomposApp extends StatelessWidget {
           ),
         ),
         
-        // ✅ DIVIDER THEME
         dividerTheme: DividerThemeData(
           color: Colors.grey[300],
           thickness: 1,
           space: 24,
         ),
         
-        // ✅ SNACKBAR THEME
         snackBarTheme: SnackBarThemeData(
           backgroundColor: AppColors.primary,
           contentTextStyle: GoogleFonts.poppins(
@@ -204,7 +173,6 @@ class KomposApp extends StatelessWidget {
           ),
         ),
         
-        // ✅ Material 3
         useMaterial3: true,
       ),
       

@@ -58,7 +58,7 @@ class DefaultFirebaseOptions {
     messagingSenderId: '949669109723',
     projectId: 'icompost-db',
     databaseURL: 'https://icompost-db-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'icompost-db.firebasestorage.app',
+    storageBucket: 'icompost-db.appspot.com',
   );
 
 }

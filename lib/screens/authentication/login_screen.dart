@@ -8,6 +8,7 @@ import 'reset_password_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/auth/login_service.dart';
+import '../../services/notifications/notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -84,12 +85,16 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         final user = result['user'] as UserModel;
         Widget nextScreen;
 
-        if (user.role == 'super_admin') {
+        if (user.isSuperAdmin) {
           nextScreen = const SuperAdminMainScreen();
-        } else if (user.role == 'admin') {
+        } else if (user.isAdmin) {
           nextScreen = const AdminMainScreen();
         } else {
           nextScreen = UserMainScreen(user: user);
+        }
+
+        if (user.isSuperAdmin || user.isAdmin) {
+          await NotificationService().init();
         }
 
         Navigator.pushReplacement(

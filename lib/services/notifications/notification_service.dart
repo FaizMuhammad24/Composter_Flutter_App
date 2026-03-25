@@ -43,8 +43,10 @@ class NotificationService {
   final Duration _cooldown = const Duration(minutes: 15);
 
   StreamSubscription? _rtdbSubscription;
+  bool _isInitialized = false;
 
   Future<void> init() async {
+    if (_isInitialized) return;
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -66,6 +68,7 @@ class NotificationService {
         ?.requestNotificationsPermission();
 
     _listenToFirebase();
+    _isInitialized = true;
   }
 
   void _listenToFirebase() {
@@ -204,5 +207,9 @@ class NotificationService {
     );
   }
 
-  void dispose() => _rtdbSubscription?.cancel();
+  void dispose() {
+    _rtdbSubscription?.cancel();
+    _rtdbSubscription = null;
+    _isInitialized = false;
+  }
 }

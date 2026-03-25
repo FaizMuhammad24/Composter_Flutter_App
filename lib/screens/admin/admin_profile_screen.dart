@@ -5,6 +5,7 @@ import '../../constants/app_colors.dart';
 import '../authentication/login_screen.dart';
 import '../authentication/reset_password_screen.dart';
 import '../../services/auth/session_service.dart';
+import '../../services/notifications/notification_service.dart';
 
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({Key? key}) : super(key: key);
@@ -394,6 +395,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     Navigator.pop(context);
+                    NotificationService().dispose();
                     await SessionService.logout();
                     if (!mounted) return;
                     // ignore: use_build_context_synchronously
