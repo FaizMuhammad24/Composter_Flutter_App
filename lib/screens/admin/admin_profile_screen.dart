@@ -214,11 +214,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           ),
           const SizedBox(height: 2),
           Text(
-            user?.email ?? 'admin@kompos.com',
+            'ID: ${user?.uid != null ? user!.uid.substring(0, 8).toUpperCase() : 'ID-ADMIN'}',
             style: const TextStyle(
               color: Colors.white70,
               fontFamily: 'Poppins',
-              fontSize: 13,
+              fontSize: 11,
             ),
           ),
           const SizedBox(height: 8),

@@ -429,11 +429,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.eco, size: compact ? 30 : 52, color: Colors.white),
-                  if (!compact) ...[
-                    const SizedBox(height: 4),
-                    const Icon(Icons.recycling, size: 24, color: Colors.white70),
-                  ]
+                  Icon(Icons.eco, size: compact ? 30 : 64, color: AppColors.primary),
                 ],
               ),
             ],

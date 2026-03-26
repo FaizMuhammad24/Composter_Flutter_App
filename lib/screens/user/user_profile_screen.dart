@@ -164,13 +164,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
             const SizedBox(height: 3),
 
-            // Email
+            // UID (Ganti Email - Dipersingkat)
             Text(
-              user.email,
+              'ID: ${user.uid.substring(0, 8).toUpperCase()}',
               style: const TextStyle(
                 color: Colors.white70,
                 fontFamily: 'Poppins',
-                fontSize: 13,
+                fontSize: 11,
               ),
             ),
             const SizedBox(height: 8),

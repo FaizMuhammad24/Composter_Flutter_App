@@ -20,14 +20,14 @@ class AppColors {
   static const Color error = Color(0xFFF44336);
   static const Color info = Color(0xFF2196F3); // Blue for info
   
-  // Role
-  static const Color superAdmin = Color(0xFFC62828);
-  static const Color superAdminPrimary = Color(0xFFC62828); // Deep crimson - soft not harsh
-  static const Color superAdminBg = Color(0xFFFFF8F8);      // Light rose background
-  static const Color admin = Color(0xFF388E3C);
-  static const Color adminPrimary = Color(0xFFFFA726); // Soft orange/yellow
-  static const Color adminBg = Color(0xFFFFFDE7);      // Cream/soft yellow
-  static const Color user = Color(0xFF1976D2);
+  // Role Colors (Unified to Green & White Theme)
+  static const Color superAdminPrimary = Color(0xFF2D5016); // Same as primary
+  static const Color superAdminBg = Color(0xFFF1F8E9);      // Lightest green/white
+  static const Color adminPrimary = Color(0xFF2D5016);      // Same as primary
+  static const Color adminBg = Color(0xFFF9FBF7);           // Very light green/white
+  static const Color admin = Color(0xFF2D5016);
+  static const Color superAdmin = Color(0xFF2D5016);
+  static const Color user = Color(0xFF2D5016);
 
   // Neutral
   static const Color background = Color(0xFFF5F5DC);
