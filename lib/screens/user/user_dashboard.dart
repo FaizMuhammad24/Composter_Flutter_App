@@ -318,14 +318,20 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '⚡ Quick Action',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2D5016),
-              fontFamily: 'Poppins',
-            ),
+          Row(
+            children: [
+              Icon(Icons.flash_on, color: Color(0xFF2D5016), size: 22),
+              const SizedBox(width: 6),
+              const Text(
+                'Quick Action',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2D5016),
+                  fontFamily: 'Poppins',
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(

@@ -8,7 +8,7 @@ import 'reset_password_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/auth/login_service.dart';
-import '../../services/notifications/notification_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -94,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         }
 
         if (user.isSuperAdmin || user.isAdmin) {
-          await NotificationService().init();
+          await AdminNotificationService().init();
         }
 
         Navigator.pushReplacement(
@@ -366,7 +366,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(
                                     color: AppColors.primary
-                                        .withValues(alpha: 0.35),
+                                        .withOpacity(0.35),
                                     width: 1.5),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(28),
@@ -377,7 +377,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.primary.withValues(alpha: 0.85),
+                                  color: AppColors.primary.withOpacity(0.85),
                                   letterSpacing: 0.5,
                                   fontFamily: 'Poppins',
                                 ),
@@ -426,12 +426,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                   shape: BoxShape.circle,
                 ),
               ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.eco, size: compact ? 30 : 64, color: AppColors.primary),
-                ],
-              ),
+              Icon(Icons.eco, size: compact ? 36 : 64, color: Colors.white),
             ],
           ),
         ),

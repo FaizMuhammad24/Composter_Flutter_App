@@ -5,7 +5,7 @@ import '../user/user_main_screen.dart';
 import '../admin/admin_main_screen.dart';
 import '../super_admin/super_admin_main_screen.dart';
 import '../../services/auth/session_service.dart';
-import '../../services/notifications/notification_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 import '../../constants/app_colors.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -35,7 +35,7 @@ class _SplashScreenState extends State<SplashScreen> {
       Widget nextScreen;
 
       if (user.role == 'super_admin' || user.role == 'admin') {
-        await NotificationService().init();
+        await AdminNotificationService().init();
       }
 
       if (user.role == 'super_admin') {
@@ -66,22 +66,27 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo: White circle + Green Eco icon (Official Brand)
+            // Logo: White leaf icon in translucent circle
             Container(
-              width: 140, 
+              width: 140,
               height: 140,
-              decoration: const BoxDecoration(
-                color: Colors.white, 
+              decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12,
-                    blurRadius: 20,
-                    offset: Offset(0, 10),
-                  ),
-                ],
+                color: Colors.white.withOpacity(0.15),
               ),
-              child: const Icon(Icons.eco, size: 80, color: AppColors.primary),
+              child: Center(
+                child: Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withOpacity(0.2),
+                  ),
+                  child: const Center(
+                    child: Icon(Icons.eco, size: 60, color: Colors.white),
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 28),
             const Text(
@@ -98,8 +103,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Text(
               'by Politeknik Negeri Jakarta',
               style: TextStyle(
-                fontSize: 12,
-                color: Colors.white.withValues(alpha: 0.8),
+                color: Colors.white.withOpacity(0.8),
                 fontFamily: 'Poppins',
                 letterSpacing: 1.5,
               ),

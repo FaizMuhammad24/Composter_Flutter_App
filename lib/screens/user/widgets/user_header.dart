@@ -14,13 +14,7 @@ class UserHeader extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       leading: Padding(
         padding: const EdgeInsets.all(12),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.eco, color: AppColors.primary, size: 20),
-        ),
+        child: Icon(Icons.eco, color: Colors.white, size: 28),
       ),
       title: const Text(
         'I-Compost',

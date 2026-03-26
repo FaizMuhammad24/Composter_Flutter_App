@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/history/history_service.dart';
+import '../../services/user/user_service.dart';
 import '../../models/compost_model.dart';
 import 'package:intl/intl.dart';
 
@@ -17,6 +18,8 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
   bool _isLoading = true;
   List<CompostModel> _recentTransactions = [];
   double _totalWeight = 0;
+  int _rewardExchangeCount = 0;
+  int _currentPoints = 0;
 
   @override
   void initState() {
@@ -27,16 +30,27 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
+      // 1. Fetch fresh user data from Firestore (same as dashboard)
+      final freshUser = await UserService.getUserByEmail(widget.user.email);
+      
+      // 2. Fetch transaction history
       final history = await HistoryService.getUserHistory(widget.user.email);
       double weightSum = 0;
+      int approvedCount = 0;
       for (var item in history) {
         weightSum += item.weight;
+        if (item.status == 'approved') approvedCount++;
       }
-      setState(() {
-        _recentTransactions = history.take(10).toList();
-        _totalWeight = weightSum;
-        _isLoading = false;
-      });
+      
+      if (mounted) {
+        setState(() {
+          _currentPoints = freshUser?.points ?? widget.user.points ?? 0;
+          _recentTransactions = history.take(20).toList();
+          _totalWeight = weightSum;
+          _rewardExchangeCount = approvedCount;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -47,89 +61,88 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Profil & Riwayat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+        title: const Text('Riwayat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
         backgroundColor: AppColors.primary,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
+        automaticallyImplyLeading: false,
       ),
       body: Container(
         color: AppColors.primary,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Total Poin Anda',
-                    style: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Poppins'),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '${widget.user.points ?? 0} Pts',
-                    style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
+        child: RefreshIndicator(
+          onRefresh: _loadData,
+          color: Colors.white,
+          backgroundColor: AppColors.primary,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildStatCard(
-                        value: '${_totalWeight.toStringAsFixed(1)} kg',
-                        label: 'Total Setor',
-                        color: const Color(0xFF81D4FA),
+                      const Text('Total Poin Anda', style: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Poppins')),
+                      const SizedBox(height: 8),
+                      Text(
+                        '$_currentPoints Pts',
+                        style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                       ),
-                      const SizedBox(width: 16),
-                      _buildStatCard(
-                        value: '0x', // Placeholder for now
-                        label: 'Reward Ditukar',
-                        color: const Color(0xFFFFB74D),
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          _buildStatCard(value: '${_totalWeight.toStringAsFixed(1)} kg', label: 'Total Setor', color: const Color(0xFF81D4FA)),
+                          const SizedBox(width: 16),
+                          _buildStatCard(value: '${_rewardExchangeCount}x', label: 'Reward Ditukar', color: const Color(0xFFFFB74D)),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
-                      child: Text('Riwayat Transaksi Terakhir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                    ),
-                    Expanded(
-                      child: _isLoading 
-                        ? const Center(child: CircularProgressIndicator())
-                        : _recentTransactions.isEmpty
-                          ? const Center(child: Text('Belum ada transaksi.', style: TextStyle(fontFamily: 'Poppins')))
-                          : ListView.builder(
-                              padding: const EdgeInsets.symmetric(horizontal: 24),
-                              itemCount: _recentTransactions.length,
-                              itemBuilder: (context, index) {
-                                final tx = _recentTransactions[index];
-                                return _buildTransactionItem(
-                                  icon: Icons.recycling,
-                                  iconColor: AppColors.primary,
-                                  title: 'Setor Sampah',
-                                  subtitle: DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(tx.createdAt)),
-                                  amount: '+${tx.points} Pts',
-                                  amountColor: Colors.orange,
-                                );
-                              },
-                            ),
-                    ),
-                  ],
                 ),
               ),
-            ),
-          ],
+              SliverFillRemaining(
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
+                        child: Text('Riwayat Transaksi Terakhir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                      ),
+                      Expanded(
+                        child: _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : _recentTransactions.isEmpty
+                            ? const Center(child: Text('Belum ada transaksi.', style: TextStyle(fontFamily: 'Poppins')))
+                            : ListView.builder(
+                                padding: const EdgeInsets.symmetric(horizontal: 24),
+                                itemCount: _recentTransactions.length,
+                                itemBuilder: (context, index) {
+                                  final tx = _recentTransactions[index];
+                                  final isApproved = tx.status == 'approved';
+                                  return _buildTransactionItem(
+                                    icon: Icons.recycling,
+                                    iconColor: AppColors.primary,
+                                    title: 'Setor Sampah',
+                                    subtitle: DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(tx.createdAt)),
+                                    weightText: '${tx.weight.toStringAsFixed(1)} Kg',
+                                    pointsText: isApproved ? '+${tx.points} Pts' : null,
+                                    status: tx.status,
+                                  );
+                                },
+                              ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -157,31 +170,63 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
     required Color iconColor,
     required String title,
     required String subtitle,
-    required String amount,
-    required Color amountColor,
+    required String weightText,
+    String? pointsText,
+    required String status,
   }) {
+    Color statusColor;
+    String statusLabel;
+    switch (status) {
+      case 'approved':
+        statusColor = Colors.green;
+        statusLabel = 'Disetujui';
+        break;
+      case 'rejected':
+        statusColor = Colors.red;
+        statusLabel = 'Ditolak';
+        break;
+      default:
+        statusColor = Colors.orange;
+        statusLabel = 'Menunggu';
+    }
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
           Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-            child: Icon(icon, color: iconColor, size: 26),
+            width: 48, height: 48,
+            decoration: BoxDecoration(color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
+            child: Icon(icon, color: iconColor, size: 24),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins')),
+                Row(children: [
+                  Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins'))),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                    child: Text(statusLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor, fontFamily: 'Poppins')),
+                  ),
+                ]),
                 const SizedBox(height: 4),
                 Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins')),
+                const SizedBox(height: 4),
+                Row(children: [
+                  Text(weightText, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87, fontFamily: 'Poppins')),
+                  if (pointsText != null) ...[
+                    const SizedBox(width: 12),
+                    Text('poin ditambahkan', style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'Poppins')),
+                    const SizedBox(width: 6),
+                    Text(pointsText, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange, fontFamily: 'Poppins')),
+                  ],
+                ]),
               ],
             ),
           ),
-          Text(amount, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: amountColor, fontFamily: 'Poppins')),
         ],
       ),
     );
