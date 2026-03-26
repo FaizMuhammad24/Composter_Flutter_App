@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../constants/app_colors.dart';
+import '../../utils/helpers/csv_export_helper.dart';
 
 class AdminHistoryLogScreen extends StatefulWidget {
   const AdminHistoryLogScreen({Key? key}) : super(key: key);
@@ -34,14 +35,14 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
     return Scaffold(
       backgroundColor: AppColors.adminBg,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFF6B35),
+        backgroundColor: AppColors.adminPrimary,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Riwayat Kerja Alat',
+          'Histori Log Alat',
           style: TextStyle(
             color: Colors.white,
             fontWeight: FontWeight.bold,
@@ -49,11 +50,18 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.download_rounded, color: Colors.white),
+            tooltip: 'Export CSV',
+            onPressed: () => CsvExportHelper.exportActuatorLogs(context, _tabs[_tabController.index]),
+          ),
+        ],
       ),
       body: Column(
         children: [
           Container(
-            color: const Color(0xFFFF6B35),
+            color: AppColors.adminPrimary,
             child: TabBar(
               controller: _tabController,
               isScrollable: true,
@@ -70,7 +78,7 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
               stream: _dbRef.orderByChild('actuator').equalTo(_tabs[_tabController.index]).onValue,
               builder: (context, AsyncSnapshot<DatabaseEvent> snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35)));
+                  return const Center(child: CircularProgressIndicator(color: AppColors.adminPrimary));
                 }
 
                 if (!snapshot.hasData || snapshot.data?.snapshot.value == null) {

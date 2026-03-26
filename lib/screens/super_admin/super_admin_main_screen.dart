@@ -6,6 +6,7 @@ import 'super_admin_management_screen.dart';
 import 'super_admin_profile_screen.dart';
 import 'widgets/super_admin_header.dart';
 import 'widgets/super_admin_bottom_nav.dart';
+import '../../services/auth/session_service.dart';
 
 class SuperAdminMainScreen extends StatefulWidget {
   const SuperAdminMainScreen({Key? key}) : super(key: key);
@@ -40,7 +41,10 @@ class _SuperAdminMainScreenState extends State<SuperAdminMainScreen> {
       // Always superAdminBg – the CurvedNavBar curves into this color.
       // The Profile screen handles its own red header internally.
       backgroundColor: AppColors.superAdminBg,
-      appBar: SuperAdminHeader(title: title),
+      appBar: SuperAdminHeader(
+        title: title,
+        adminEmail: SessionService.getCurrentUser()?.email ?? 'superadmin@icompost.com',
+      ),
       body: IndexedStack(
         index: _currentIndex,
         children: _pages,

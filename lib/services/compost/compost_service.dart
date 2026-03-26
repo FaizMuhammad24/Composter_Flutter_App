@@ -1,6 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/compost_model.dart';
-import '../user/points_service.dart';
 
 class CompostService {
 
@@ -35,11 +34,12 @@ class CompostService {
       };
       
       await compostRef.set(compost);
-      await PointsService.addUserPoints(userEmail: userEmail, pointsToAdd: points);
+      // Poin HANYA ditambahkan setelah SuperAdmin menyetujui (ACC)
+      // PointsService.addUserPoints dipanggil di SuperAdmin approval logic
 
       return {
         'success': true,
-        'message': 'Setoran kompos berhasil',
+        'message': 'Setoran berhasil diajukan! Menunggu persetujuan Admin.',
         'data': CompostModel.fromJson(compost),
       };
     } catch (e) {
@@ -60,6 +60,12 @@ class CompostService {
       .orderBy('createdAt', descending: true)
       .get();
     return snap.docs.map((doc) => CompostModel.fromJson(doc.data())).toList();
+  }
+
+  static Future<void> updateCompostStatus(String id, String status) async {
+    await FirebaseFirestore.instance.collection('composts').doc(id).update({
+      'status': status,
+    });
   }
 
 }

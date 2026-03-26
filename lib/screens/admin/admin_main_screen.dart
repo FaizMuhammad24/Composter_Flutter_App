@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import 'admin_dashboard.dart';
+import 'admin_compost_status_screen.dart';
 import 'admin_system_status_screen.dart';
 import 'admin_profile_screen.dart';
 import 'widgets/admin_header.dart';
@@ -23,6 +24,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
     super.initState();
     _pages = [
       const AdminDashboard(),
+      const AdminCompostStatusScreen(),
       const AdminSystemStatusScreen(),
       const AdminProfileScreen(),
     ];
@@ -31,12 +33,11 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
   @override
   Widget build(BuildContext context) {
     String title = 'Admin I-Compost';
-    if (_currentIndex == 1) title = 'Status Sistem';
-    if (_currentIndex == 2) title = 'Profil Admin';
+    if (_currentIndex == 1) title = 'Status Kompos';
+    if (_currentIndex == 2) title = 'Status Sistem';
+    if (_currentIndex == 3) title = 'Profil Admin';
 
     return Scaffold(
-      // Always adminBg (cream) – the CurvedNavBar curves into this color.
-      // The Profile screen handles its own orange header internally.
       backgroundColor: AppColors.adminBg,
       appBar: AdminHeader(title: title),
       body: IndexedStack(
@@ -45,7 +46,6 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
       ),
       bottomNavigationBar: AdminBottomNav(
         currentIndex: _currentIndex,
-        // Must match Scaffold backgroundColor so the curve looks seamless.
         backgroundColor: AppColors.adminBg,
         onTap: (index) => setState(() => _currentIndex = index),
       ),

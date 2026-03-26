@@ -8,10 +8,12 @@ import 'screens/authentication/splash_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    debugPrint("Firebase Initialized Successfully!");
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      debugPrint("Firebase Initialized Successfully!");
+    }
   } catch (e) {
     debugPrint("Firebase Init Error: $e");
   }

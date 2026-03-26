@@ -4,6 +4,8 @@ import 'package:image_picker/image_picker.dart';
 import '../../constants/app_colors.dart';
 import '../../services/compost/compost_service.dart';
 import '../../services/database/storage_service.dart';
+import '../../services/notifications/user_notification_service.dart';
+import '../../services/notifications/super_admin_notification_service.dart';
 
 class UserDepositScreen extends StatefulWidget {
   final String userEmail;
@@ -94,6 +96,37 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
       return;
     }
 
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Konfirmasi Setoran', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Berat: ${_weightController.text} kg', style: const TextStyle(fontFamily: 'Poppins')),
+            Text('Estimasi Poin: $_poinDidapat Pts', style: const TextStyle(fontFamily: 'Poppins')),
+            const SizedBox(height: 12),
+            const Text(
+              'Catatan: Setoran akan diproses dengan status "Pending" dan poin akan ditambahkan setelah disetujui SuperAdmin.',
+              style: TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Colors.grey),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Ya, Setor', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
     setState(() => _isSubmitting = true);
 
     try {
@@ -115,6 +148,18 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
       );
 
       if (result['success']) {
+        // 3. Notifikasi User
+        await UserNotificationService.notifyDepositPending(
+          widget.userEmail, 
+          double.parse(_weightController.text),
+        );
+
+        // 4. Notifikasi SuperAdmin
+        await SuperAdminNotificationService.notifyNewDeposit(
+          widget.userEmail, 
+          double.parse(_weightController.text),
+        );
+
         _showSuccessDialog();
       } else {
         _showFailureDialog('Gagal', result['message'] ?? 'Terjadi kesalahan sistem.');
@@ -144,7 +189,11 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
             const SizedBox(height: 24),
             const Text('Berhasil!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
             const SizedBox(height: 8),
-            const Text('Sampah berhasil disetorkan. Poin Anda telah ditambahkan.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
+            const Text(
+              'Sampah berhasil diajukan. Status setoran saat ini "PENDING". Poin akan ditambahkan ke saldo Anda setelah disetujui oleh SuperAdmin.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontFamily: 'Poppins', fontSize: 13),
+            ),
             const SizedBox(height: 24),
             Container(
               padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),

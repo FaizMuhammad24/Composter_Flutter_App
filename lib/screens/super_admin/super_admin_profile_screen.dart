@@ -3,7 +3,7 @@ import '../../constants/app_colors.dart';
 import '../authentication/login_screen.dart';
 import '../authentication/reset_password_screen.dart';
 import '../../services/auth/session_service.dart';
-import '../../services/notifications/notification_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 
 class SuperAdminProfileScreen extends StatefulWidget {
   const SuperAdminProfileScreen({Key? key}) : super(key: key);
@@ -91,7 +91,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
           Container(
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
+              color: Colors.white.withOpacity(0.22),
               shape: BoxShape.circle,
             ),
             child: Container(
@@ -130,7 +130,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
+              color: Colors.white.withOpacity(0.22),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white30),
             ),
@@ -155,10 +155,10 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.red.shade100),
+        border: Border.all(color: AppColors.superAdminPrimary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.superAdminPrimary.withValues(alpha: 0.08),
+            color: AppColors.superAdminPrimary.withOpacity(0.08),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -220,7 +220,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDestructive ? Colors.red.shade100 : Colors.red.shade100,
+              color: isDestructive ? Colors.red.shade100 : AppColors.superAdminPrimary.withValues(alpha: 0.2),
             ),
           ),
           child: Row(
@@ -228,7 +228,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: color.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 22),
@@ -300,7 +300,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     Navigator.pop(context);
-                    NotificationService().dispose();
+                    AdminNotificationService().dispose();
                     await SessionService.logout();
                     if (!mounted) return;
                     // ignore: use_build_context_synchronously

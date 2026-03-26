@@ -13,30 +13,41 @@ class UserNotificationsScreen extends StatefulWidget {
 }
 
 class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
+  String _filter = 'Semua';
+
   @override
   void initState() {
     super.initState();
-    // Mark all as read when opened
-    AppNotificationService.markAllAsRead(widget.userEmail);
+    // Do not mark all as read automatically, let the user decide or do it on button press
+    // AppNotificationService.markAllAsRead(widget.userEmail);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Latar abu-abu sangat muda agar kartu notif menonjol
+      backgroundColor: const Color(0xFFF1F8E9), // Light Greenish white
       appBar: AppBar(
-        title: const Text(
-          'Notifikasi',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Poppins',
-            color: Colors.white,
-          ),
-        ),
+        title: const Text('Notifikasi',
+            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: AppColors.primary,
-        centerTitle: true,
         elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white), // Tombol back warna putih
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await AppNotificationService.markAllAsRead(widget.userEmail);
+              setState(() {});
+            },
+            child: const Text('Baca Semua',
+                style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: 12)),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.white),
+            tooltip: 'Hapus Semua',
+            onPressed: () => _showDeleteAllDialog(context),
+          ),
+        ],
       ),
       body: StreamBuilder<List<AppNotificationModel>>(
         stream: AppNotificationService.getUserNotificationsStream(widget.userEmail),
@@ -45,175 +56,234 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
             return const Center(child: CircularProgressIndicator(color: AppColors.primary));
           }
 
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text(
-                'Belum ada notifikasi.',
-                style: TextStyle(fontFamily: 'Poppins', color: Colors.grey),
-              ),
-            );
-          }
+          final all = snapshot.data ?? [];
+          final filtered = _applyFilter(all);
 
-          final notifications = snapshot.data!;
-          
-          return ListView.builder(
-            padding: const EdgeInsets.all(20),
-            itemCount: notifications.length,
-            itemBuilder: (context, index) {
-              final notif = notifications[index];
-              return _buildNotificationCard(
-                title: notif.title,
-                description: notif.message,
-                date: DateFormat('dd MMM yyyy • HH:mm').format(notif.createdAt),
-                type: notif.type,
-                isUnread: notif.isRead == false,
-                onTap: () {
-                  if (!notif.isRead) {
-                    AppNotificationService.markAsRead(notif.id);
-                  }
-                },
-              );
-            },
+          return Column(
+            children: [
+              // Filter Tabs
+              Container(
+                color: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: ['Semua', 'Belum Dibaca', 'Sudah Dibaca'].map((cat) {
+                    final isSelected = _filter == cat;
+                    return InkWell(
+                      onTap: () => setState(() => _filter = cat),
+                      child: Column(
+                        children: [
+                          Text(
+                            cat,
+                            style: TextStyle(
+                              color: isSelected ? AppColors.primary : Colors.grey,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            width: 40,
+                            height: 2,
+                            color: isSelected ? AppColors.primary : Colors.transparent,
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+
+              // Notifications List
+              Expanded(
+                child: filtered.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filtered.length,
+                        itemBuilder: (context, index) {
+                          return _buildNotificationCard(filtered[index]);
+                        },
+                      ),
+              ),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildNotificationCard({
-    required String title,
-    required String description,
-    required String date,
-    required String type,
-    required bool isUnread,
-    required VoidCallback onTap,
-  }) {
+  List<AppNotificationModel> _applyFilter(List<AppNotificationModel> all) {
+    switch (_filter) {
+      case 'Belum Dibaca':
+        return all.where((n) => !n.isRead).toList();
+      case 'Sudah Dibaca':
+        return all.where((n) => n.isRead).toList();
+      default:
+        return all;
+    }
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.notifications_none, size: 72, color: Colors.grey.shade300),
+          const SizedBox(height: 16),
+          const Text(
+            'Tidak ada notifikasi',
+            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey),
+          ),
+          const SizedBox(height: 6),
+          const Text(
+            'Notifikasi aktivitas Anda akan muncul di sini.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationCard(AppNotificationModel notif) {
     IconData icon;
     Color iconColor;
     Color backgroundColor;
 
-    switch (type) {
+    switch (notif.type) {
       case 'success':
         icon = Icons.check_circle;
         iconColor = Colors.green;
-        backgroundColor = Colors.green.withValues(alpha: 0.1);
+        backgroundColor = Colors.green.withOpacity(0.05);
         break;
       case 'error':
         icon = Icons.cancel;
         iconColor = Colors.red;
-        backgroundColor = Colors.red.withValues(alpha: 0.1);
+        backgroundColor = Colors.red.withOpacity(0.05);
         break;
       case 'reward':
         icon = Icons.card_giftcard;
         iconColor = Colors.blue;
-        backgroundColor = Colors.blue.withValues(alpha: 0.1);
+        backgroundColor = Colors.blue.withOpacity(0.05);
         break;
-      case 'system':
       default:
-        icon = Icons.warning_rounded;
+        icon = Icons.notifications_outlined;
         iconColor = Colors.orange;
-        backgroundColor = Colors.orange.withValues(alpha: 0.1);
-        break;
+        backgroundColor = Colors.orange.withOpacity(0.05);
     }
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: isUnread ? Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1.5) : Border.all(color: Colors.grey[100]!),
+        side: BorderSide(
+          color: notif.isRead ? Colors.transparent : iconColor.withOpacity(0.3),
+          width: 1.5,
+        ),
       ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Icon Bulat
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: backgroundColor,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: iconColor, size: 28),
-                ),
-                const SizedBox(width: 16),
-                
-                // Konten Teks
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black87,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        description,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.black54,
-                          height: 1.4,
-                          fontFamily: 'Poppins',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 14, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            date,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey,
-                              fontFamily: 'Poppins',
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Indikator Titik Merah Unread
-          if (isUnread)
-            Positioned(
-              top: 16,
-              right: 16,
-              child: Container(
-                width: 10,
-                height: 10,
-                decoration: const BoxDecoration(
-                  color: Colors.red,
+      color: notif.isRead ? Colors.white : backgroundColor,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          if (!notif.isRead) {
+            AppNotificationService.markAsRead(notif.id);
+          }
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.15),
                   shape: BoxShape.circle,
                 ),
+                child: Icon(icon, color: iconColor, size: 26),
               ),
-            ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            notif.title,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ),
+                        if (!notif.isRead)
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      notif.message,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.black54,
+                        height: 1.4,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        const Icon(Icons.access_time, size: 12, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Text(
+                          DateFormat('dd MMM yyyy, HH:mm').format(notif.createdAt),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDeleteAllDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Hapus Semua?', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+        content: const Text('Tindakan ini akan menghapus seluruh riwayat notifikasi Anda secara permanen.', style: TextStyle(fontFamily: 'Poppins')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+          TextButton(
+            onPressed: () async {
+              await AppNotificationService.deleteAllNotifications(widget.userEmail);
+              if (mounted) Navigator.pop(context);
+            },
+            child: const Text('Hapus', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+          ),
         ],
       ),
-    ));
+    );
   }
 }
-

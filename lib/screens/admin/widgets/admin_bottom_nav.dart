@@ -25,9 +25,10 @@ class AdminBottomNav extends StatelessWidget {
       animationDuration: const Duration(milliseconds: 300),
       animationCurve: Curves.easeInOut,
       items: const [
-        Icon(Icons.home, size: 30, color: Colors.white),
-        Icon(Icons.settings_suggest, size: 30, color: Colors.white),
-        Icon(Icons.person, size: 30, color: Colors.white),
+        Icon(Icons.home, size: 28, color: Colors.white),
+        Icon(Icons.compost, size: 28, color: Colors.white),
+        Icon(Icons.settings_suggest, size: 28, color: Colors.white),
+        Icon(Icons.person, size: 28, color: Colors.white),
       ],
       onTap: onTap,
     );

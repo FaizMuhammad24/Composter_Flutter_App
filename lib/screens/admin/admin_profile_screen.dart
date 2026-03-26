@@ -5,7 +5,7 @@ import '../../constants/app_colors.dart';
 import '../authentication/login_screen.dart';
 import '../authentication/reset_password_screen.dart';
 import '../../services/auth/session_service.dart';
-import '../../services/notifications/notification_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({Key? key}) : super(key: key);
@@ -16,67 +16,26 @@ class AdminProfileScreen extends StatefulWidget {
 
 class _AdminProfileScreenState extends State<AdminProfileScreen> {
   StreamSubscription<DatabaseEvent>? _rtdbSubscription;
-  bool _isOffline = true;
   int _sensorCount = 0;
   int _activeAlerts = 0;
-  DateTime? _lastUpdate;
-  Timer? _offlineCheckTimer;
 
   @override
   void initState() {
     super.initState();
     _listenToFirebase();
-    _startOfflineTimer();
   }
 
   @override
   void dispose() {
     _rtdbSubscription?.cancel();
-    _offlineCheckTimer?.cancel();
     super.dispose();
   }
 
-  bool _isDataStale(Map<dynamic, dynamic> data) {
-    // 1. Cek via Unix Timestamp (Paling robust)
-    if (data.containsKey('unix_time')) {
-      final int espUnix = (data['unix_time'] as num).toInt();
-      final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final diff = (phoneUnix - espUnix).abs();
-      return diff > 60; // 1 Minute tolerance
-    }
-
-    // 2. Fallback ke String "time" (HH:mm:ss)
-    final String? timeStr = data['time']?.toString();
-    if (timeStr == null || timeStr.isEmpty) return true;
-    try {
-      final parts = timeStr.split(':');
-      if (parts.length != 3) return true;
-      final now = DateTime.now();
-      final dataTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-      return now.difference(dataTime).inSeconds.abs() > 60;
-    } catch (e) {
-      return true;
-    }
-  }
-  void _startOfflineTimer() {
-    _offlineCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (_lastUpdate == null) return;
-      final diff = DateTime.now().difference(_lastUpdate!);
-      if (diff.inSeconds > 20 && !_isOffline) {
-        setState(() {
-          _isOffline = true;
-          _sensorCount = 0;
-          _activeAlerts = 0;
-        });
-      }
-    });
-  }
 
   void _listenToFirebase() {
     _rtdbSubscription = FirebaseDatabase.instance.ref('komposter').onValue.listen((event) {
       if (event.snapshot.value != null) {
         final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
-        final bool stale = _isDataStale(data);
         
         final temp = (data['temperature'] as num?)?.toDouble() ?? 0;
         final soil = (data['soil'] as num?)?.toDouble() ?? 0;
@@ -99,10 +58,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
 
         if (mounted) {
           setState(() {
-            _isOffline = stale;
-            if (!stale) _lastUpdate = DateTime.now();
-            _sensorCount = stale ? 0 : healthyCount; 
-            _activeAlerts = stale ? 0 : activeActuators; // Using same variable name but for actuator count now
+            _sensorCount = AdminNotificationService.isDeviceOffline ? 0 : healthyCount; 
+            _activeAlerts = AdminNotificationService.isDeviceOffline ? 0 : activeActuators; 
           });
         }
       }
@@ -110,69 +67,74 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   }
   @override
   Widget build(BuildContext context) {
-    final user = SessionService.getCurrentUser();
-    final screenHeight = MediaQuery.of(context).size.height;
-    final headerH = (screenHeight * 0.36).clamp(220.0, 290.0);
+    return ValueListenableBuilder<bool>(
+      valueListenable: AdminNotificationService.deviceOfflineNotifier,
+      builder: (context, isOffline, _) {
+        final user = SessionService.getCurrentUser();
+        final screenHeight = MediaQuery.of(context).size.height;
+        final headerH = (screenHeight * 0.36).clamp(220.0, 290.0);
 
-    return Container(
-      color: AppColors.adminPrimary,
-      child: Column(
-        children: [
-          // ── Header (orange zone) ──────────────────────────────
-          SizedBox(
-            height: headerH,
-            child: _buildHeader(user),
-          ),
-
-          // ── White card panel ──────────────────────────────────
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: AppColors.adminBg,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(32),
-                  topRight: Radius.circular(32),
-                ),
+        return Container(
+          color: AppColors.adminPrimary,
+          child: Column(
+            children: [
+              // ── Header (orange zone) ──────────────────────────────
+              SizedBox(
+                height: headerH,
+                child: _buildHeader(user),
               ),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(24, 28, 24, 120),
-                child: Column(
-                  children: [
-                    // Stats row
-                    _buildStatsCard(),
-                    const SizedBox(height: 28),
 
-                    // Menu tiles
-                    _buildMenuTile(
-                      icon: Icons.lock_outline_rounded,
-                      title: 'Ubah Password',
-                      subtitle: 'Ganti kata sandi akun Anda',
-                      color: AppColors.adminPrimary,
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ResetPasswordScreen(email: user?.email),
+              // ── White card panel ──────────────────────────────────
+              Expanded(
+                child: Container(
+                  width: double.infinity,
+                  decoration: const BoxDecoration(
+                    color: AppColors.adminBg,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(32),
+                      topRight: Radius.circular(32),
+                    ),
+                  ),
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(24, 28, 24, 120),
+                    child: Column(
+                      children: [
+                        // Stats row
+                        _buildStatsCard(isOffline),
+                        const SizedBox(height: 28),
+
+                        // Menu tiles
+                        _buildMenuTile(
+                          icon: Icons.lock_outline_rounded,
+                          title: 'Ubah Password',
+                          subtitle: 'Ganti kata sandi akun Anda',
+                          color: AppColors.adminPrimary,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ResetPasswordScreen(email: user?.email),
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(height: 12),
+                        _buildMenuTile(
+                          icon: Icons.logout_rounded,
+                          title: 'Keluar',
+                          subtitle: 'Log out dari akun Admin',
+                          color: Colors.red,
+                          isDestructive: true,
+                          onTap: () => _showLogoutDialog(context),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 12),
-                    _buildMenuTile(
-                      icon: Icons.logout_rounded,
-                      title: 'Keluar',
-                      subtitle: 'Log out dari akun Admin',
-                      color: Colors.red,
-                      isDestructive: true,
-                      onTap: () => _showLogoutDialog(context),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -244,13 +206,13 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
     );
   }
 
-  Widget _buildStatsCard() {
+  Widget _buildStatsCard(bool isOffline) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.shade100),
+        border: Border.all(color: AppColors.adminPrimary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
             color: AppColors.adminPrimary.withValues(alpha: 0.08),
@@ -262,11 +224,11 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildStat('Status', _isOffline ? 'Offline' : 'Online', _isOffline ? Colors.grey : Colors.green),
+          _buildStat('Status', isOffline ? 'Offline' : 'Online', isOffline ? Colors.grey : Colors.green),
           _buildDivider(),
-          _buildStat('Sistem', '$_sensorCount Sensor', _sensorCount == 0 ? Colors.grey : (_sensorCount == 4 ? Colors.green : Colors.red)),
+          _buildStat('Sistem', '${isOffline ? 0 : _sensorCount} Sensor', (isOffline || _sensorCount == 0) ? Colors.grey : (_sensorCount == 4 ? Colors.green : Colors.red)),
           _buildDivider(),
-          _buildStat('Alat', '$_activeAlerts Aktif', _activeAlerts > 0 ? Colors.yellow.shade700 : Colors.grey),
+          _buildStat('Alat', '${isOffline ? 0 : _activeAlerts} Aktif', (!isOffline && _activeAlerts > 0) ? Colors.yellow.shade700 : Colors.grey),
         ],
       ),
     );
@@ -315,7 +277,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: isDestructive ? Colors.red.shade100 : Colors.orange.shade100,
+              color: isDestructive ? Colors.red.shade100 : AppColors.adminPrimary.withValues(alpha: 0.2),
             ),
           ),
           child: Row(
@@ -395,7 +357,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                 child: ElevatedButton(
                   onPressed: () async {
                     Navigator.pop(context);
-                    NotificationService().dispose();
+                    AdminNotificationService().dispose();
                     await SessionService.logout();
                     if (!mounted) return;
                     // ignore: use_build_context_synchronously

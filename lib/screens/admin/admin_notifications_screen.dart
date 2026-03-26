@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
-import '../../services/notifications/notification_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 
 class AdminNotificationsScreen extends StatefulWidget {
   const AdminNotificationsScreen({Key? key}) : super(key: key);
@@ -13,7 +13,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   String _filter = 'Semua';
 
   List<LocalAlert> get _filtered {
-    final all = NotificationService.alerts;
+    final all = AdminNotificationService.alerts;
     if (_filter == 'Belum Dibaca') return all.where((n) => !n.isRead).toList();
     if (_filter == 'Sudah Dibaca') return all.where((n) => n.isRead).toList();
     return all;
@@ -22,23 +22,44 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFDE7),
+      backgroundColor: AppColors.adminBg,
       appBar: AppBar(
         title: const Text('Notifikasi',
-            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.white)),
         backgroundColor: AppColors.adminPrimary,
+        centerTitle: true,
         elevation: 0,
         actions: [
           TextButton(
             onPressed: () {
-              setState(() {
-                for (var a in NotificationService.alerts) {
-                  a.isRead = true;
-                }
-              });
+              AdminNotificationService().markAllAsRead();
+              setState(() {});
             },
             child: const Text('Baca Semua',
-                style: TextStyle(color: Colors.white, fontFamily: 'Poppins')),
+                style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: 12)),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.white),
+            tooltip: 'Hapus Semua',
+            onPressed: () {
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Hapus Semua?', style: TextStyle(fontFamily: 'Poppins')),
+                  content: const Text('Semua riwayat notifikasi lokal akan dihapus permanen.', style: TextStyle(fontFamily: 'Poppins')),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
+                    TextButton(
+                      onPressed: () {
+                        AdminNotificationService().clearAll();
+                        setState(() => Navigator.pop(context));
+                      }, 
+                      child: const Text('Hapus', style: TextStyle(color: Colors.red))
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),

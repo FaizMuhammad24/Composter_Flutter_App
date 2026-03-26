@@ -15,6 +15,17 @@ class AdminSensorHistoryScreen extends StatefulWidget {
 class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
   final DatabaseReference _logsRef = FirebaseDatabase.instance.ref('komposter_logs');
   bool _isExporting = false;
+  int _selectedFilter = 0; // 0=Jam, 1=Hari, 2=Minggu
+  final List<String> _filterLabels = ['Per Jam', 'Per Hari', 'Per Minggu'];
+
+  int get _logLimit {
+    switch (_selectedFilter) {
+      case 0: return 60;    // ~1 jam
+      case 1: return 1440;  // ~1 hari
+      case 2: return 10080; // ~1 minggu
+      default: return 60;
+    }
+  }
 
   Future<void> _exportData() async {
     setState(() => _isExporting = true);
@@ -27,7 +38,7 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Rekap Riwayat (1 Menit)', style: TextStyle(fontFamily: 'Poppins', fontSize: 18)),
+        title: const Text('Rekap Data QoS', style: TextStyle(fontFamily: 'Poppins', fontSize: 18)),
         backgroundColor: AppColors.adminPrimary,
         elevation: 0,
         actions: [
@@ -43,137 +54,143 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
                 ),
         ],
       ),
-      body: StreamBuilder<DatabaseEvent>(
-        stream: _logsRef.limitToLast(100).onValue, // Ambil 100 log terbaru
-        builder: (context, snapshot) {
-          if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(fontFamily: 'Poppins')));
-          }
+      body: Column(
+        children: [
+          // Filter chips
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            color: AppColors.adminPrimary.withOpacity(0.05),
+            child: Row(
+              children: List.generate(3, (index) {
+                final isSelected = _selectedFilter == index;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(_filterLabels[index], style: TextStyle(
+                      fontSize: 12, fontFamily: 'Poppins', fontWeight: FontWeight.w600,
+                      color: isSelected ? Colors.white : AppColors.adminPrimary,
+                    )),
+                    selected: isSelected,
+                    selectedColor: AppColors.adminPrimary,
+                    backgroundColor: Colors.white,
+                    side: BorderSide(color: AppColors.adminPrimary.withOpacity(0.3)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    onSelected: (sel) {
+                      if (sel) setState(() => _selectedFilter = index);
+                    },
+                  ),
+                );
+              }),
+            ),
+          ),
+          // Content
+          Expanded(
+            child: StreamBuilder<DatabaseEvent>(
+              stream: _logsRef.limitToLast(_logLimit).onValue,
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(fontFamily: 'Poppins')));
+                }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return _buildLoading();
+                }
+                if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
+                  return _buildEmptyState();
+                }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return _buildLoading();
-          }
+                final data = snapshot.data!.snapshot.value as Map;
+                List<MapEntry<dynamic, dynamic>> sortedLogs = data.entries.toList()
+                  ..sort((a, b) => b.key.toString().compareTo(a.key.toString()));
 
-          if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
-            return _buildEmptyState();
-          }
-
-          final data = snapshot.data!.snapshot.value as Map;
-          
-          // Convert ke List dan sort dari yang terbaru ke terlama
-          List<MapEntry<dynamic, dynamic>> sortedLogs = data.entries.toList()
-            ..sort((a, b) => b.key.toString().compareTo(a.key.toString()));
-
-          return ListView.builder(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            physics: const BouncingScrollPhysics(),
-            itemCount: sortedLogs.length,
-            itemBuilder: (context, index) {
-              final logData = Map<String, dynamic>.from(sortedLogs[index].value as Map);
-              return _buildLogCard(logData, index);
-            },
-          );
-        },
+                return ListView.builder(
+                  padding: const EdgeInsets.all(AppSpacing.md),
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: sortedLogs.length,
+                  itemBuilder: (context, index) {
+                    final logData = Map<String, dynamic>.from(sortedLogs[index].value as Map);
+                    return _buildQosCard(logData);
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildLogCard(Map<String, dynamic> log, int index) {
-    // Format nilai dengan presisi jika double
-    final tempRaw = log['temperature'];
-    final tempStr = (tempRaw is double) ? tempRaw.toStringAsFixed(1) : tempRaw.toString();
-    
-    final phRaw = log['ph'];
-    final phStr = (phRaw is double) ? phRaw.toStringAsFixed(1) : phRaw.toString();
-
-    final gas = log['gas']?.toString() ?? '-';
-    final soil = log['soil']?.toString() ?? '-';
-    final timeStr = log['time']?.toString() ?? 'Pukul ?';
-
-    // QoS Data (Baru)
+  Widget _buildQosCard(Map<String, dynamic> log) {
+    final timeStr = log['time']?.toString() ?? '-';
     final qos = log['qos'] is Map ? Map<String, dynamic>.from(log['qos']) : null;
     final int? wifi = qos?['wifi_strength'] is num ? (qos?['wifi_strength'] as num).toInt() : (int.tryParse(qos?['wifi_strength']?.toString() ?? ''));
     final int? heap = qos?['free_heap'] is num ? (qos?['free_heap'] as num).toInt() : null;
     final int? uptime = qos?['uptime_ms'] is num ? (qos?['uptime_ms'] as num).toInt() : null;
+    final int? packetId = qos?['packet_id'] is num ? (qos?['packet_id'] as num).toInt() : null;
 
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.only(bottom: 10),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Row Header (Waktu & WiFi)
+            // Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
                   children: [
-                    Icon(Icons.access_time_filled, size: 16, color: Colors.grey[400]),
+                    Icon(Icons.access_time_filled, size: 14, color: Colors.grey[400]),
                     const SizedBox(width: 6),
                     Text(timeStr, style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Poppins')),
                   ],
                 ),
                 if (wifi != null)
-                  Row(
-                    children: [
-                      Icon(Icons.wifi, size: 14, color: wifi > 60 ? Colors.green : Colors.orange),
-                      const SizedBox(width: 4),
-                      Text('$wifi%', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                    ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: (wifi > 60 ? Colors.green : Colors.orange).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.wifi, size: 12, color: wifi > 60 ? Colors.green : Colors.orange),
+                        const SizedBox(width: 4),
+                        Text('$wifi%', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: wifi > 60 ? Colors.green[700] : Colors.orange[700])),
+                      ],
+                    ),
                   ),
               ],
             ),
-            const Divider(height: 20),
-            
-            // Sensor Metrics
+            const SizedBox(height: 10),
+            // QoS Metrics Grid
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildStatItem(Icons.thermostat, Colors.orange, 'Suhu', '$tempStr°C'),
-                _buildStatItem(Icons.cloud, Colors.grey[600]!, 'Gas', '$gas ppm'),
-                _buildStatItem(Icons.water_drop, Colors.blue, 'Tanah', '$soil%'),
-                _buildStatItem(Icons.science, Colors.purple, 'pH', phStr),
+                if (wifi != null) Expanded(child: _qosMetric(Icons.wifi, 'WiFi', '$wifi%', wifi > 60 ? Colors.green : Colors.orange)),
+                if (heap != null) Expanded(child: _qosMetric(Icons.memory, 'RAM', '${(heap / 1024).toStringAsFixed(0)} KB', Colors.blue)),
+                if (uptime != null) Expanded(child: _qosMetric(Icons.timer, 'Uptime', _formatUptime(uptime), Colors.purple)),
+                if (packetId != null) Expanded(child: _qosMetric(Icons.tag, 'Packet', '#$packetId', Colors.teal)),
               ],
             ),
-            
-            // QoS Section (Heap & Uptime)
-            if (heap != null || uptime != null || wifi != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.grey[50],
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.grey[200]!),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    if (wifi != null)
-                      _buildQosLabel(Icons.wifi, 'WiFi: $wifi%'),
-                    if (heap != null)
-                      _buildQosLabel(Icons.memory, 'RAM: ${(heap / 1024).toStringAsFixed(0)} KB'),
-                    if (uptime != null)
-                      _buildQosLabel(Icons.timer, 'Up: ${_formatUptime(uptime)}'),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildQosLabel(IconData icon, String text) {
-    return Row(
+  Widget _qosMetric(IconData icon, String label, String value, Color color) {
+    return Column(
       children: [
-        Icon(icon, size: 10, color: Colors.blueGrey),
-        const SizedBox(width: 4),
-        Text(text, style: const TextStyle(fontSize: 9, color: Colors.blueGrey, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(color: color.withOpacity(0.08), shape: BoxShape.circle),
+          child: Icon(icon, size: 16, color: color),
+        ),
+        const SizedBox(height: 4),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[500], fontFamily: 'Poppins')),
+        Text(value, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.grey[800])),
       ],
     );
   }
@@ -188,24 +205,13 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
     return '${sec}s';
   }
 
-  Widget _buildStatItem(IconData icon, Color color, String label, String value) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 24),
-        const SizedBox(height: 6),
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontFamily: 'Poppins')),
-        Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins')),
-      ],
-    );
-  }
-
   Widget _buildLoading() {
     return ListView.builder(
       padding: const EdgeInsets.all(AppSpacing.md),
       itemCount: 6,
       itemBuilder: (context, index) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
-        child: LoadingShimmer(width: double.infinity, height: 110, borderRadius: BorderRadius.circular(16)),
+        child: LoadingShimmer(width: double.infinity, height: 90, borderRadius: BorderRadius.circular(14)),
       ),
     );
   }
@@ -215,17 +221,11 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-           Icon(Icons.history_toggle_off, size: 80, color: Colors.grey[300]),
+          Icon(Icons.history_toggle_off, size: 80, color: Colors.grey[300]),
           const SizedBox(height: 16),
-          Text(
-            'Belum ada riwayat data.',
-            style: TextStyle(fontSize: 16, color: Colors.grey[600], fontFamily: 'Poppins', fontWeight: FontWeight.bold),
-          ),
+          Text('Belum ada data QoS.', style: TextStyle(fontSize: 16, color: Colors.grey[600], fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
-          Text(
-            'Menunggu ESP32 mengirim log baru (tiap 1 menit).',
-            style: TextStyle(fontSize: 13, color: Colors.grey[400], fontFamily: 'Poppins'),
-          ),
+          Text('Menunggu ESP32 mengirim log baru.', style: TextStyle(fontSize: 13, color: Colors.grey[400], fontFamily: 'Poppins')),
         ],
       ),
     );

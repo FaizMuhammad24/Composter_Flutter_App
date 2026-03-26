@@ -263,9 +263,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
 
   Widget _buildRecentActivityList() {
     final activities = [
-      {'title': 'Suhu Mesin A Kritis', 'time': '10 mnt lalu', 'type': 'alert', 'desc': 'Melewati batas 65°C'},
       {'title': 'User Budi Mendaftar', 'time': '1 jam lalu', 'type': 'user', 'desc': 'Akun baru dibuat'},
       {'title': 'Reward Diklaim', 'time': '3 jam lalu', 'type': 'reward', 'desc': 'Pupuk Kompos 5kg oleh Ani'},
+      {'title': 'Setoran Baru Diterima', 'time': '5 jam lalu', 'type': 'deposit', 'desc': '12.5 kg dari User C'},
     ];
 
     return ListView.builder(

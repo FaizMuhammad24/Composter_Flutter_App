@@ -75,4 +75,21 @@ class AppNotificationService {
       debugPrint('Error marking all notifications as read: $e');
     }
   }
+
+  /// Menghapus semua notifikasi user
+  static Future<void> deleteAllNotifications(String email) async {
+    try {
+      final snap = await _notificationsCol
+          .where('userEmail', isEqualTo: email)
+          .get();
+      
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in snap.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error deleting all notifications: $e');
+    }
+  }
 }

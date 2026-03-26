@@ -64,7 +64,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           // ── Header (green zone) ─────────────────────────────
           SizedBox(
             height: headerH,
-            child: _buildHeader(user),
+            child: _buildHeader(_currentUser),
           ),
 
           // ── White card panel ────────────────────────────────

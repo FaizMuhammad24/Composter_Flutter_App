@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
-import '../../services/notifications/app_notification_service.dart';
+import '../../services/user/user_service.dart';
+import '../../services/user/points_service.dart';
+import '../../services/notifications/user_notification_service.dart';
+import '../../services/notifications/super_admin_notification_service.dart';
+import '../../models/user_model.dart';
 
 class UserRedeemScreen extends StatefulWidget {
   final String userEmail;
@@ -24,7 +28,29 @@ class UserRedeemScreen extends StatefulWidget {
 
 class _UserRedeemScreenState extends State<UserRedeemScreen> {
   int _quantity = 1;
-  final int _userPoints = 2450; // Saldo simulasi
+  int _userPoints = 0;
+  UserModel? _userModel;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    setState(() => _isLoading = true);
+    final user = await UserService.getUserByEmail(widget.userEmail);
+    if (user != null && mounted) {
+      setState(() {
+        _userModel = user;
+        _userPoints = user.points ?? 0;
+        _isLoading = false;
+      });
+    } else {
+      setState(() => _isLoading = false);
+    }
+  }
 
   void _increment() {
     if ((_quantity + 1) * widget.pointsPerItem <= _userPoints) {
@@ -46,8 +72,108 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
     }
   }
 
+  Future<void> _handleRedeem() async {
+    final int totalRequired = _quantity * widget.pointsPerItem;
+    final int remainingPoints = _userPoints - totalRequired;
+
+    if (remainingPoints < 0) return;
+
+    setState(() => _isLoading = true);
+    
+    try {
+      // 1. Potong Poin
+      final result = await PointsService.updateUserPoints(
+        userEmail: widget.userEmail, 
+        points: remainingPoints,
+      );
+
+      if (result['success']) {
+        // 2. Notifikasi User
+        await UserNotificationService.notifyRewardRedeemed(
+          widget.userEmail, 
+          widget.rewardName,
+        );
+
+        // 3. Notifikasi Super Admin (Peringatan Hadiah Baru)
+        await SuperAdminNotificationService.notifyRewardRequest(
+          userEmail: widget.userEmail,
+          userName: _userModel?.name ?? 'Pengguna',
+          rewardName: '${_quantity}x ${widget.rewardName}',
+        );
+
+        if (!mounted) return;
+        _showSuccessDialog();
+      } else {
+        throw Exception(result['message'] ?? 'Gagal memproses penukaran');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal: $e'), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        contentPadding: const EdgeInsets.all(32),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
+              child: const Icon(Icons.check_circle, color: Colors.green, size: 60),
+            ),
+            const SizedBox(height: 24),
+            const Text('Penukaran Berhasil!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+            const SizedBox(height: 12),
+            const Text(
+              'Silakan hubungi Admin / Loket Terdekat untuk pengambilan hadiah dengan menunjukkan riwayat penukaran Anda.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.black87, fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Poin Anda telah dipotong secara otomatis.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey, fontFamily: 'Poppins', fontSize: 11),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context); // Tutup Dialog
+                  Navigator.pop(context); // Kembali ke Reward List
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                ),
+                child: const Text('Tutup', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.white)),
+              ),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading && _userModel == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
+    }
+
     final int totalRequired = _quantity * widget.pointsPerItem;
     final int remainingPoints = _userPoints - totalRequired;
 
@@ -73,15 +199,15 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
                     decoration: BoxDecoration(
-                      color: widget.color.withValues(alpha: 0.05),
+                      color: widget.color.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: widget.color.withValues(alpha: 0.2)),
+                      border: Border.all(color: widget.color.withOpacity(0.2)),
                     ),
                     child: Column(
                       children: [
                         Container(
                           padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(color: widget.color.withValues(alpha: 0.15), shape: BoxShape.circle),
+                          decoration: BoxDecoration(color: widget.color.withOpacity(0.15), shape: BoxShape.circle),
                           child: Icon(widget.icon, size: 80, color: widget.color),
                         ),
                         const SizedBox(height: 24),
@@ -105,9 +231,9 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
+                      color: Colors.blue.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+                      border: Border.all(color: Colors.blue.withOpacity(0.2)),
                     ),
                     child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -116,7 +242,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Instruksi Pengambilan:\nHadiah dapat diambil di loket panitia / Drop Point terdekat dengan menunjukkan bukti resi penukaran ini.',
+                            'Instruksi Pengambilan:\nHadiah dapat diambil di loket panitia / Drop Point terdekat dengan memberikan konfirmasi kepada Admin.',
                             style: TextStyle(fontFamily: 'Poppins', fontSize: 13, height: 1.5, color: Colors.black87),
                           ),
                         ),
@@ -193,73 +319,23 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               boxShadow: [
-                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4)),
+                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4)),
               ],
             ),
             child: SafeArea(
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: remainingPoints >= 0 ? () async {
-                    // Memicu Notifikasi
-                    await AppNotificationService.createNotification(
-                      userEmail: widget.userEmail,
-                      title: 'Reward Berhasil Ditukar 🎉',
-                      message: 'Kamu berhasil menukarkan ${totalRequired} Pts dengan $_quantity ${widget.rewardName}. Harap tunjukkan bukti ke Loket / Drop Point.',
-                      type: 'reward',
-                    );
-
-                    // Simulasi Berhasil
-                    if (!mounted) return;
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => AlertDialog(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                        contentPadding: const EdgeInsets.all(32),
-                        content: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), shape: BoxShape.circle),
-                              child: const Icon(Icons.check_circle, color: Colors.green, size: 60),
-                            ),
-                            const SizedBox(height: 24),
-                            const Text('Penukaran Berhasil!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Kamu berhasil menukar $_quantity ${widget.rewardName}. Silakan cek riwayat Anda.',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.grey, fontFamily: 'Poppins', fontSize: 13),
-                            ),
-                            const SizedBox(height: 24),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  Navigator.pop(context); // Tutup Dialog
-                                  Navigator.pop(context); // Kembali ke Reward List
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppColors.primary,
-                                  padding: const EdgeInsets.symmetric(vertical: 14),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                ),
-                                child: const Text('Selesai', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.white)),
-                              ),
-                            )
-                          ],
-                        ),
-                      )
-                    );
-                  } : null,
+                  onPressed: (remainingPoints >= 0 && !_isLoading) ? _handleRedeem : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
                   ),
-                  child: const Text('Konfirmasi Tukar Poin', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.white)),
+                  child: _isLoading 
+                    ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Text('Konfirmasi Tukar Poin', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.white)),
                 ),
               ),
             ),

@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../constants/app_colors.dart';
+import '../../../services/notifications/app_notification_service.dart';
 import '../super_admin_notifications_screen.dart';
+
 
 class SuperAdminHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
-  const SuperAdminHeader({Key? key, this.title = 'Super Admin'}) : super(key: key);
+  final String adminEmail;
+  const SuperAdminHeader({Key? key, this.title = 'Super Admin', required this.adminEmail}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -19,12 +22,9 @@ class SuperAdminHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
       leading: Padding(
         padding: const EdgeInsets.all(12),
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(Icons.admin_panel_settings, color: AppColors.superAdminPrimary, size: 20),
+        child: Image.asset(
+          'assets/images/logo_white.png',
+          fit: BoxFit.contain,
         ),
       ),
       title: Text(
@@ -38,28 +38,39 @@ class SuperAdminHeader extends StatelessWidget implements PreferredSizeWidget {
       ),
       centerTitle: true,
       actions: [
-        IconButton(
-          icon: Stack(
-            children: [
-              const Icon(Icons.notifications_outlined, color: Colors.white),
-              Positioned(
-                right: 0,
-                top: 0,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.redAccent,
-                    shape: BoxShape.circle,
-                  ),
-                ),
+        StreamBuilder<int>(
+          stream: AppNotificationService.getUnreadCountStream(adminEmail),
+          builder: (context, snapshot) {
+            final count = snapshot.data ?? 0;
+            return IconButton(
+              icon: Stack(
+                children: [
+                  const Icon(Icons.notifications_outlined, color: Colors.white),
+                  if (count > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: const BoxDecoration(color: Colors.redAccent, shape: BoxShape.circle),
+                        constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                        child: Text(
+                          count > 9 ? '9+' : count.toString(),
+                          style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ],
-          ),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SuperAdminNotificationsScreen()),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SuperAdminNotificationsScreen(adminEmail: adminEmail),
+                  ),
+                );
+              },
             );
           },
         ),

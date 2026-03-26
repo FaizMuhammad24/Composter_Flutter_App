@@ -32,7 +32,7 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
     try {
       // 1. Fetch fresh user data from Firestore (same as dashboard)
       final freshUser = await UserService.getUserByEmail(widget.user.email);
-      
+
       // 2. Fetch transaction history
       final history = await HistoryService.getUserHistory(widget.user.email);
       double weightSum = 0;
@@ -41,7 +41,7 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
         weightSum += item.weight;
         if (item.status == 'approved') approvedCount++;
       }
-      
+
       if (mounted) {
         setState(() {
           _currentPoints = freshUser?.points ?? widget.user.points ?? 0;
@@ -61,7 +61,11 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: const Text('Riwayat', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+        title: const Text('Riwayat',
+            style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'Poppins')),
         backgroundColor: AppColors.primary,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -82,18 +86,32 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Total Poin Anda', style: TextStyle(color: Colors.white70, fontSize: 14, fontFamily: 'Poppins')),
+                      const Text('Total Poin Anda',
+                          style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              fontFamily: 'Poppins')),
                       const SizedBox(height: 8),
                       Text(
                         '$_currentPoints Pts',
-                        style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: 'Poppins'),
                       ),
                       const SizedBox(height: 24),
                       Row(
                         children: [
-                          _buildStatCard(value: '${_totalWeight.toStringAsFixed(1)} kg', label: 'Total Setor', color: const Color(0xFF81D4FA)),
+                          _buildStatCard(
+                              value: '${_totalWeight.toStringAsFixed(1)} kg',
+                              label: 'Total Setor',
+                              color: const Color(0xFF81D4FA)),
                           const SizedBox(width: 16),
-                          _buildStatCard(value: '${_rewardExchangeCount}x', label: 'Reward Ditukar', color: const Color(0xFFFFB74D)),
+                          _buildStatCard(
+                              value: '${_rewardExchangeCount}x',
+                              label: 'Reward Ditukar',
+                              color: const Color(0xFFFFB74D)),
                         ],
                       ),
                     ],
@@ -105,37 +123,54 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
                   width: double.infinity,
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.only(topLeft: Radius.circular(30), topRight: Radius.circular(30)),
+                    borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Padding(
                         padding: EdgeInsets.fromLTRB(24, 24, 24, 16),
-                        child: Text('Riwayat Transaksi Terakhir', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                        child: Text('Riwayat Transaksi Terakhir',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Poppins')),
                       ),
                       Expanded(
                         child: _isLoading
-                          ? const Center(child: CircularProgressIndicator())
-                          : _recentTransactions.isEmpty
-                            ? const Center(child: Text('Belum ada transaksi.', style: TextStyle(fontFamily: 'Poppins')))
-                            : ListView.builder(
-                                padding: const EdgeInsets.symmetric(horizontal: 24),
-                                itemCount: _recentTransactions.length,
-                                itemBuilder: (context, index) {
-                                  final tx = _recentTransactions[index];
-                                  final isApproved = tx.status == 'approved';
-                                  return _buildTransactionItem(
-                                    icon: Icons.recycling,
-                                    iconColor: AppColors.primary,
-                                    title: 'Setor Sampah',
-                                    subtitle: DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(tx.createdAt)),
-                                    weightText: '${tx.weight.toStringAsFixed(1)} Kg',
-                                    pointsText: isApproved ? '+${tx.points} Pts' : null,
-                                    status: tx.status,
-                                  );
-                                },
-                              ),
+                            ? const Center(child: CircularProgressIndicator())
+                            : _recentTransactions.isEmpty
+                                ? const Center(
+                                    child: Text('Belum ada transaksi.',
+                                        style:
+                                            TextStyle(fontFamily: 'Poppins')))
+                                : ListView.builder(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 24),
+                                    itemCount: _recentTransactions.length,
+                                    itemBuilder: (context, index) {
+                                      final tx = _recentTransactions[index];
+                                      final isApproved =
+                                          tx.status == 'approved';
+                                      return _buildTransactionItem(
+                                        icon: Icons.recycling,
+                                        iconColor: AppColors.primary,
+                                        title: 'Setor Sampah',
+                                        subtitle: DateFormat(
+                                                'dd MMM yyyy, HH:mm')
+                                            .format(
+                                                DateTime.parse(tx.createdAt)),
+                                        weightText:
+                                            '${tx.weight.toStringAsFixed(1)} Kg',
+                                        pointsText: isApproved
+                                            ? '+${tx.points} Pts'
+                                            : null,
+                                        status: tx.status,
+                                      );
+                                    },
+                                  ),
                       ),
                     ],
                   ),
@@ -148,17 +183,28 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
     );
   }
 
-  Widget _buildStatCard({required String value, required String label, required Color color}) {
+  Widget _buildStatCard(
+      {required String value, required String label, required Color color}) {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(20)),
+        decoration: BoxDecoration(
+            color: color, borderRadius: BorderRadius.circular(20)),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87, fontFamily: 'Poppins')),
+            Text(value,
+                style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                    fontFamily: 'Poppins')),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 12, color: Colors.black54, fontFamily: 'Poppins')),
+            Text(label,
+                style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                    fontFamily: 'Poppins')),
           ],
         ),
       ),
@@ -195,8 +241,10 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
       child: Row(
         children: [
           Container(
-            width: 48, height: 48,
-            decoration: BoxDecoration(color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
             child: Icon(icon, color: iconColor, size: 24),
           ),
           const SizedBox(width: 14),
@@ -205,23 +253,54 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(children: [
-                  Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins'))),
+                  Expanded(
+                      child: Text(title,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              fontFamily: 'Poppins'))),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
-                    child: Text(statusLabel, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor, fontFamily: 'Poppins')),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8)),
+                    child: Text(statusLabel,
+                        style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: statusColor,
+                            fontFamily: 'Poppins')),
                   ),
                 ]),
                 const SizedBox(height: 4),
-                Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12, fontFamily: 'Poppins')),
+                Text(subtitle,
+                    style: const TextStyle(
+                        color: Colors.grey,
+                        fontSize: 12,
+                        fontFamily: 'Poppins')),
                 const SizedBox(height: 4),
                 Row(children: [
-                  Text(weightText, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: Colors.black87, fontFamily: 'Poppins')),
+                  Text(weightText,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                          color: Colors.black87,
+                          fontFamily: 'Poppins')),
                   if (pointsText != null) ...[
                     const SizedBox(width: 12),
-                    Text('poin ditambahkan', style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'Poppins')),
+                    Text('poin ditambahkan',
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey[500],
+                            fontFamily: 'Poppins')),
                     const SizedBox(width: 6),
-                    Text(pointsText, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange, fontFamily: 'Poppins')),
+                    Text(pointsText,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: Colors.orange,
+                            fontFamily: 'Poppins')),
                   ],
                 ]),
               ],

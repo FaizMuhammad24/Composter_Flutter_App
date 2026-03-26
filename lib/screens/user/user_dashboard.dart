@@ -19,7 +19,8 @@ class UserDashboard extends StatefulWidget {
   State<UserDashboard> createState() => _UserDashboardState();
 }
 
-class _UserDashboardState extends State<UserDashboard> with SingleTickerProviderStateMixin {
+class _UserDashboardState extends State<UserDashboard>
+    with SingleTickerProviderStateMixin {
   bool _isLoading = true;
   double _totalWeight = 0.0;
   int _totalExchanged = 0;
@@ -41,7 +42,8 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
     );
-    _slideAnimation = Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuad),
     );
     _loadData();
@@ -50,7 +52,7 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     _animationController.reset();
-    
+
     try {
       // 0. Seed data if needed
       await RewardService.seedInitialData();
@@ -77,11 +79,11 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
           _popularRewards = rewards;
         });
       }
-    } catch(e) {
+    } catch (e) {
       // Ignore errors for now
       print('Dashboard load error: $e');
     }
-    
+
     if (mounted) {
       setState(() => _isLoading = false);
       _animationController.forward();
@@ -126,17 +128,33 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          LoadingShimmer(width: double.infinity, height: 260, borderRadius: BorderRadius.circular(20)),
+          LoadingShimmer(
+              width: double.infinity,
+              height: 260,
+              borderRadius: BorderRadius.circular(20)),
           const SizedBox(height: 24),
-          LoadingShimmer(width: 150, height: 24, borderRadius: BorderRadius.circular(8)),
+          LoadingShimmer(
+              width: 150, height: 24, borderRadius: BorderRadius.circular(8)),
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: LoadingShimmer(width: 100, height: 100, borderRadius: BorderRadius.circular(16))),
+              Expanded(
+                  child: LoadingShimmer(
+                      width: 100,
+                      height: 100,
+                      borderRadius: BorderRadius.circular(16))),
               const SizedBox(width: 16),
-              Expanded(child: LoadingShimmer(width: 100, height: 100, borderRadius: BorderRadius.circular(16))),
+              Expanded(
+                  child: LoadingShimmer(
+                      width: 100,
+                      height: 100,
+                      borderRadius: BorderRadius.circular(16))),
               const SizedBox(width: 16),
-              Expanded(child: LoadingShimmer(width: 100, height: 100, borderRadius: BorderRadius.circular(16))),
+              Expanded(
+                  child: LoadingShimmer(
+                      width: 100,
+                      height: 100,
+                      borderRadius: BorderRadius.circular(16))),
             ],
           ),
           const SizedBox(height: 24),
@@ -155,18 +173,18 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeroCard(),
-            const SizedBox(height: 24),
-            _buildQuickActions(),
-            const SizedBox(height: 24),
-            _buildPopularRewards(),
-            const SizedBox(height: 24),
-            _buildKomposTips(),
-            const SizedBox(height: 120),
-              ],
-            ),
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeroCard(),
+              const SizedBox(height: 24),
+              _buildQuickActions(),
+              const SizedBox(height: 24),
+              _buildPopularRewards(),
+              const SizedBox(height: 24),
+              _buildKomposTips(),
+              const SizedBox(height: 120),
+            ],
+          ),
         ),
       ),
     );
@@ -175,7 +193,7 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
   Widget _buildHeroCard() {
     final screenHeight = MediaQuery.of(context).size.height;
     final cardHeight = (screenHeight * 0.38).clamp(260.0, 310.0);
-    
+
     return Container(
       height: cardHeight,
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -260,11 +278,16 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
                 const SizedBox(height: 10),
                 Row(
                   children: [
-                    _buildHeroStatCard(Icons.delete_outline, '${_totalWeight.toStringAsFixed(1).replaceAll('.0', '')} kg', 'Disetor'),
+                    _buildHeroStatCard(
+                        Icons.delete_outline,
+                        '${_totalWeight.toStringAsFixed(1).replaceAll('.0', '')} kg',
+                        'Disetor'),
                     const SizedBox(width: 10),
-                    _buildHeroStatCard(Icons.star_outline, '${_currentUser.points ?? 0}', 'Poin'),
+                    _buildHeroStatCard(Icons.star_outline,
+                        '${_currentUser.points ?? 0}', 'Poin'),
                     const SizedBox(width: 10),
-                    _buildHeroStatCard(Icons.card_giftcard, '${_totalExchanged}x', 'Ditukar'),
+                    _buildHeroStatCard(
+                        Icons.card_giftcard, '${_totalExchanged}x', 'Ditukar'),
                   ],
                 ),
               ],
@@ -344,7 +367,8 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
                   await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => UserDepositScreen(userEmail: _currentUser.email),
+                      builder: (_) =>
+                          UserDepositScreen(userEmail: _currentUser.email),
                     ),
                   );
                   _loadData(); // REFRESH AFTER RETURN
@@ -357,7 +381,8 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
                 onTap: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => UserDepositHistoryScreen(userEmail: _currentUser.email),
+                    builder: (_) =>
+                        UserDepositHistoryScreen(userEmail: _currentUser.email),
                   ),
                 ),
               ),
@@ -367,7 +392,8 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
                 color: const Color(0xFFFF9800),
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => UserRewardsScreen(user: _currentUser)),
+                  MaterialPageRoute(
+                      builder: (_) => UserRewardsScreen(user: _currentUser)),
                 ),
               ),
             ],
@@ -424,7 +450,9 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
     if (_popularRewards.isEmpty) {
       return const Padding(
         padding: EdgeInsets.all(16.0),
-        child: Center(child: Text('Belum ada reward populer', style: TextStyle(fontFamily: 'Poppins'))),
+        child: Center(
+            child: Text('Belum ada reward populer',
+                style: TextStyle(fontFamily: 'Poppins'))),
       );
     }
 
@@ -453,7 +481,8 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
               TextButton(
                 onPressed: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => UserRewardsScreen(user: _currentUser)),
+                  MaterialPageRoute(
+                      builder: (_) => UserRewardsScreen(user: _currentUser)),
                 ),
                 child: const Text(
                   'Lihat Semua →',
@@ -515,7 +544,8 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
             height: 110,
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(16)),
             ),
             child: Center(
               child: Icon(Icons.card_giftcard, size: 50, color: color),
@@ -563,7 +593,8 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
       ),
     );
   }
-    // ========== 3. TIPS KOMPOS ==========
+
+  // ========== 3. TIPS KOMPOS ==========
   Widget _buildKomposTips() {
     final tips = [
       {
@@ -575,7 +606,8 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
       {
         'icon': Icons.water_drop,
         'title': 'Jaga Kelembaban',
-        'desc': 'Pastikan kompos lembab seperti spons basah, tidak terlalu kering atau becek.',
+        'desc':
+            'Pastikan kompos lembab seperti spons basah, tidak terlalu kering atau becek.',
         'color': const Color(0xFF2196F3),
       },
       {
@@ -587,7 +619,8 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
       {
         'icon': Icons.thermostat,
         'title': 'Suhu Ideal',
-        'desc': 'Kompos aktif bisa mencapai 55–65°C — itu tanda fermentasi berhasil!',
+        'desc':
+            'Kompos aktif bisa mencapai 55–65°C — itu tanda fermentasi berhasil!',
         'color': const Color(0xFFE91E63),
       },
     ];
@@ -599,9 +632,9 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
           padding: EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-               Icon(Icons.lightbulb_outline, color: Color(0xFF2D5016)),
-               SizedBox(width: 8),
-               Text(
+              Icon(Icons.lightbulb_outline, color: Color(0xFF2D5016)),
+              SizedBox(width: 8),
+              Text(
                 'Tips Kompos Hari Ini',
                 style: TextStyle(
                   fontSize: 18,
@@ -691,7 +724,4 @@ class _UserDashboardState extends State<UserDashboard> with SingleTickerProvider
       ],
     );
   }
-
-
-
 }

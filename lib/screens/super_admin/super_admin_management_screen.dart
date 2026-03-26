@@ -2,15 +2,16 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import 'super_admin_manage_admins_screen.dart';
 import 'super_admin_manage_users_screen.dart';
+import 'super_admin_manage_deposits_screen.dart';
 
-/// ManagementScreen: combines Admin & User management in a single tabbed screen
+/// ManagementScreen: combines Admin, User, and Deposit management in a single tabbed screen
 class SuperAdminManagementScreen extends StatelessWidget {
   const SuperAdminManagementScreen({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Column(
         children: [
           Container(
@@ -24,6 +25,7 @@ class SuperAdminManagementScreen extends StatelessWidget {
               tabs: [
                 Tab(icon: Icon(Icons.shield_outlined, size: 18), text: 'Admin'),
                 Tab(icon: Icon(Icons.people_outlined, size: 18), text: 'User'),
+                Tab(icon: Icon(Icons.inventory_2_outlined, size: 18), text: 'Setoran'),
               ],
             ),
           ),
@@ -32,6 +34,7 @@ class SuperAdminManagementScreen extends StatelessWidget {
               children: [
                 ManageAdminsScreen(),
                 ManageUsersScreen(),
+                SuperAdminManageDepositsScreen(),
               ],
             ),
           ),

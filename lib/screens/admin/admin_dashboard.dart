@@ -14,7 +14,7 @@ import 'admin_category_humidity_screen.dart';
 import 'admin_category_ph_screen.dart';
 import 'admin_category_gas_screen.dart';
 import 'admin_history_log_screen.dart';
-import '../../services/notifications/notification_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 class AdminDashboard extends StatefulWidget {
   const AdminDashboard({Key? key}) : super(key: key);
   @override
@@ -28,11 +28,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   Map<String, dynamic> _actuatorStatus = {};
   late AnimationController _animationController;
 
-  // Offline Detection
-  DateTime? _lastUpdate;
-  Timer? _offlineCheckTimer;
-  bool _isOffline = false;
-
   @override
   void initState() {
     super.initState();
@@ -41,52 +36,13 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       duration: const Duration(milliseconds: 1500),
     );
     _listenToFirebase();
-    _startOfflineTimer();
   }
 
-  bool _isDataStale(Map<dynamic, dynamic> data) {
-    // 1. Cek via Unix Timestamp (Paling robust)
-    if (data.containsKey('unix_time')) {
-      final int espUnix = (data['unix_time'] as num).toInt();
-      final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final diff = (phoneUnix - espUnix).abs();
-      return diff > 60; // 1 Minute tolerance
-    }
 
-    // 2. Fallback ke String "time" (HH:mm:ss)
-    final String? timeStr = data['time']?.toString();
-    if (timeStr == null || timeStr.isEmpty) return true;
-    try {
-      final parts = timeStr.split(':');
-      if (parts.length != 3) return true;
-      final now = DateTime.now();
-      final dataTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-      return now.difference(dataTime).inSeconds.abs() > 60;
-    } catch (e) {
-      return true;
-    }
-  }
-
-  void _startOfflineTimer() {
-    _offlineCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-      if (_lastUpdate == null || _isLoading) return;
-      
-      final diff = DateTime.now().difference(_lastUpdate!);
-      if (diff.inSeconds > 20 && !_isOffline) {
-        setState(() {
-          _isOffline = true;
-          // Reset data stale agar tidak membingungkan
-          _sensorData = null;
-          _actuatorStatus = {};
-        });
-      }
-    });
-  }
 
   @override
   void dispose() {
     _rtdbSubscription?.cancel();
-    _offlineCheckTimer?.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -96,16 +52,9 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     _rtdbSubscription = FirebaseDatabase.instance.ref('komposter').onValue.listen((event) {
       if (event.snapshot.value != null) {
         final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
-        final bool stale = _isDataStale(data);
-
+ 
         if (mounted) {
           setState(() {
-            if (stale) {
-              _isOffline = true;
-            } else {
-              _lastUpdate = DateTime.now();
-              _isOffline = false;
-            }
             
             _sensorData = SensorDataModel.fromJson(data);
             
@@ -135,7 +84,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
 
   // Count active actuators
   int _countActiveActuators() {
-    if (_isOffline) return 0;
+    if (AdminNotificationService.isDeviceOffline) return 0;
     int count = 0;
     _actuatorStatus.forEach((key, value) {
       if (key != 'timestamp' && value == true) count++;
@@ -145,7 +94,12 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
 
   @override
   Widget build(BuildContext context) {
-    return _isLoading ? _buildLoadingState() : _buildContent();
+    return ValueListenableBuilder<bool>(
+      valueListenable: AdminNotificationService.deviceOfflineNotifier,
+      builder: (context, isOffline, _) {
+        return _isLoading ? _buildLoadingState() : _buildContent(isOffline);
+      },
+    );
   }
 
 
@@ -176,20 +130,12 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   }
 
   // Main content
-  Widget _buildContent() {
+  Widget _buildContent(bool isOffline) {
     if (_sensorData == null) return const SizedBox();
 
     return Container(
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFFFFF9C4), // Soft yellow top
-            AppColors.adminBg, // Cream bottom
-          ],
-          stops: [0.0, 0.4],
-        ),
+        color: AppColors.adminBg,
       ),
       child: RefreshIndicator(
         onRefresh: _refreshData,
@@ -200,11 +146,11 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildHeroCard(),
+              _buildHeroCard(isOffline),
               const SizedBox(height: AppSpacing.lg),
               _buildSectionTitle('Monitoring Sensor Real-time'),
               const SizedBox(height: AppSpacing.md),
-              _buildSensorGrid(),
+              _buildSensorGrid(isOffline),
               const SizedBox(height: AppSpacing.lg),
               _buildSectionTitle(
                 'Histori Log Alat', 
@@ -237,7 +183,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
 
 
   // Hero Card like User Dashboard
-  Widget _buildHeroCard() {
+  Widget _buildHeroCard(bool isOffline) {
     final now = DateTime.now();
     final timeStr = DateFormat('HH:mm').format(now);
     final cardHeight = MediaQuery.of(context).size.height * 0.28; // Dynamic height
@@ -292,7 +238,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                     fontFamily: 'Poppins',
                   ),
                 ),
-                if (_isOffline)
+                if (isOffline)
                   Container(
                     margin: const EdgeInsets.only(top: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -317,9 +263,9 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                       child: InkWell(
                         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminNotificationsScreen())),
                         child: ValueListenableBuilder<List<LocalAlert>>(
-                          valueListenable: NotificationService.alertsNotifier,
+                          valueListenable: AdminNotificationService.alertsNotifier,
                           builder: (context, alertsList, _) {
-                            final unreadCount = _isOffline ? 0 : alertsList.where((a) => !a.isRead).length;
+                            final unreadCount = isOffline ? 0 : alertsList.where((a) => !a.isRead).length;
                             return _buildHeroStatCardContent(Icons.warning_amber_rounded, '$unreadCount', 'Total Alert');
                           },
                         ),
@@ -338,9 +284,9 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: Colors.white.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                          border: Border.all(color: Colors.white.withOpacity(0.3)),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -405,29 +351,29 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
   }
 
   // Symmetrical Sensor Grid (2x2 layout)
-  Widget _buildSensorGrid() {
+  Widget _buildSensorGrid(bool isOffline) {
     if (_sensorData == null) return const SizedBox();
 
     double screenWidth = MediaQuery.of(context).size.width;
     double spacing = screenWidth * 0.04; // 4% of screen width
 
     return Opacity(
-      opacity: _isOffline ? 0.6 : 1.0,
+      opacity: isOffline ? 0.6 : 1.0,
       child: Column(
         children: [
           Row(
             children: [
-              Expanded(child: _buildSuhuCard()),
+              Expanded(child: _buildSuhuCard(isOffline)),
               SizedBox(width: spacing),
-              Expanded(child: _buildKelembabanCard()),
+              Expanded(child: _buildKelembabanCard(isOffline)),
             ],
           ),
           SizedBox(height: spacing),
           Row(
             children: [
-              Expanded(child: _buildPhCard()),
+              Expanded(child: _buildPhCard(isOffline)),
               SizedBox(width: spacing),
-              Expanded(child: _buildGasCard()),
+              Expanded(child: _buildGasCard(isOffline)),
             ],
           ),
         ],
@@ -442,6 +388,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     return StreamBuilder<DatabaseEvent>(
       stream: FirebaseDatabase.instance.ref('komposter').onValue,
       builder: (context, snapshot) {
+        final isOffline = AdminNotificationService.isDeviceOffline;
         if (!snapshot.hasData || snapshot.data!.snapshot.value == null) {
           return const SizedBox(
             height: 150,
@@ -458,15 +405,15 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
           padding: EdgeInsets.symmetric(horizontal: screenWidth * 0.05, vertical: 10),
           child: Row(
             children: [
-              _buildHistoryItem("Heater", actuators['heater'] == true ? "Aktif" : "Mati", "Suhu: ${data['temperature'] ?? '--'}°C", Colors.orange, itemWidth),
+              _buildHistoryItem("Heater", actuators['heater'] == true ? "Aktif" : "Mati", "Suhu: ${data['temperature'] ?? '--'}°C", Colors.orange, itemWidth, isOffline),
               SizedBox(width: screenWidth * 0.03),
-              _buildHistoryItem("Exhaust Fan", actuators['fan'] == true ? "Aktif" : "Mati", "Gas: ${data['gas'] ?? '--'}ppm", Colors.blue, itemWidth),
+              _buildHistoryItem("Exhaust Fan", actuators['fan'] == true ? "Aktif" : "Mati", "Gas: ${data['gas'] ?? '--'}ppm", Colors.blue, itemWidth, isOffline),
               SizedBox(width: screenWidth * 0.03),
-              _buildHistoryItem("Pompa Air", actuators['water_pump'] == true ? "Aktif" : "Mati", "Lembap: ${data['soil'] ?? '--'}%", Colors.cyan, itemWidth),
+              _buildHistoryItem("Pompa Air", actuators['water_pump'] == true ? "Aktif" : "Mati", "Lembap: ${data['soil'] ?? '--'}%", Colors.cyan, itemWidth, isOffline),
               SizedBox(width: screenWidth * 0.03),
-              _buildHistoryItem("Pompa EM4", actuators['em4_pump'] == true ? "Aktif" : "Mati", "pH: ${data['ph'] ?? '--'}", Colors.purple, itemWidth),
+              _buildHistoryItem("Pompa EM4", actuators['em4_pump'] == true ? "Aktif" : "Mati", "pH: ${data['ph'] ?? '--'}", Colors.purple, itemWidth, isOffline),
               SizedBox(width: screenWidth * 0.03),
-              _buildHistoryItem("Motor Aduk", actuators['motor'] == true ? "Aktif" : "Mati", actuators['motor'] == true ? "Aktif" : "Selesai", Colors.teal, itemWidth),
+              _buildHistoryItem("Motor Aduk", actuators['motor'] == true ? "Aktif" : "Mati", "Aduk: ${actuators['motor'] == true ? 'Aktif' : '--'}", Colors.teal, itemWidth, isOffline),
             ],
           ),
         );
@@ -474,8 +421,11 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     );
   }
 
-  Widget _buildHistoryItem(String title, String status, String detail, Color color, double width) {
-    bool isActive = status == "Aktif";
+  Widget _buildHistoryItem(String title, String status, String detail, Color color, double width, bool isOffline) {
+    bool isActive = !isOffline && status == "Aktif";
+    final displayStatus = isOffline ? "Terputus" : status;
+    final displayDetail = detail; // Show actual detail even if offline
+
     return Container(
       width: width,
       padding: const EdgeInsets.all(15),
@@ -519,7 +469,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
           ),
           const SizedBox(height: 10),
           Text(
-            status,
+            displayStatus,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -529,7 +479,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
           ),
           const SizedBox(height: 5),
           Text(
-            detail,
+            displayDetail,
             style: TextStyle(
               fontSize: 11,
               color: Colors.grey[600],
@@ -561,72 +511,72 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     );
   }
 
-  Widget _buildSuhuCard() {
+  Widget _buildSuhuCard(bool isOffline) {
     return SensorCard(
       title: 'Suhu',
-      value: _isOffline ? '--' : _sensorData!.temperature.toStringAsFixed(1),
+      value: _sensorData!.temperature.toStringAsFixed(1),
       unit: '°C',
-      status: _isOffline ? 'Terputus' : _sensorData!.temperatureStatus,
-      valuePercent: _isOffline ? 0 : (_sensorData!.temperature - 30) / (80 - 30),
-      actuatorInfo: _isOffline ? 'Offline' : 'Heater: ${_actuatorStatus['Heater'] == true ? 'ON' : 'OFF'}',
+      status: isOffline ? 'Terputus' : _sensorData!.temperatureStatus,
+      valuePercent: (_sensorData!.temperature - 30) / (80 - 30),
+      actuatorInfo: 'Heater: ${_actuatorStatus['Heater'] == true ? 'ON' : 'OFF'}',
       icon: Icons.thermostat,
       color: AppColors.temperature,
-      isActive: !_isOffline,
-      onTap: _isOffline ? null : () => Navigator.push(
+      isActive: !isOffline,
+      onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminCategoryTemperatureScreen()),
       ),
     );
   }
 
-  Widget _buildKelembabanCard() {
+  Widget _buildKelembabanCard(bool isOffline) {
     return SensorCard(
       title: 'Kelembaban',
-      value: _isOffline ? '--' : (_sensorData!.isSoilHealthy ? _sensorData!.humidity.toStringAsFixed(1) : 'Gagal'),
+      value: _sensorData!.isSoilHealthy ? _sensorData!.humidity.toStringAsFixed(1) : 'Gagal',
       unit: _sensorData!.isSoilHealthy ? '%' : '',
-      status: _isOffline ? 'Terputus' : _sensorData!.humidityStatus,
-      valuePercent: _isOffline ? 0 : _sensorData!.humidity / 100,
-      actuatorInfo: _isOffline ? 'Offline' : 'Pompa Air: ${_actuatorStatus['Pompa Air'] == true ? 'ON' : 'OFF'}',
+      status: isOffline ? 'Terputus' : _sensorData!.humidityStatus,
+      valuePercent: _sensorData!.humidity / 100,
+      actuatorInfo: 'Pompa Air: ${_actuatorStatus['Pompa Air'] == true ? 'ON' : 'OFF'}',
       icon: Icons.water_drop,
       color: AppColors.humidity,
-      isActive: !_isOffline,
-      onTap: _isOffline ? null : () => Navigator.push(
+      isActive: !isOffline,
+      onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminCategoryHumidityScreen()),
       ),
     );
   }
 
-  Widget _buildPhCard() {
+  Widget _buildPhCard(bool isOffline) {
     return SensorCard(
       title: 'pH',
-      value: _isOffline ? '--' : (_sensorData!.isPhHealthy ? _sensorData!.ph.toStringAsFixed(1) : 'Gagal'),
+      value: _sensorData!.isPhHealthy ? _sensorData!.ph.toStringAsFixed(1) : 'Gagal',
       unit: '',
-      status: _isOffline ? 'Terputus' : _sensorData!.phStatus,
-      valuePercent: _isOffline ? 0 : _sensorData!.ph / 14,
-      actuatorInfo: _isOffline ? 'Offline' : 'Pompa EM4: ${_actuatorStatus['Pompa EM4'] == true ? 'ON' : 'OFF'}',
+      status: isOffline ? 'Terputus' : _sensorData!.phStatus,
+      valuePercent: _sensorData!.ph / 14,
+      actuatorInfo: 'Pompa EM4: ${_actuatorStatus['Pompa EM4'] == true ? 'ON' : 'OFF'}',
       icon: Icons.science,
       color: AppColors.ph,
-      isActive: !_isOffline,
-      onTap: _isOffline ? null : () => Navigator.push(
+      isActive: !isOffline,
+      onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminCategoryPhScreen()),
       ),
     );
   }
 
-  Widget _buildGasCard() {
+  Widget _buildGasCard(bool isOffline) {
     return SensorCard(
       title: 'Gas',
-      value: _isOffline ? '--' : _sensorData!.mq4.toString(),
+      value: _sensorData!.mq4.toString(),
       unit: 'ppm',
-      status: _isOffline ? 'Terputus' : _sensorData!.gasStatus,
-      valuePercent: _isOffline ? 0 : _sensorData!.mq4 / 800,
-      actuatorInfo: _isOffline ? 'Offline' : 'Exhaust Fan: ${_actuatorStatus['Exhaust Fan'] == true ? 'ON' : 'OFF'}',
+      status: isOffline ? 'Terputus' : _sensorData!.gasStatus,
+      valuePercent: _sensorData!.mq4 / 800,
+      actuatorInfo: 'Exhaust Fan: ${_actuatorStatus['Exhaust Fan'] == true ? 'ON' : 'OFF'}',
       icon: Icons.air,
       color: AppColors.gas,
-      isActive: !_isOffline,
-      onTap: _isOffline ? null : () => Navigator.push(
+      isActive: !isOffline,
+      onTap: () => Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminCategoryGasScreen()),
       ),
