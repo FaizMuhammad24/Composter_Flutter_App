@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../utils/helpers/csv_export_helper.dart';
+import 'widgets/sensor_calibration_card.dart';
+import 'widgets/sensor_history_toggle.dart';
 
 class AdminCategoryGasScreen extends StatefulWidget {
   const AdminCategoryGasScreen({Key? key}) : super(key: key);
@@ -13,6 +15,7 @@ class AdminCategoryGasScreen extends StatefulWidget {
 class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
   bool _isLoading = true;
   List<FlSpot> _spots = [];
+  List<Map<String, dynamic>> _logEntries = [];
   double _currentValue = 0.0;
   bool _fanStatus = false;
   bool _isOffline = false;
@@ -80,6 +83,7 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
         if (event.snapshot.value != null) {
           final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
           List<FlSpot> newSpots = [];
+          List<Map<String, dynamic>> entries = [];
           
           final sortedKeys = data.keys.toList()..sort();
           int xIndex = 0;
@@ -87,11 +91,13 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
             final log = Map<dynamic, dynamic>.from(data[key] as Map);
             final gas = (log['gas'] as num?)?.toDouble() ?? 0.0;
             newSpots.add(FlSpot(xIndex.toDouble(), gas));
+            entries.add({'time': log['time']?.toString() ?? '-', 'value': gas});
             xIndex++;
           }
 
           setState(() {
             _spots = newSpots;
+            _logEntries = entries.reversed.toList();
             _isLoading = false;
           });
         } else {
@@ -124,7 +130,7 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
           IconButton(
             icon: const Icon(Icons.download),
             tooltip: 'Download CSV',
-            onPressed: () => CsvExportHelper.exportKomposterLogs(context),
+            onPressed: () => CsvExportHelper.exportSingleSensorLogs(context, 'gas', 'Gas'),
           ),
         ],
       ),
@@ -191,61 +197,11 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: 24),
-                        const Text('Historis Pelepasan Gas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                        const SizedBox(height: 16),
-
-                        // Chart Line
-                        Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 24, 24, 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Grafik Gas (100 Log)', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                                const SizedBox(height: 24),
-                                SizedBox(
-                                  height: 200,
-                                  child: _spots.isEmpty ? const Center(child: Text('Belum ada data')) : LineChart(
-                                    LineChartData(
-                                      minY: 0, maxY: 1000,
-                                      gridData: const FlGridData(show: true, drawVerticalLine: false),
-                                      titlesData: FlTitlesData(
-                                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                        bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                      ),
-                                      borderData: FlBorderData(show: false),
-                                      extraLinesData: ExtraLinesData(
-                                        horizontalLines: [
-                                          HorizontalLine(y: 500, color: Colors.red.withOpacity(0.5), strokeWidth: 2, dashArray: [5, 5], label: HorizontalLineLabel(show: true, labelResolver: (line) => 'Threshold Bahaya', style: const TextStyle(color: Colors.red, fontSize: 10))),
-                                        ],
-                                      ),
-                                      lineBarsData: [
-                                        LineChartBarData(
-                                          spots: _spots,
-                                          isCurved: true,
-                                          color: Colors.grey[800]!,
-                                          barWidth: 3,
-                                          dotData: const FlDotData(show: false),
-                                          belowBarData: BarAreaData(
-                                            show: true,
-                                            gradient: LinearGradient(
-                                              colors: [Colors.grey[800]!.withOpacity(0.3), Colors.grey[800]!.withOpacity(0.0)],
-                                              begin: Alignment.topCenter,
-                                              end: Alignment.bottomCenter,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        // Swipeable History (Grafik / Tabel)
+                        SensorHistoryToggle(
+                          spots: _spots, logEntries: _logEntries,
+                          sensorLabel: 'Gas', unit: ' ppm', color: Colors.grey[800]!,
+                          minY: 0, maxY: 1000, thresholdMax: 500.0,
                         ),
 
                         const SizedBox(height: 20),
@@ -269,6 +225,18 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
                               ],
                             ),
                           ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Kalibrasi & Threshold
+                        SensorCalibrationCard(
+                          sensorKey: 'gas',
+                          sensorLabel: 'Gas',
+                          unit: 'ppm',
+                          color: Colors.grey[800]!,
+                          defaultMin: 0.0,
+                          defaultMax: 500.0,
                         ),
                       ],
                     ),

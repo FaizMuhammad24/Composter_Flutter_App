@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../utils/helpers/csv_export_helper.dart';
+import 'widgets/sensor_calibration_card.dart';
+import 'widgets/sensor_history_toggle.dart';
 
 class AdminCategoryTemperatureScreen extends StatefulWidget {
   const AdminCategoryTemperatureScreen({Key? key}) : super(key: key);
@@ -13,6 +15,7 @@ class AdminCategoryTemperatureScreen extends StatefulWidget {
 class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatureScreen> {
   bool _isLoading = true;
   List<FlSpot> _spots = [];
+  List<Map<String, dynamic>> _logEntries = [];
   double _currentValue = 0.0;
   bool _heaterStatus = false;
   bool _isOffline = false;
@@ -80,6 +83,7 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
         if (event.snapshot.value != null) {
           final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
           List<FlSpot> newSpots = [];
+          List<Map<String, dynamic>> entries = [];
           
           final sortedKeys = data.keys.toList()..sort();
           int xIndex = 0;
@@ -87,11 +91,13 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
             final log = Map<dynamic, dynamic>.from(data[key] as Map);
             final temp = (log['temperature'] as num?)?.toDouble() ?? 0.0;
             newSpots.add(FlSpot(xIndex.toDouble(), temp));
+            entries.add({'time': log['time']?.toString() ?? '-', 'value': temp});
             xIndex++;
           }
 
           setState(() {
             _spots = newSpots;
+            _logEntries = entries.reversed.toList();
             _isLoading = false;
           });
         } else {
@@ -124,7 +130,7 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
           IconButton(
             icon: const Icon(Icons.download),
             tooltip: 'Download CSV',
-            onPressed: () => CsvExportHelper.exportKomposterLogs(context),
+            onPressed: () => CsvExportHelper.exportSingleSensorLogs(context, 'temperature', 'Suhu'),
           ),
         ],
       ),
@@ -191,61 +197,11 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
                           ),
                         ),
 
-                        const SizedBox(height: 24),
-                        const Text('Historis Perubahan Suhu', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                        const SizedBox(height: 16),
-
-                        // Chart Line
-                        Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(16, 24, 24, 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Grafik Suhu (100 Log Terakhir)', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
-                                const SizedBox(height: 24),
-                                SizedBox(
-                                  height: 200,
-                                  child: _spots.isEmpty ? const Center(child: Text('Belum ada data')) : LineChart(
-                                    LineChartData(
-                                      minY: 30, maxY: 80,
-                                      gridData: const FlGridData(show: true, drawVerticalLine: false),
-                                      titlesData: FlTitlesData(
-                                        rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                        topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                        bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                                      ),
-                                      borderData: FlBorderData(show: false),
-                                      extraLinesData: ExtraLinesData(
-                                        horizontalLines: [
-                                          HorizontalLine(y: 60, color: Colors.red.withOpacity(0.5), strokeWidth: 2, dashArray: [5, 5], label: HorizontalLineLabel(show: true, labelResolver: (line) => 'Threshold', style: const TextStyle(color: Colors.red, fontSize: 10))),
-                                        ],
-                                      ),
-                                      lineBarsData: [
-                                        LineChartBarData(
-                                          spots: _spots,
-                                          isCurved: true,
-                                          color: const Color(0xFFFF6B35),
-                                          barWidth: 3,
-                                          dotData: const FlDotData(show: false),
-                                          belowBarData: BarAreaData(
-                                            show: true,
-                                            gradient: LinearGradient(
-                                              colors: [const Color(0xFFFF6B35).withOpacity(0.3), const Color(0xFFFF6B35).withOpacity(0.0)],
-                                              begin: Alignment.topCenter,
-                                              end: Alignment.bottomCenter,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                        // Swipeable History (Grafik / Tabel)
+                        SensorHistoryToggle(
+                          spots: _spots, logEntries: _logEntries,
+                          sensorLabel: 'Suhu', unit: '°C', color: const Color(0xFFFF6B35),
+                          minY: 20, maxY: 80, thresholdMax: 60.0,
                         ),
 
                         const SizedBox(height: 20),
@@ -269,6 +225,18 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
                               ],
                             ),
                           ),
+                        ),
+
+                        const SizedBox(height: 20),
+
+                        // Kalibrasi & Threshold
+                        SensorCalibrationCard(
+                          sensorKey: 'temperature',
+                          sensorLabel: 'Suhu',
+                          unit: '°C',
+                          color: const Color(0xFFFF6B35),
+                          defaultMin: 25.0,
+                          defaultMax: 60.0,
                         ),
                       ],
                     ),

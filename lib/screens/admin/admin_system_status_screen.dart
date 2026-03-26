@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'admin_sensor_history_screen.dart';
-import '../../services/notifications/notification_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 import '../../utils/mocks/mock_system_status.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
@@ -95,7 +95,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
         });
 
         if (!_isNotifiedOffline) {
-          NotificationService().notifyDeviceOffline();
+          AdminNotificationService().notifyDeviceOffline();
           _isNotifiedOffline = true;
         }
       }
@@ -218,7 +218,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
             });
 
             if ((prevStatus == 'offline' || _isNotifiedOffline) && _status.esp32Status == 'online') {
-              NotificationService().notifyDeviceOnline();
+              AdminNotificationService().notifyDeviceOnline();
               _isNotifiedOffline = false;
             }
           }
@@ -361,8 +361,8 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                     MaterialPageRoute(builder: (context) => const AdminSensorHistoryScreen()),
                   );
                 },
-                icon: const Icon(Icons.history, size: 20),
-                label: const Text('Lihat Rekap Data Sensor (1 Menit)'),
+                icon: const Icon(Icons.analytics_outlined, size: 20),
+                label: const Text('Lihat Rekap Data QoS (1 Menit)'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.adminPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -379,18 +379,43 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
   }
 
   Widget _buildHealthCard() {
+    final bool isOffline = _status.esp32Status == 'offline';
+    final double displayHealth = isOffline ? 0 : _status.health;
+    
+    String healthLabel;
+    Color healthColor;
+    String healthDesc;
+    
+    if (isOffline) {
+      healthLabel = 'Terputus';
+      healthColor = Colors.red;
+      healthDesc = 'Perangkat tidak terhubung';
+    } else if (displayHealth > 90) {
+      healthLabel = 'Sangat Baik';
+      healthColor = Colors.green;
+      healthDesc = 'Semua unit berjalan lancar';
+    } else if (displayHealth > 50) {
+      healthLabel = 'Normal';
+      healthColor = Colors.orange;
+      healthDesc = 'Performa optimal';
+    } else {
+      healthLabel = 'Buruk';
+      healthColor = Colors.red;
+      healthDesc = 'Ada masalah pada sistem';
+    }
+    
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.white, Colors.orange[50]!],
+          colors: isOffline ? [Colors.white, Colors.red[50]!] : [Colors.white, Colors.orange[50]!],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: AppColors.adminPrimary.withOpacity(0.1),
+            color: (isOffline ? Colors.red : AppColors.adminPrimary).withOpacity(0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -416,18 +441,20 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                 SizedBox(
                   width: 80, height: 80,
                   child: CircularProgressIndicator(
-                    value: _status.health / 100,
+                    value: displayHealth / 100,
                     strokeWidth: 8,
                     backgroundColor: Colors.grey[200],
                     valueColor: AlwaysStoppedAnimation<Color>(
-                      _status.health > 90 ? Colors.green[400]! : Colors.orange[400]!,
+                      isOffline ? Colors.red[300]! : (displayHealth > 90 ? Colors.green[400]! : Colors.orange[400]!),
                     ),
                   ),
                 ),
-                Text(
-                  '${_status.health.toInt()}%', 
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Poppins'),
-                ),
+                isOffline 
+                  ? Icon(Icons.wifi_off, color: Colors.red[400], size: 28)
+                  : Text(
+                      '${displayHealth.toInt()}%', 
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 20, fontFamily: 'Poppins'),
+                    ),
               ],
             ),
           ),
@@ -444,13 +471,13 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: _status.health > 90 ? Colors.green[50] : Colors.orange[50],
+                    color: healthColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    _status.health > 90 ? 'Sangat Baik' : 'Normal',
+                    healthLabel,
                     style: TextStyle(
-                      color: _status.health > 90 ? Colors.green[700] : Colors.orange[700],
+                      color: healthColor,
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       fontFamily: 'Poppins',
@@ -459,7 +486,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  _status.health > 90 ? 'Semua unit berjalan lancar' : 'Performa optimal',
+                  healthDesc,
                   style: TextStyle(color: Colors.grey[600], fontSize: 11, fontFamily: 'Poppins'),
                 ),
               ],
