@@ -1,4 +1,4 @@
-# i-Composter v2.0
+# i-Composter v1.0
 **Smart Composting Monitoring & Automation System**
 
 Sistem monitoring kompos cerdas berbasis IoT (Internet of Things) yang mengintegrasikan perangkat keras (ESP32) dengan aplikasi mobile (Flutter) melalui Firebase Realtime Database untuk proses pengomposan yang efisien dan terukur.
