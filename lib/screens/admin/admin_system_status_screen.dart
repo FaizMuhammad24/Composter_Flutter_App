@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'admin_sensor_history_screen.dart';
 import '../../services/notifications/admin_notification_service.dart';
-import '../../utils/mocks/mock_system_status.dart';
+
 import '../../constants/app_colors.dart';
 import '../../constants/app_spacing.dart';
 
@@ -11,6 +11,28 @@ class AdminSystemStatusScreen extends StatefulWidget {
   const AdminSystemStatusScreen({Key? key}) : super(key: key);
   @override
   State<AdminSystemStatusScreen> createState() => _AdminSystemStatusScreenState();
+}
+
+class SystemStatusData {
+  final double health;
+  final Map<String, int> uptime;
+  final String esp32Status;
+  final int wifiStrength;
+  final String lastPing;
+  final Map<String, String> sensorStatus;
+  final Map<String, String> actuatorStatus;
+  final Map<String, String> qosMonitoring;
+
+  SystemStatusData({
+    required this.health,
+    required this.uptime,
+    required this.esp32Status,
+    required this.wifiStrength,
+    required this.lastPing,
+    required this.sensorStatus,
+    required this.actuatorStatus,
+    required this.qosMonitoring,
+  });
 }
 
 class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {

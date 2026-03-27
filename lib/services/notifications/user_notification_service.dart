@@ -30,7 +30,16 @@ class UserNotificationService {
         if (change.type == DocumentChangeType.added && !change.doc.metadata.hasPendingWrites) {
           final data = change.doc.data();
           if (data == null) continue;
-          final docTime = (data['createdAt'] as Timestamp).toDate();
+          final rawTime = data['createdAt'];
+          if (rawTime == null) continue;
+          
+          DateTime docTime;
+          if (rawTime is String) {
+            docTime = DateTime.tryParse(rawTime) ?? DateTime.now();
+          } else {
+            docTime = (rawTime as Timestamp).toDate();
+          }
+
           if (_initTime != null && docTime.isAfter(_initTime!)) {
             _showPush(data['title'] ?? 'Info', data['message'] ?? '');
           }

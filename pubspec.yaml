@@ -38,7 +38,6 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/logo.png
-    - assets/images/logo_white.png
     - assets/images/reward_placeholder.png
 
   fonts:
@@ -57,8 +56,9 @@ flutter:
 
 flutter_launcher_icons:
   android: true
-  ios: true
+  ios: false
   image_path: "assets/images/logo.png"
+  remove_alpha_ios: true
   min_sdk_android: 21
 
 flutter_native_splash:

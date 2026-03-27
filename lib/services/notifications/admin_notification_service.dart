@@ -78,7 +78,55 @@ class AdminNotificationService {
     _isInitialized = true;
     if (!_isSuperAdmin) {
       startMaintenanceChecks();
+    } else {
+      _listenToSuperAdminActivity();
     }
+  }
+
+  void _listenToSuperAdminActivity() {
+    // Listen to new deposits
+    FirebaseFirestore.instance.collection('composts').snapshots().listen((snap) {
+      if (!deviceOfflineNotifier.value) { // just a safety check
+        for (var change in snap.docChanges) {
+          if (change.type == DocumentChangeType.added && !change.doc.metadata.hasPendingWrites) {
+            final data = change.doc.data();
+            if (data == null) continue;
+            final dynamic rawTime = data['createdAt'];
+            if (rawTime == null) continue;
+            try {
+              final docTime = rawTime is String ? DateTime.parse(rawTime) : (rawTime as Timestamp).toDate();
+              if (_initTime != null && docTime.isAfter(_initTime!)) {
+                if (data['status'] == 'pending') {
+                  _showPush('Setoran Sampah Baru ♻️', '${data['weight']} kg dari ${data['userEmail']}');
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      }
+    });
+
+    // Listen to new claims
+    FirebaseFirestore.instance.collection('reward_claims').snapshots().listen((snap) {
+      if (!deviceOfflineNotifier.value) {
+        for (var change in snap.docChanges) {
+          if (change.type == DocumentChangeType.added && !change.doc.metadata.hasPendingWrites) {
+            final data = change.doc.data();
+            if (data == null) continue;
+            final dynamic rawTime = data['createdAt'];
+            if (rawTime == null) continue;
+            try {
+              final docTime = rawTime is String ? DateTime.parse(rawTime) : (rawTime as Timestamp).toDate();
+              if (_initTime != null && docTime.isAfter(_initTime!)) {
+                if (data['status'] == 'pending') {
+                  _showPush('Klaim Hadiah Baru 🎁', '${data['rewardName']} oleh ${data['userEmail']}');
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      }
+    });
   }
 
   void _startStatusTimer() {

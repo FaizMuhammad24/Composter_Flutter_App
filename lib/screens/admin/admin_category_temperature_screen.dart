@@ -90,8 +90,9 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
           for (var key in sortedKeys) {
             final log = Map<dynamic, dynamic>.from(data[key] as Map);
             final temp = (log['temperature'] as num?)?.toDouble() ?? 0.0;
+            final unix = (log['unix_time'] as num?)?.toInt() ?? 0;
             newSpots.add(FlSpot(xIndex.toDouble(), temp));
-            entries.add({'time': log['time']?.toString() ?? '-', 'value': temp});
+            entries.add({'time': log['time']?.toString() ?? '-', 'value': temp, 'unix_time': unix});
             xIndex++;
           }
 

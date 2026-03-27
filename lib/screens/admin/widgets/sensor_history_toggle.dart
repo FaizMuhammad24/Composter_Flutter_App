@@ -35,33 +35,31 @@ class SensorHistoryToggle extends StatefulWidget {
 class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
   int _timeFilter = 0; // 0=Jam, 1=Hari, 2=Minggu
 
-  // We assume here that parent passes all necessary entries.
-  // The filtering logic:
-  // Jam = 1 jam terakhir (jika 1 menit = 1 data, maka 60 data)
-  // Hari = 24 jam terakhir (1440 data)
-  // Minggu = 7 hari terakhir (10080 data)
-  int get _displayLimit {
+  int get _thresholdSeconds {
     switch (_timeFilter) {
-      case 0: return 60;
-      case 1: return 1440;
-      case 2: return 10080;
-      default: return 60;
+      case 0: return 3600; // 1 Jam
+      case 1: return 86400; // 24 Jam
+      case 2: return 604800; // 7 Hari
+      default: return 3600;
     }
   }
 
   List<Map<String, dynamic>> get _filteredEntries {
-    final limit = _displayLimit.clamp(0, widget.logEntries.length);
-    return widget.logEntries.take(limit).toList();
+    final nowUnix = DateTime.now().toUtc().millisecondsSinceEpoch ~/ 1000;
+    final threshold = nowUnix - _thresholdSeconds;
+    
+    return widget.logEntries.where((e) {
+      final unix = e['unix_time'] as int? ?? 0;
+      return unix >= threshold;
+    }).toList();
   }
 
   List<FlSpot> get _filteredSpots {
-    final limit = _displayLimit.clamp(0, widget.spots.length);
-    // Take the most recent spots. Usually spots are added from older to newer (left to right)
-    // So to take the 'limit' newest spots, we take them from the end of the list.
-    if (widget.spots.length <= limit) return widget.spots;
-    final recentSpots = widget.spots.sublist(widget.spots.length - limit);
-    // Re-index X axis so it always starts nicely on the graph if we want, or keep original X.
-    return recentSpots;
+    final entries = _filteredEntries.reversed.toList(); // Entries are usually passed newest first, we need oldest first for chart (left to right)
+    return List.generate(entries.length, (i) {
+      final val = entries[i]['value'] as double? ?? 0.0;
+      return FlSpot(i.toDouble(), val);
+    });
   }
 
   @override

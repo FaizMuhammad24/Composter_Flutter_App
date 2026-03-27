@@ -126,6 +126,7 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
                             points: reward.points,
                             icon: icon,
                             color: color,
+                            imageUrl: reward.imageUrl,
                           );
                         },
                       ),
@@ -135,7 +136,7 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
     );
   }
 
-  Widget _buildRewardCard(BuildContext context, {required String rewardId, required String name, required int points, required IconData icon, required Color color}) {
+  Widget _buildRewardCard(BuildContext context, {required String rewardId, required String name, required int points, required IconData icon, required Color color, required String imageUrl}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -156,7 +157,7 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
           onTap: () {
             Navigator.push(
               context, 
-              MaterialPageRoute(builder: (_) => UserRedeemScreen(userEmail: widget.user.email, rewardId: rewardId, rewardName: name, pointsPerItem: points, icon: icon, color: color))
+              MaterialPageRoute(builder: (_) => UserRedeemScreen(userEmail: widget.user.email, rewardId: rewardId, rewardName: name, pointsPerItem: points, icon: icon, color: color, imageUrl: imageUrl))
             );
           },
           child: Padding(
@@ -164,14 +165,30 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    shape: BoxShape.circle,
+                if (imageUrl.isNotEmpty)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Image.network(
+                      imageUrl,
+                      height: 72,
+                      width: 72,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+                        child: Icon(icon, size: 40, color: color),
+                      ),
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 40, color: color),
                   ),
-                  child: Icon(icon, size: 40, color: color),
-                ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: Text(

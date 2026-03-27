@@ -90,8 +90,9 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
           for (var key in sortedKeys) {
             final log = Map<dynamic, dynamic>.from(data[key] as Map);
             final gas = (log['gas'] as num?)?.toDouble() ?? 0.0;
+            final unix = (log['unix_time'] as num?)?.toInt() ?? 0;
             newSpots.add(FlSpot(xIndex.toDouble(), gas));
-            entries.add({'time': log['time']?.toString() ?? '-', 'value': gas});
+            entries.add({'time': log['time']?.toString() ?? '-', 'value': gas, 'unix_time': unix});
             xIndex++;
           }
 

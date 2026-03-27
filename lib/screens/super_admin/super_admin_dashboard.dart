@@ -4,6 +4,7 @@ import '../../constants/app_colors.dart';
 import '../../services/rewards/reward_service.dart';
 import '../../services/admin/admin_service.dart';
 import '../../services/user/user_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 import '../../services/compost/compost_service.dart';
 import '../../widgets/common/loading_shimmer.dart';
 
@@ -22,7 +23,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
   late Animation<Offset> _slideAnimation;
   int _totalAdmins = 0;
   int _totalUsers = 0;
-  int _totalRewards = 0;
+  int _pendingClaims = 0;
   int _pendingDeposits = 0;
   int _totalPoints = 0;
   List<Map<String, dynamic>> _recentActivities = [];
@@ -64,7 +65,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
 
       final adminsList = results[0] as List;
       final usersList = results[1] as List;
-      final rewardsList = results[2] as List;
+      // results[2] is rewards, not needed for count anymore, but kept Future.wait as is for simplicity
       final allComposts = results[3] as List;
       final totalPoints = (results[4] as int);
 
@@ -76,38 +77,73 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
           .take(5)
           .map((c) {
             final compost = c as dynamic;
+            final dtStr = compost.createdAt.toString();
+            final parsedDt = DateTime.tryParse(dtStr) ?? DateTime.now();
             return {
               'icon': Icons.recycling,
               'color': Colors.green,
               'title': 'Setoran Baru Diterima',
               'desc': '${compost.weight} kg dari ${compost.userEmail.split('@')[0]}',
-              'time': _formatTime(compost.createdAt),
+              'createdAt': parsedDt,
             };
           })
           .toList();
       activities.addAll(recentComposts);
       
       // Add recent reward claims as activities  
+      int pendingClaimsCount = 0;
       try {
         final claims = await RewardService.getPendingClaims();
-        for (final claim in claims.take(3)) {
+        pendingClaimsCount = claims.length;
+        for (final claim in claims.take(5)) {
+          final dtStr = claim['createdAt'].toString();
+          final parsedDt = DateTime.tryParse(dtStr) ?? DateTime.now();
           activities.add({
             'icon': Icons.card_giftcard,
             'color': Colors.orange,
             'title': 'Klaim Hadiah',
             'desc': '${claim['rewardName']} oleh ${(claim['userEmail'] as String).split('@')[0]}',
-            'time': _formatTime(claim['createdAt']),
+            'createdAt': parsedDt,
           });
         }
       } catch (_) {}
 
-      activities.sort((a, b) => (b['time'] as String).compareTo(a['time'] as String));
+      // Add system alerts
+      try {
+        final alerts = AdminNotificationService.alertsNotifier.value;
+        for (final alert in alerts.take(5)) {
+          Color iconColor = Colors.blue;
+          IconData icon = Icons.info_outline;
+          if (alert.severity == 'danger') {
+             iconColor = Colors.red;
+             icon = Icons.error_outline;
+          } else if (alert.severity == 'warning') {
+             iconColor = Colors.orange;
+             icon = Icons.warning_amber_rounded;
+          }
+
+          activities.add({
+            'icon': icon,
+            'color': iconColor,
+            'title': alert.title,
+            'desc': alert.message,
+            'createdAt': alert.timestamp,
+          });
+        }
+      } catch (_) {}
+
+      // Sort properly using true DateTime
+      activities.sort((a, b) {
+        final dateA = a['createdAt'] as DateTime;
+        final dateB = b['createdAt'] as DateTime;
+        return dateB.compareTo(dateA);
+      });
 
       if (mounted) {
         setState(() {
           _totalAdmins = adminsList.length;
           _totalUsers = usersList.length;
-          _totalRewards = rewardsList.length;
+          _pendingClaims = pendingClaimsCount;
           _pendingDeposits = allComposts.where((c) => (c as dynamic).status == 'pending').length;
           _totalPoints = totalPoints;
           _recentActivities = activities.take(5).toList();
@@ -183,7 +219,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
             children: [
               _buildHeroCard(),
               const SizedBox(height: 20),
-              _buildStatsRow(),
+              _buildStatsGrid(),
               const SizedBox(height: 24),
               _buildSectionTitle('Aktivitas Sistem Terbaru'),
               const SizedBox(height: 12),
@@ -229,7 +265,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
               shape: BoxShape.circle,
             ),
             child: const Center(
-              child: Icon(Icons.eco, size: 40, color: Colors.white),
+              child: Icon(Icons.admin_panel_settings, size: 40, color: Colors.white),
             ),
           ),
           const SizedBox(width: 16),
@@ -272,16 +308,24 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
     );
   }
 
-  Widget _buildStatsRow() {
-    return Row(
+  Widget _buildStatsGrid() {
+    return Column(
       children: [
-        Expanded(child: _buildStatCard('Total Admin', '$_totalAdmins', Icons.shield_outlined, const Color(0xFFEF5350), 2)),
-        const SizedBox(width: 8),
-        Expanded(child: _buildStatCard('Total User', '$_totalUsers', Icons.people_outlined, const Color(0xFF42A5F5), 2)),
-        const SizedBox(width: 8),
-        Expanded(child: _buildStatCard('Total Hadiah', '$_totalRewards', Icons.card_giftcard_outlined, const Color(0xFF66BB6A), 1)),
-        const SizedBox(width: 8),
-        Expanded(child: _buildStatCard('Setoran\nPending', '$_pendingDeposits', Icons.inbox_outlined, const Color(0xFFFF9800), 2)),
+        Row(
+          children: [
+            Expanded(child: _buildStatCard('Total Admin', '$_totalAdmins', Icons.shield_outlined, const Color(0xFFEF5350), 2)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCard('Total User', '$_totalUsers', Icons.people_outlined, const Color(0xFF42A5F5), 2)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _buildStatCard('Klaim\nPending', '$_pendingClaims', Icons.card_giftcard_outlined, const Color(0xFF66BB6A), 1)),
+            const SizedBox(width: 12),
+            Expanded(child: _buildStatCard('Setoran\nPending', '$_pendingDeposits', Icons.inbox_outlined, const Color(0xFFFF9800), 2)),
+          ],
+        ),
       ],
     );
   }
@@ -399,7 +443,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
                 ),
               ),
               Text(
-                act['time'] as String,
+                _formatTime(act['createdAt']),
                 style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'Poppins', fontWeight: FontWeight.bold),
               ),
             ],

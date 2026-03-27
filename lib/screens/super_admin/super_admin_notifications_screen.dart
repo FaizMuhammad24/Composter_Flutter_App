@@ -32,7 +32,7 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
 
   void _initStreams() {
     _depSub = FirebaseFirestore.instance
-        .collection('deposits')
+        .collection('composts')
         .orderBy('createdAt', descending: true)
         .limit(30)
         .snapshots()
@@ -63,8 +63,17 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
   void _combineAndSort() {
     final combined = [..._depList, ..._claimList];
     combined.sort((a, b) {
-      final dateA = a['createdAt'] != null ? (a['createdAt'] as Timestamp).toDate() : DateTime.fromMillisecondsSinceEpoch(0);
-      final dateB = b['createdAt'] != null ? (b['createdAt'] as Timestamp).toDate() : DateTime.fromMillisecondsSinceEpoch(0);
+      final valA = a['createdAt'];
+      final valB = b['createdAt'];
+      DateTime dateA = DateTime.fromMillisecondsSinceEpoch(0);
+      DateTime dateB = DateTime.fromMillisecondsSinceEpoch(0);
+      
+      if (valA is Timestamp) dateA = valA.toDate();
+      else if (valA is String) dateA = DateTime.tryParse(valA) ?? dateA;
+      
+      if (valB is Timestamp) dateB = valB.toDate();
+      else if (valB is String) dateB = DateTime.tryParse(valB) ?? dateB;
+
       return dateB.compareTo(dateA);
     });
     setState(() {
@@ -248,7 +257,11 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
     final userEmail = data['userEmail'] ?? 'User';
     final weight = data['weight']?.toString() ?? '0';
     final points = data['pointsEarned']?.toString() ?? '0';
-    final time = data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now();
+    
+    final rawTime = data['createdAt'];
+    DateTime time = DateTime.now();
+    if (rawTime is Timestamp) time = rawTime.toDate();
+    else if (rawTime is String) time = DateTime.tryParse(rawTime) ?? time;
 
     IconData icon = Icons.inventory_2;
     Color color = Colors.orange;
@@ -278,7 +291,11 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
     final userEmail = data['userEmail'] ?? 'User';
     final rewardName = data['rewardName'] ?? 'Hadiah';
     final points = data['pointsSpent']?.toString() ?? '0';
-    final time = data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now();
+    
+    final rawTime = data['createdAt'];
+    DateTime time = DateTime.now();
+    if (rawTime is Timestamp) time = rawTime.toDate();
+    else if (rawTime is String) time = DateTime.tryParse(rawTime) ?? time;
 
     IconData icon = Icons.card_giftcard;
     Color color = Colors.purple;

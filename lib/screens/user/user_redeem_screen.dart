@@ -13,6 +13,7 @@ class UserRedeemScreen extends StatefulWidget {
   final int pointsPerItem;
   final IconData icon;
   final Color color;
+  final String imageUrl;
 
   const UserRedeemScreen({
     Key? key, 
@@ -22,6 +23,7 @@ class UserRedeemScreen extends StatefulWidget {
     required this.pointsPerItem,
     required this.icon,
     required this.color,
+    required this.imageUrl,
   }) : super(key: key);
 
   @override
@@ -114,6 +116,35 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
     }
   }
 
+  void _showConfirmDialog() {
+    final int totalRequired = _quantity * widget.pointsPerItem;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Konfirmasi Klaim', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+        content: Text('Apakah Anda yakin ingin menukar $totalRequired poin dengan $_quantity item ${widget.rewardName}?', style: const TextStyle(fontFamily: 'Poppins')),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Batal', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _handleRedeem();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            child: const Text('Ya, Klaim', style: TextStyle(fontFamily: 'Poppins', color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showSuccessDialog() {
     showDialog(
       context: context,
@@ -203,11 +234,27 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                     ),
                     child: Column(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(24),
-                          decoration: BoxDecoration(color: widget.color.withOpacity(0.15), shape: BoxShape.circle),
-                          child: Icon(widget.icon, size: 80, color: widget.color),
-                        ),
+                        if (widget.imageUrl.isNotEmpty)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(20),
+                            child: Image.network(
+                              widget.imageUrl,
+                              height: 120,
+                              width: 120,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(color: widget.color.withOpacity(0.15), shape: BoxShape.circle),
+                                child: Icon(widget.icon, size: 80, color: widget.color),
+                              ),
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(color: widget.color.withOpacity(0.15), shape: BoxShape.circle),
+                            child: Icon(widget.icon, size: 80, color: widget.color),
+                          ),
                         const SizedBox(height: 24),
                         Text(
                           widget.rewardName,
@@ -324,7 +371,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: (canAfford && !_isLoading) ? _handleRedeem : null,
+                  onPressed: (canAfford && !_isLoading) ? _showConfirmDialog : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     padding: const EdgeInsets.symmetric(vertical: 16),

@@ -106,56 +106,63 @@ class RewardService {
         .map((snap) => snap.docs.map((doc) => doc.data() as Map<String, dynamic>).toList());
   }
 
-  /// Khusus untuk development: Inject initial data biar gak kosong
-  static Future<void> seedInitialData() async {
-    final existing = await _rewardsCol.limit(1).get();
-    if (existing.docs.isEmpty) {
-      final initialRewards = [
-        RewardModel(
-          id: _rewardsCol.doc().id,
-          name: 'Voucher Alfamart',
-          description: 'Voucher Alfamart Rp50.000',
-          points: 500,
-          stock: 100,
-          imageUrl: '',
-          category: 'Voucher',
-          createdAt: DateTime.now(),
-        ),
-        RewardModel(
-          id: _rewardsCol.doc().id,
-          name: 'Pupuk Organik',
-          description: 'Pupuk Organik Cair 1L',
-          points: 300,
-          stock: 50,
-          imageUrl: '',
-          category: 'Produk',
-          createdAt: DateTime.now(),
-        ),
-        RewardModel(
-          id: _rewardsCol.doc().id,
-          name: 'Bibit Tanaman',
-          description: 'Bibit Sayuran Mix',
-          points: 200,
-          stock: 200,
-          imageUrl: '',
-          category: 'Produk',
-          createdAt: DateTime.now(),
-        ),
-        RewardModel(
-          id: _rewardsCol.doc().id,
-          name: 'Tas Belanja',
-          description: 'Tas Belanja Ramah Lingkungan',
-          points: 150,
-          stock: 20,
-          imageUrl: '',
-          category: 'Merchandise',
-          createdAt: DateTime.now(),
-        ),
-      ];
+  /// Ambil riwayat klaim user tertentu (Future)
+  static Future<List<Map<String, dynamic>>> getUserClaims(String userEmail) async {
+    try {
+      final snap = await _claimsCol
+          .where('userEmail', isEqualTo: userEmail)
+          .get();
+      final docs = snap.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+      docs.sort((a, b) => (b['createdAt'] as String).compareTo(a['createdAt'] as String));
+      return docs;
+    } catch (e) {
+      print('Error getUserClaims: $e');
+      return [];
+    }
+  }
 
-      for (var reward in initialRewards) {
-        await _rewardsCol.doc(reward.id).set(reward.toJson());
+  /// Klaim reward oleh User (dengan anti-spam)
+  static Future<bool> claimReward({
+    required String userEmail,
+    required String rewardId,
+    required int rewardPoints,
+    required String rewardName,
+  }) async {
+    try {
+      // Cek apakah ada klaim pending
+      final pendingSnap = await _claimsCol
+          .where('userEmail', isEqualTo: userEmail)
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      if (pendingSnap.docs.isNotEmpty) {
+        throw Exception('Anda masih memiliki klaim hadiah yang sedang diproses.');
       }
+
+      // Ambil info user untuk nama lengkap
+      final userSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: userEmail)
+          .limit(1)
+          .get();
+      final userName = userSnap.docs.isNotEmpty
+          ? (userSnap.docs.first.data()['name'] as String? ?? userEmail)
+          : userEmail;
+
+      await createClaim(
+        userEmail: userEmail,
+        userName: userName,
+        rewardId: rewardId,
+        rewardName: rewardName,
+        quantity: 1,
+        totalPoints: rewardPoints,
+      );
+
+      return true;
+    } catch (e) {
+      print('Error claiming reward: $e');
+      if (e is Exception) rethrow;
+      return false;
     }
   }
 

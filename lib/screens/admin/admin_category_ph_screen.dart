@@ -89,8 +89,9 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
           for (var key in sortedKeys) {
             final log = Map<dynamic, dynamic>.from(data[key] as Map);
             final ph = (log['ph'] as num?)?.toDouble() ?? 0.0;
+            final unix = (log['unix_time'] as num?)?.toInt() ?? 0;
             newSpots.add(FlSpot(xIndex.toDouble(), ph));
-            entries.add({'time': log['time']?.toString() ?? '-', 'value': ph});
+            entries.add({'time': log['time']?.toString() ?? '-', 'value': ph, 'unix_time': unix});
             xIndex++;
           }
           setState(() {

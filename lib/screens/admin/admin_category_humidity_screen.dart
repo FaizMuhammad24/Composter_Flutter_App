@@ -95,8 +95,9 @@ class _AdminCategoryHumidityScreenState extends State<AdminCategoryHumidityScree
           for (var key in sortedKeys) {
             final log = Map<dynamic, dynamic>.from(data[key] as Map);
             final soil = (log['soil'] as num?)?.toDouble() ?? 0.0;
+            final unix = (log['unix_time'] as num?)?.toInt() ?? 0;
             newSpots.add(FlSpot(xIndex.toDouble(), soil));
-            entries.add({'time': log['time']?.toString() ?? '-', 'value': soil});
+            entries.add({'time': log['time']?.toString() ?? '-', 'value': soil, 'unix_time': unix});
             xIndex++;
           }
 

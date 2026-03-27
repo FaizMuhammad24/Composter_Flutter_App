@@ -9,6 +9,7 @@ import '../../services/user/user_service.dart';
 import '../../widgets/common/loading_shimmer.dart';
 import '../../services/rewards/reward_service.dart';
 import '../../models/reward_model.dart';
+import 'user_redeem_screen.dart';
 
 class UserDashboard extends StatefulWidget {
   final UserModel user;
@@ -54,8 +55,6 @@ class _UserDashboardState extends State<UserDashboard>
     _animationController.reset();
 
     try {
-      // 0. Seed data if needed
-      await RewardService.seedInitialData();
 
       // 1. Reload user data for points
       final freshUser = await UserService.getUserByEmail(_currentUser.email);
@@ -502,10 +501,7 @@ class _UserDashboardState extends State<UserDashboard>
             itemBuilder: (context, index) {
               final reward = _popularRewards[index];
               return _buildRewardCard(
-                name: reward.name,
-                points: reward.points.toString(),
-                stars: 5,
-                imageUrl: reward.imageUrl,
+                reward: reward,
               );
             },
           ),
@@ -515,81 +511,113 @@ class _UserDashboardState extends State<UserDashboard>
   }
 
   Widget _buildRewardCard({
-    required String name,
-    required String points,
-    required int stars,
-    required String imageUrl,
+    required RewardModel reward,
   }) {
-    final colors = [Colors.orange, Colors.blue, Colors.green, Colors.purple];
-    final MaterialColor color = colors[name.length % colors.length];
+    IconData icon = Icons.card_giftcard;
+    Color color = Colors.orange;
+    
+    if (reward.category.toLowerCase() == 'voucher') {
+      icon = Icons.confirmation_number;
+      color = Colors.blue;
+    } else if (reward.category.toLowerCase() == 'produk') {
+      icon = Icons.grass;
+      color = Colors.green;
+    } else if (reward.category.toLowerCase() == 'merchandise') {
+      icon = Icons.shopping_bag;
+      color = Colors.purple;
+    }
 
     return Container(
-      width: 150,
+      width: 160,
       margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
+      child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            height: 110,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            child: Center(
-              child: Icon(Icons.card_giftcard, size: 50, color: color),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    height: 1.2,
-                    fontFamily: 'Poppins',
-                  ),
+        elevation: 1,
+        shadowColor: Colors.black.withOpacity(0.1),
+        child: InkWell(
+          onTap: () async {
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => UserRedeemScreen(
+                  userEmail: _currentUser.email,
+                  rewardId: reward.id,
+                  rewardName: reward.name,
+                  pointsPerItem: reward.points,
+                  icon: icon,
+                  color: color,
+                  imageUrl: reward.imageUrl,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  '$points pts',
-                  style: const TextStyle(
-                    color: Colors.orange,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    fontFamily: 'Poppins',
-                  ),
+              ),
+            );
+            _loadData();
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 110,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  children: List.generate(
-                    5,
-                    (i) => Icon(
-                      Icons.star,
-                      size: 13,
-                      color: i < stars ? Colors.amber : Colors.grey[300],
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                  child: reward.imageUrl.isNotEmpty
+                      ? Image.network(
+                          reward.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) =>
+                              Icon(icon, size: 50, color: color),
+                        )
+                      : Icon(icon, size: 50, color: color),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      reward.name,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        height: 1.2,
+                        fontFamily: 'Poppins',
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                  ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '${reward.points} pts',
+                      style: const TextStyle(
+                        color: Colors.orange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        fontFamily: 'Poppins',
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    const Row(
+                      children: [
+                        Icon(Icons.star, size: 12, color: Colors.amber),
+                        Icon(Icons.star, size: 12, color: Colors.amber),
+                        Icon(Icons.star, size: 12, color: Colors.amber),
+                        Icon(Icons.star, size: 12, color: Colors.amber),
+                        Icon(Icons.star, size: 12, color: Colors.amber),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

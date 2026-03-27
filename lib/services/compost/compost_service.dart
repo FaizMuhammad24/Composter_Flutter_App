@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/compost_model.dart';
+import '../notifications/user_notification_service.dart';
 
 class CompostService {
 
@@ -34,6 +35,14 @@ class CompostService {
       };
       
       await compostRef.set(compost);
+
+      // Notify user via UserNotificationService (which translates to firestore doc and local push)
+      try {
+        await UserNotificationService.notifyDepositPending(userEmail, weight);
+      } catch (e) {
+        // ignore errors
+      }
+
       // Poin HANYA ditambahkan setelah SuperAdmin menyetujui (ACC)
       // PointsService.addUserPoints dipanggil di SuperAdmin approval logic
 

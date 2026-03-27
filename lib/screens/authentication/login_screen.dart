@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _scrollController = ScrollController();
+  final _emailFocusNode = FocusNode();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -64,6 +65,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     _emailController.dispose();
     _passwordController.dispose();
     _scrollController.dispose();
+    _emailFocusNode.dispose();
     super.dispose();
   }
 
@@ -128,14 +130,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
   @override
   Widget build(BuildContext context) {
-    // viewInsets.bottom > 0 means keyboard is visible
     final keyboardVisible = MediaQuery.of(context).viewInsets.bottom > 0;
     final screenH = MediaQuery.of(context).size.height;
 
-    // Header shrinks dynamically when keyboard is visible
-    final headerH = keyboardVisible
-        ? (screenH * 0.18).clamp(100.0, 160.0)
-        : (screenH * 0.38).clamp(220.0, 320.0);
+    // Header fix to prevent jitter/keyboard issues
+    final headerH = (screenH * 0.38).clamp(220.0, 320.0);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: const SystemUiOverlayStyle(
@@ -224,6 +223,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                           // Email field
                           _buildTextField(
                             controller: _emailController,
+                            focusNode: _emailFocusNode,
                             hint: 'Email',
                             icon: Icons.person_outline_rounded,
                             keyboardType: TextInputType.emailAddress,
@@ -476,6 +476,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     required TextEditingController controller,
     required String hint,
     required IconData icon,
+    FocusNode? focusNode,
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
@@ -485,6 +486,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       obscureText: obscureText,
       keyboardType: keyboardType,
       textInputAction: textInputAction,

@@ -26,7 +26,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
 
   Future<void> _loadStats() async {
     try {
-      final depSnap = await FirebaseFirestore.instance.collection('deposits').where('status', isEqualTo: 'approved').count().get();
+      final depSnap = await FirebaseFirestore.instance.collection('composts').where('status', isEqualTo: 'approved').count().get();
       final claimSnap = await FirebaseFirestore.instance.collection('reward_claims').where('status', isEqualTo: 'approved').count().get();
       if (mounted) {
         setState(() {
