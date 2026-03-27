@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
-import '../../models/app_notification_model.dart';
-import '../../services/notifications/app_notification_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 
 class SuperAdminNotificationsScreen extends StatefulWidget {
   final String adminEmail;
@@ -12,14 +13,71 @@ class SuperAdminNotificationsScreen extends StatefulWidget {
   State<SuperAdminNotificationsScreen> createState() => _SuperAdminNotificationsScreenState();
 }
 
-class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsScreen> {
-  String _filter = 'Semua';
+class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  // Streams for activities
+  StreamSubscription? _depSub;
+  StreamSubscription? _claimSub;
+  List<Map<String, dynamic>> _activities = [];
+  List<Map<String, dynamic>> _depList = [];
+  List<Map<String, dynamic>> _claimList = [];
 
   @override
   void initState() {
     super.initState();
-    // Do not mark all as read automatically, to match Admin behavior
-    // AppNotificationService.markAllAsRead(widget.adminEmail);
+    _tabController = TabController(length: 2, vsync: this);
+    _initStreams();
+  }
+
+  void _initStreams() {
+    _depSub = FirebaseFirestore.instance
+        .collection('deposits')
+        .orderBy('createdAt', descending: true)
+        .limit(30)
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      _depList = snap.docs.map((d) {
+        final data = d.data();
+        return {...data, 'activity_type': 'deposit', 'doc_id': d.id};
+      }).toList();
+      _combineAndSort();
+    });
+
+    _claimSub = FirebaseFirestore.instance
+        .collection('reward_claims')
+        .orderBy('createdAt', descending: true)
+        .limit(30)
+        .snapshots()
+        .listen((snap) {
+      if (!mounted) return;
+      _claimList = snap.docs.map((d) {
+        final data = d.data();
+        return {...data, 'activity_type': 'claim', 'doc_id': d.id};
+      }).toList();
+      _combineAndSort();
+    });
+  }
+
+  void _combineAndSort() {
+    final combined = [..._depList, ..._claimList];
+    combined.sort((a, b) {
+      final dateA = a['createdAt'] != null ? (a['createdAt'] as Timestamp).toDate() : DateTime.fromMillisecondsSinceEpoch(0);
+      final dateB = b['createdAt'] != null ? (b['createdAt'] as Timestamp).toDate() : DateTime.fromMillisecondsSinceEpoch(0);
+      return dateB.compareTo(dateA);
+    });
+    setState(() {
+      _activities = combined;
+    });
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _depSub?.cancel();
+    _claimSub?.cancel();
+    super.dispose();
   }
 
   @override
@@ -28,155 +86,90 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
       backgroundColor: AppColors.superAdminBg,
       appBar: AppBar(
         title: const Text(
-          'Notifikasi',
-          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.white),
+          'Aktivitas & Notifikasi',
+          style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, color: Colors.white, fontSize: 18),
         ),
         backgroundColor: AppColors.superAdminPrimary,
         centerTitle: true,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              await AppNotificationService.markAllAsRead(widget.adminEmail);
-              setState(() {});
-            },
-            child: const Text('Baca Semua', style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: 12)),
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_sweep_outlined, color: Colors.white),
-            tooltip: 'Hapus Semua',
-            onPressed: () => _showDeleteAllDialog(context),
-          ),
-        ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          labelStyle: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 13),
+          tabs: const [
+            Tab(text: 'Admin (System)'),
+            Tab(text: 'Aktivitas User'),
+          ],
+        ),
       ),
-      body: StreamBuilder<List<AppNotificationModel>>(
-        stream: AppNotificationService.getUserNotificationsStream(widget.adminEmail),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.superAdminPrimary));
-          }
-
-          final all = snapshot.data ?? [];
-          final filtered = _applyFilter(all);
-
-          return Column(
-            children: [
-              // Filter Tabs
-              Container(
-                color: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: ['Semua', 'Belum Dibaca', 'Sudah Dibaca'].map((cat) {
-                    final isSelected = _filter == cat;
-                    return InkWell(
-                      onTap: () => setState(() => _filter = cat),
-                      child: Column(
-                        children: [
-                          Text(
-                            cat,
-                            style: TextStyle(
-                              color: isSelected ? AppColors.superAdminPrimary : Colors.grey,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Container(
-                            width: 40,
-                            height: 2,
-                            color: isSelected ? AppColors.superAdminPrimary : Colors.transparent,
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-
-              // Notifications Body
-              Expanded(
-                child: filtered.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          return _buildNotifCard(filtered[index]);
-                        },
-                      ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  List<AppNotificationModel> _applyFilter(List<AppNotificationModel> all) {
-    switch (_filter) {
-      case 'Belum Dibaca':
-        return all.where((n) => !n.isRead).toList();
-      case 'Sudah Dibaca':
-        return all.where((n) => n.isRead).toList();
-      default:
-        return all;
-    }
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      body: TabBarView(
+        controller: _tabController,
         children: [
-          Icon(Icons.notifications_none, size: 72, color: Colors.grey.shade300),
-          const SizedBox(height: 16),
-          const Text(
-            'Tidak ada notifikasi',
-            style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey),
-          ),
-          const SizedBox(height: 6),
-          const Text(
-            'Notifikasi setoran dan permintaan\nhadiah user akan muncul di sini.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.grey),
-          ),
+          _buildAdminTab(),
+          _buildUserActivityTab(),
         ],
       ),
     );
   }
 
-  Widget _buildNotifCard(AppNotificationModel notif) {
-    IconData icon;
+  // ============== TAB 1: SYSTEM / ADMIN =================
+  Widget _buildAdminTab() {
+    return ValueListenableBuilder<List<LocalAlert>>(
+      valueListenable: AdminNotificationService.alertsNotifier,
+      builder: (context, alerts, _) {
+        // Filter out non ESP offline alerts if the user wants strictly ESP offline
+        // But the previous implementation already handles `isSuperAdmin` bypassing sensors!
+        final filteredAlerts = alerts.toList();
+
+        if (filteredAlerts.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle_outline, size: 72, color: Colors.green),
+                SizedBox(height: 16),
+                Text('Sistem Berjalan Normal', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey)),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: filteredAlerts.length,
+          itemBuilder: (context, index) {
+            final alert = filteredAlerts[index];
+            return _buildAlertCard(alert);
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAlertCard(LocalAlert alert) {
     Color iconColor;
     Color cardColor;
+    IconData icon;
 
-    switch (notif.type) {
-      case 'deposit_pending':
-        icon = Icons.inventory_2_outlined;
-        iconColor = Colors.orange;
-        cardColor = Colors.orange.withOpacity(0.05);
-        break;
-      case 'reward_request':
-        icon = Icons.card_giftcard_rounded;
-        iconColor = Colors.purple;
-        cardColor = Colors.purple.withOpacity(0.05);
-        break;
-      case 'system_alert':
-        icon = Icons.warning_rounded;
+    switch (alert.severity) {
+      case 'danger':
         iconColor = Colors.red;
         cardColor = Colors.red.withOpacity(0.05);
+        icon = Icons.error_outline;
         break;
-      case 'info':
-        icon = Icons.info_outline_rounded;
-        iconColor = Colors.blue;
-        cardColor = Colors.blue.withOpacity(0.05);
+      case 'warning':
+        iconColor = Colors.orange;
+        cardColor = Colors.orange.withOpacity(0.05);
+        icon = Icons.warning_amber_rounded;
         break;
       default:
-        icon = Icons.notifications_outlined;
-        iconColor = Colors.grey;
-        cardColor = Colors.grey.withOpacity(0.05);
+        iconColor = Colors.blue;
+        cardColor = Colors.blue.withOpacity(0.05);
+        icon = Icons.info_outline;
     }
 
     return Card(
@@ -184,97 +177,171 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: notif.isRead ? Colors.grey.shade200 : iconColor.withOpacity(0.4),
-          width: notif.isRead ? 1 : 1.5,
-        ),
+        side: BorderSide(color: iconColor.withOpacity(0.4), width: 1.5),
       ),
-      color: notif.isRead ? Colors.white : cardColor,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () {
-          if (!notif.isRead) AppNotificationService.markAsRead(notif.id);
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: iconColor, size: 26),
+      color: cardColor,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: iconColor.withOpacity(0.15), shape: BoxShape.circle), child: Icon(icon, color: iconColor, size: 26)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(alert.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins')),
+                  const SizedBox(height: 4),
+                  Text(alert.message, style: const TextStyle(fontSize: 12, height: 1.4, fontFamily: 'Poppins', color: Colors.black87)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 12, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text(DateFormat('dd MMM yyyy, HH:mm').format(alert.timestamp), style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins')),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            notif.title,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              fontFamily: 'Poppins',
-                            ),
-                          ),
-                        ),
-                        if (!notif.isRead)
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      notif.message,
-                      style: const TextStyle(fontSize: 12, height: 1.4, fontFamily: 'Poppins', color: Colors.black87),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.access_time, size: 12, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          DateFormat('dd MMM yyyy, HH:mm').format(notif.createdAt),
-                          style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins'),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  void _showDeleteAllDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Semua Notifikasi?', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        content: const Text('Seluruh riwayat notifikasi untuk admin ini akan dihapus permanen.', style: TextStyle(fontFamily: 'Poppins')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
-          TextButton(
-            onPressed: () async {
-              await AppNotificationService.deleteAllNotifications(widget.adminEmail);
-              if (mounted) Navigator.pop(context);
-            },
-            child: const Text('Hapus', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-          ),
-        ],
+
+  // ============== TAB 2: USER ACTIVITY =================
+  Widget _buildUserActivityTab() {
+    if (_activities.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.history_toggle_off, size: 72, color: Colors.grey),
+            SizedBox(height: 16),
+            Text('Belum ada aktivitas user terbaru', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey)),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _activities.length,
+      itemBuilder: (context, index) {
+        final act = _activities[index];
+        final type = act['activity_type'];
+
+        if (type == 'deposit') {
+          return _buildDepositActivity(act);
+        } else {
+          return _buildRewardActivity(act);
+        }
+      },
+    );
+  }
+
+  Widget _buildDepositActivity(Map<String, dynamic> data) {
+    final status = data['status'] ?? 'pending';
+    final userEmail = data['userEmail'] ?? 'User';
+    final weight = data['weight']?.toString() ?? '0';
+    final points = data['pointsEarned']?.toString() ?? '0';
+    final time = data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now();
+
+    IconData icon = Icons.inventory_2;
+    Color color = Colors.orange;
+    String statusStr = 'Mengajukan Setoran';
+
+    if (status == 'approved') {
+      icon = Icons.check_circle;
+      color = Colors.green;
+      statusStr = 'Setoran Disetujui';
+    } else if (status == 'rejected') {
+      icon = Icons.cancel;
+      color = Colors.red;
+      statusStr = 'Setoran Ditolak';
+    }
+
+    return _buildActivityCard(
+      icon: icon,
+      color: color,
+      title: '$userEmail - $statusStr',
+      subtitle: status == 'approved' ? 'Berhasil menyetorkan $weight kg (+$points Pts)' : 'Setoran seberat $weight kg (${status.toUpperCase()})',
+      time: time,
+    );
+  }
+
+  Widget _buildRewardActivity(Map<String, dynamic> data) {
+    final status = data['status'] ?? 'pending';
+    final userEmail = data['userEmail'] ?? 'User';
+    final rewardName = data['rewardName'] ?? 'Hadiah';
+    final points = data['pointsSpent']?.toString() ?? '0';
+    final time = data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : DateTime.now();
+
+    IconData icon = Icons.card_giftcard;
+    Color color = Colors.purple;
+    String statusStr = 'Mengklaim Hadiah';
+
+    if (status == 'approved') {
+      icon = Icons.check_circle;
+      color = Colors.green;
+      statusStr = 'Klaim Disetujui';
+    } else if (status == 'rejected') {
+      icon = Icons.cancel;
+      color = Colors.red;
+      statusStr = 'Klaim Ditolak';
+    }
+
+    return _buildActivityCard(
+      icon: icon,
+      color: color,
+      title: '$userEmail - $statusStr',
+      subtitle: status == 'approved' ? 'Telah mengambil "$rewardName" (-$points Pts)' : 'Permintaan "$rewardName" (${status.toUpperCase()})',
+      time: time,
+    );
+  }
+
+  Widget _buildActivityCard({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required DateTime time,
+  }) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: BorderSide(color: Colors.grey.shade200)),
+      color: Colors.white,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), child: Icon(icon, color: color, size: 22)),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Poppins', color: Colors.black87)),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: const TextStyle(fontSize: 12, fontFamily: 'Poppins', color: Colors.black54)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time, size: 12, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Text(DateFormat('dd MMM yyyy, HH:mm').format(time), style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins')),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

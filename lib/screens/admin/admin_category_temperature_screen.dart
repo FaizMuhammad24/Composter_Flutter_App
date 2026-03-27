@@ -77,8 +77,8 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
       }
     });
 
-    // 2. Dapatkan Riwayat (100 log terakhir)
-    _rtdbSubLog = FirebaseDatabase.instance.ref('komposter_logs').limitToLast(100).onValue.listen((event) {
+    // 2. Dapatkan Riwayat (2000 log terakhir)
+    _rtdbSubLog = FirebaseDatabase.instance.ref('komposter_logs').limitToLast(2000).onValue.listen((event) {
       if (mounted) {
         if (event.snapshot.value != null) {
           final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);

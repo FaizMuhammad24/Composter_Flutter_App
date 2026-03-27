@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/reward_model.dart';
+import '../notifications/user_notification_service.dart';
 
 class RewardService {
   static final CollectionReference _rewardsCol = 
@@ -176,6 +177,11 @@ class RewardService {
       createdAt: DateTime.now(),
     );
     await _rewardsCol.doc(id).set(reward.toJson());
+    // Trigger Push Notification to all users
+    await UserNotificationService.broadcastAnnouncement(
+      'Hadiah Baru Telah Tersedia! 🎁',
+      'Segera tukarkan $points poinmu dengan $name sekarang juga sebelum kehabisan!',
+    );
   }
 
   static Future<void> updateReward(RewardModel reward) async {

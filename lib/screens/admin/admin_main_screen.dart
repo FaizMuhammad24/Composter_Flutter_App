@@ -6,6 +6,7 @@ import 'admin_system_status_screen.dart';
 import 'admin_profile_screen.dart';
 import 'widgets/admin_header.dart';
 import 'widgets/admin_bottom_nav.dart';
+import '../../services/notifications/admin_notification_service.dart';
 
 class AdminMainScreen extends StatefulWidget {
   const AdminMainScreen({Key? key}) : super(key: key);
@@ -22,6 +23,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
   @override
   void initState() {
     super.initState();
+    AdminNotificationService().init();
     _pages = [
       const AdminDashboard(),
       const AdminCompostStatusScreen(),

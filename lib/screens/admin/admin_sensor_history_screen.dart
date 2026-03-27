@@ -29,7 +29,7 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
 
   Future<void> _exportData() async {
     setState(() => _isExporting = true);
-    await CsvExportHelper.exportKomposterLogs(context);
+    await CsvExportHelper.exportQosLogs(context);
     if (mounted) setState(() => _isExporting = false);
   }
 

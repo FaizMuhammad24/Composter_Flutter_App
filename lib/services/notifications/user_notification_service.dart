@@ -1,9 +1,54 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../models/app_notification_model.dart';
 import 'package:flutter/foundation.dart';
 
 class UserNotificationService {
   static final _notificationsCol = FirebaseFirestore.instance.collection('notifications');
+
+  static final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  static bool _isInitialized = false;
+  static StreamSubscription? _pushSub;
+  static DateTime? _initTime;
+
+  /// Inisialisasi plugin notifikasi lokal & mendengarkan record baru Firestore
+  static Future<void> initPushNotifications(String userEmail) async {
+    if (_isInitialized) return;
+    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const iosSettings = DarwinInitializationSettings();
+    await _plugin.initialize(settings: const InitializationSettings(android: androidSettings, iOS: iosSettings));
+    _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()?.requestNotificationsPermission();
+    _isInitialized = true;
+    _initTime = DateTime.now();
+
+    _pushSub = _notificationsCol
+        .where('userEmail', isEqualTo: userEmail)
+        .snapshots()
+        .listen((snap) {
+      for (var change in snap.docChanges) {
+        if (change.type == DocumentChangeType.added && !change.doc.metadata.hasPendingWrites) {
+          final data = change.doc.data();
+          if (data == null) continue;
+          final docTime = (data['createdAt'] as Timestamp).toDate();
+          if (_initTime != null && docTime.isAfter(_initTime!)) {
+            _showPush(data['title'] ?? 'Info', data['message'] ?? '');
+          }
+        }
+      }
+    });
+  }
+
+  static void dispose() {
+    _pushSub?.cancel();
+    _pushSub = null;
+    _isInitialized = false;
+  }
+
+  static Future<void> _showPush(String title, String body) async {
+    const androidDetails = AndroidNotificationDetails('user_alerts_channel', 'User Notifications', importance: Importance.max, priority: Priority.high);
+    await _plugin.show(id: DateTime.now().millisecond, title: title, body: body, notificationDetails: const NotificationDetails(android: androidDetails));
+  }
 
   /// Stream notifikasi untuk user tertentu
   static Stream<List<AppNotificationModel>> getNotifications(String email) {

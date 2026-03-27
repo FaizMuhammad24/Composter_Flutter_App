@@ -4,6 +4,7 @@ import 'user_dashboard.dart';
 import 'user_history_screen.dart';
 import 'user_profile_screen.dart';
 import 'widgets/user_bottom_nav.dart';
+import '../../services/notifications/user_notification_service.dart';
 
 class UserMainScreen extends StatefulWidget {
   final UserModel user;
@@ -22,11 +23,18 @@ class _UserMainScreenState extends State<UserMainScreen> {
   @override
   void initState() {
     super.initState();
+    UserNotificationService.initPushNotifications(widget.user.email);
     _pages = [
       UserDashboard(user: widget.user),
       UserHistoryScreen(user: widget.user),
       UserProfileScreen(user: widget.user),
     ];
+  }
+
+  @override
+  void dispose() {
+    UserNotificationService.dispose();
+    super.dispose();
   }
 
   @override

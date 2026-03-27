@@ -47,9 +47,11 @@ class AdminNotificationService {
   DateTime? _lastDataReceive;
   DateTime? _initTime;
   bool _isInitialized = false;
+  bool _isSuperAdmin = false;
 
-  Future<void> init() async {
+  Future<void> init({bool isSuperAdmin = false}) async {
     if (_isInitialized) return;
+    _isSuperAdmin = isSuperAdmin;
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -74,7 +76,9 @@ class AdminNotificationService {
     _initTime = DateTime.now();
     _startStatusTimer();
     _isInitialized = true;
-    startMaintenanceChecks();
+    if (!_isSuperAdmin) {
+      startMaintenanceChecks();
+    }
   }
 
   void _startStatusTimer() {
@@ -148,6 +152,7 @@ class AdminNotificationService {
       }
 
       if (deviceOfflineNotifier.value) return; // Don't check sensors if offline
+      if (_isSuperAdmin) return; // SuperAdmin only needs offline alerts, skip sensor checks
 
       _check('temp_failed', temp == 100.0, 'SENSOR SUHU TIDAK TERBACA', 'Data suhu tidak valid (100.0°C). Cek koneksi sensor.', 'danger');
       _check('soil_failed', soil == 100.0 || soil == 0.0, 'SENSOR KELEMBABAN TIDAK TERBACA', 'Data kelembaban tidak valid. Cek koneksi sensor.', 'danger');

@@ -62,6 +62,61 @@ class CsvExportHelper {
     }
   }
 
+  /// Export QoS logs from 'komposter_logs' to CSV
+  static Future<void> exportQosLogs(BuildContext context) async {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mempersiapkan CSV QoS...'), duration: Duration(seconds: 1)));
+    }
+
+    try {
+      final DatabaseReference logsRef = FirebaseDatabase.instance.ref('komposter_logs');
+      final snapshot = await logsRef.orderByKey().limitToLast(500).get();
+      
+      if (snapshot.value != null) {
+        final data = Map<dynamic, dynamic>.from(snapshot.value as Map);
+        
+        List<List<dynamic>> rows = [
+          ["Waktu", "WiFi Strength (%)", "Free Heap (KB)", "Uptime (ms)", "Packet ID"]
+        ];
+
+        final List<String> sortedKeys = data.keys.map((k) => k.toString()).toList()..sort();
+        for (var key in sortedKeys) {
+          final log = Map<dynamic, dynamic>.from(data[key] as Map);
+          final timeStr = log['time']?.toString() ?? '-';
+          final qos = log['qos'] is Map ? Map<dynamic, dynamic>.from(log['qos']) : null;
+          
+          final wifiStr = qos?['wifi_strength']?.toString() ?? '-';
+          final heapKb = qos?['free_heap'] is num ? ((qos!['free_heap'] as num) / 1024).toStringAsFixed(0) : '-';
+          final uptimeMs = qos?['uptime_ms']?.toString() ?? '-';
+          final packetId = qos?['packet_id']?.toString() ?? '-';
+          
+          rows.add([timeStr, wifiStr, heapKb, uptimeMs, packetId]);
+        }
+
+        String csvData = _convertToCsv(rows);
+        final directory = await getTemporaryDirectory();
+        final path = '${directory.path}/Riwayat_QoS_Komposter.csv';
+        final file = File(path);
+        
+        await file.writeAsString(csvData);
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        }
+        
+        await Share.shareXFiles([XFile(path)], text: 'Data Historis QoS Komposter (500 Log Terakhir)');
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak ada data QoS untuk diexport.')));
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal export QoS: $e')));
+      }
+    }
+  }
+
   /// Export logs from 'logs/actuators' to CSV
   static Future<void> exportActuatorLogs(BuildContext context, String actuatorType) async {
     if (context.mounted) {

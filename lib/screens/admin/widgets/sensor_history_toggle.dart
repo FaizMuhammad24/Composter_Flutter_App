@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 
 /// Widget that toggles between a line chart and a data table
 /// for sensor history data. All content is within a SINGLE card.
+/// Now using TabBar.
 class SensorHistoryToggle extends StatefulWidget {
   final List<FlSpot> spots;
   final List<Map<String, dynamic>> logEntries;
@@ -32,9 +33,13 @@ class SensorHistoryToggle extends StatefulWidget {
 }
 
 class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
-  int _viewIndex = 0; // 0=Grafik, 1=Tabel
   int _timeFilter = 0; // 0=Jam, 1=Hari, 2=Minggu
 
+  // We assume here that parent passes all necessary entries.
+  // The filtering logic:
+  // Jam = 1 jam terakhir (jika 1 menit = 1 data, maka 60 data)
+  // Hari = 24 jam terakhir (1440 data)
+  // Minggu = 7 hari terakhir (10080 data)
   int get _displayLimit {
     switch (_timeFilter) {
       case 0: return 60;
@@ -49,97 +54,140 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
     return widget.logEntries.take(limit).toList();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title
-            Text(
-              'Historis Perubahan ${widget.sensorLabel}',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-            ),
-            const SizedBox(height: 12),
-
-            // Toggle buttons row — compact segmented style
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(10),
-              ),
-              padding: const EdgeInsets.all(3),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _buildSegmentBtn(0, Icons.show_chart, 'Grafik'),
-                  _buildSegmentBtn(1, Icons.table_chart, 'Tabel'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Content: Grafik or Tabel (inside the same card)
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: _viewIndex == 0 ? _buildChart() : _buildTableContent(),
-            ),
-          ],
-        ),
-      ),
-    );
+  List<FlSpot> get _filteredSpots {
+    final limit = _displayLimit.clamp(0, widget.spots.length);
+    // Take the most recent spots. Usually spots are added from older to newer (left to right)
+    // So to take the 'limit' newest spots, we take them from the end of the list.
+    if (widget.spots.length <= limit) return widget.spots;
+    final recentSpots = widget.spots.sublist(widget.spots.length - limit);
+    // Re-index X axis so it always starts nicely on the graph if we want, or keep original X.
+    return recentSpots;
   }
 
-  Widget _buildSegmentBtn(int index, IconData icon, String label) {
-    final isSelected = _viewIndex == index;
-    return GestureDetector(
-      onTap: () => setState(() => _viewIndex = index),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected ? widget.color : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: isSelected ? Colors.white : Colors.grey[600]),
-            const SizedBox(width: 6),
-            Text(label, style: TextStyle(
-              fontSize: 12, fontWeight: FontWeight.w600, fontFamily: 'Poppins',
-              color: isSelected ? Colors.white : Colors.grey[600],
-            )),
-          ],
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTabController(
+      length: 2,
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title
+              Text(
+                'Historis Perubahan ${widget.sensorLabel}',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+              ),
+              const SizedBox(height: 12),
+
+              // TabBar inside a container
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey[100],
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.all(4),
+                child: TabBar(
+                  indicatorSize: TabBarIndicatorSize.tab,
+                  indicator: BoxDecoration(
+                    color: widget.color,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(color: widget.color.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))
+                    ],
+                  ),
+                  labelColor: Colors.white,
+                  unselectedLabelColor: Colors.grey[600],
+                  labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 13),
+                  unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontFamily: 'Poppins', fontSize: 13),
+                  dividerColor: Colors.transparent,
+                  tabs: const [
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [Icon(Icons.show_chart, size: 18), SizedBox(width: 8), Text('Grafik')],
+                      ),
+                    ),
+                    Tab(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [Icon(Icons.table_chart, size: 18), SizedBox(width: 8), Text('Tabel')],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Time filter
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: List.generate(3, (i) {
+                  final labels = ['Per Jam', 'Per Hari', 'Per Minggu'];
+                  final isSelected = _timeFilter == i;
+                  return GestureDetector(
+                    onTap: () => setState(() => _timeFilter = i),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: isSelected ? widget.color : Colors.transparent,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isSelected ? widget.color : widget.color.withOpacity(0.3)),
+                      ),
+                      child: Text(labels[i], style: TextStyle(
+                        fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Poppins',
+                        color: isSelected ? Colors.white : widget.color,
+                      )),
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+
+              // Content: Grafik or Tabel -> TabBarView
+              SizedBox(
+                height: 380, // Fixed height for the content area to prevent layout jumping
+                child: TabBarView(
+                  physics: const NeverScrollableScrollPhysics(), // swipe up/down can be annoying if chart overlaps, but let's allow it or disable
+                  children: [
+                    _buildChart(),
+                    _buildTableContent(),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildChart() {
+    final curSpots = _filteredSpots;
     return Column(
       key: const ValueKey('chart'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('${widget.spots.length} Log Terakhir', style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'Poppins')),
+        Text('${curSpots.length} Data Terakhir Terpantau', style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'Poppins')),
         const SizedBox(height: 16),
         SizedBox(
-          height: 200,
-          child: widget.spots.isEmpty
-              ? const Center(child: Text('Belum ada data'))
+          height: 250,
+          child: curSpots.isEmpty
+              ? const Center(child: Text('Belum ada data', style: TextStyle(fontFamily: 'Poppins')))
               : LineChart(
                   LineChartData(
                     minY: widget.minY ?? 0,
+                    // Auto scale max Y if possible, or use predefined
                     maxY: widget.maxY,
-                    gridData: const FlGridData(show: true, drawVerticalLine: false),
+                    gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: widget.maxY != null ? widget.maxY! / 5 : null),
                     titlesData: FlTitlesData(
                       rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                       topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), // Could add time format here
                     ),
                     borderData: FlBorderData(show: false),
                     extraLinesData: ExtraLinesData(
@@ -154,7 +202,7 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                     ),
                     lineBarsData: [
                       LineChartBarData(
-                        spots: widget.spots,
+                        spots: curSpots,
                         isCurved: true,
                         color: widget.color,
                         barWidth: 3,
@@ -162,7 +210,7 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                         belowBarData: BarAreaData(
                           show: true,
                           gradient: LinearGradient(
-                            colors: [widget.color.withOpacity(0.3), widget.color.withOpacity(0.0)],
+                            colors: [widget.color.withOpacity(0.4), widget.color.withOpacity(0.0)],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                           ),
@@ -182,32 +230,7 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
       key: const ValueKey('table'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Time filter — Wrap to prevent overflow
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: List.generate(3, (i) {
-            final labels = ['Per Jam', 'Per Hari', 'Per Minggu'];
-            final isSelected = _timeFilter == i;
-            return GestureDetector(
-              onTap: () => setState(() => _timeFilter = i),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected ? widget.color : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: isSelected ? widget.color : widget.color.withOpacity(0.3)),
-                ),
-                child: Text(labels[i], style: TextStyle(
-                  fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Poppins',
-                  color: isSelected ? Colors.white : widget.color,
-                )),
-              ),
-            );
-          }),
-        ),
-        const SizedBox(height: 12),
-        Text('${entries.length} data', style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'Poppins')),
+        Text('${entries.length} data terakhir', style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'Poppins')),
         const SizedBox(height: 8),
 
         // Table Header
@@ -222,13 +245,14 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
         ),
 
         // Table Body
-        ConstrainedBox(
-          constraints: const BoxConstraints(maxHeight: 300),
+        Expanded(
           child: entries.isEmpty
-              ? const Padding(padding: EdgeInsets.all(20), child: Center(child: Text('Belum ada data', style: TextStyle(fontFamily: 'Poppins'))))
+              ? const Center(child: Text('Belum ada data', style: TextStyle(fontFamily: 'Poppins')))
               : ListView.separated(
                   shrinkWrap: true,
-                  itemCount: entries.length.clamp(0, 50),
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  itemCount: entries.length,
                   separatorBuilder: (_, __) => Divider(height: 1, color: Colors.grey[200]),
                   itemBuilder: (context, index) {
                     final entry = entries[index];
@@ -236,20 +260,20 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                     final time = entry['time']?.toString() ?? '-';
                     final isNormal = _isInRange(value);
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                       child: Row(children: [
                         Expanded(flex: 3, child: Text(time, style: TextStyle(fontSize: 11, fontFamily: 'Poppins', color: Colors.grey[700]))),
-                        Expanded(flex: 2, child: Text('${value.toStringAsFixed(1)}${widget.unit}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
+                        Expanded(flex: 2, child: Text('${value.toStringAsFixed(1)}${widget.unit}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
                         Expanded(flex: 2, child: Center(
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: (isNormal ? Colors.green : Colors.red).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               isNormal ? 'Normal' : 'Abnormal',
-                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: isNormal ? Colors.green[700] : Colors.red[700], fontFamily: 'Poppins'),
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isNormal ? Colors.green[700] : Colors.red[700], fontFamily: 'Poppins'),
                             ),
                           ),
                         )),

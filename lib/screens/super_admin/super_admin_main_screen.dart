@@ -7,6 +7,7 @@ import 'super_admin_profile_screen.dart';
 import 'widgets/super_admin_header.dart';
 import 'widgets/super_admin_bottom_nav.dart';
 import '../../services/auth/session_service.dart';
+import '../../services/notifications/admin_notification_service.dart';
 
 class SuperAdminMainScreen extends StatefulWidget {
   const SuperAdminMainScreen({Key? key}) : super(key: key);
@@ -22,6 +23,7 @@ class _SuperAdminMainScreenState extends State<SuperAdminMainScreen> {
   @override
   void initState() {
     super.initState();
+    AdminNotificationService().init(isSuperAdmin: true);
     _pages = [
       SuperAdminDashboard(onNavigate: (index) => setState(() => _currentIndex = index)),
       const ManageRewardsScreen(),
