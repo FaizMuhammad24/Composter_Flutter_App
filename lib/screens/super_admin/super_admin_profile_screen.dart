@@ -3,6 +3,7 @@ import '../../constants/app_colors.dart';
 import '../authentication/login_screen.dart';
 import '../authentication/reset_password_screen.dart';
 import '../../services/auth/session_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../services/notifications/admin_notification_service.dart';
 
 class SuperAdminProfileScreen extends StatefulWidget {
@@ -13,6 +14,32 @@ class SuperAdminProfileScreen extends StatefulWidget {
 }
 
 class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
+  int _totalDeposits = 0;
+  int _totalClaims = 0;
+  bool _isLoadingStats = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final depSnap = await FirebaseFirestore.instance.collection('deposits').where('status', isEqualTo: 'approved').count().get();
+      final claimSnap = await FirebaseFirestore.instance.collection('reward_claims').where('status', isEqualTo: 'approved').count().get();
+      if (mounted) {
+        setState(() {
+          _totalDeposits = depSnap.count ?? 0;
+          _totalClaims = claimSnap.count ?? 0;
+          _isLoadingStats = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _isLoadingStats = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = SessionService.getCurrentUser();
@@ -164,16 +191,16 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _buildStat('Status', 'Online', Colors.green),
-          _buildDivider(),
-          _buildStat('Akses', 'Penuh', Colors.blue),
-          _buildDivider(),
-          _buildStat('Log', 'Aman', Colors.orange),
-        ],
-      ),
+      child: _isLoadingStats 
+        ? const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: CircularProgressIndicator(color: AppColors.superAdminPrimary))
+        : Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _buildStat('Setoran di-ACC', '$_totalDeposits', Colors.green),
+              _buildDivider(),
+              _buildStat('Klaim di-ACC', '$_totalClaims', Colors.orange),
+            ],
+          ),
     );
   }
 
