@@ -21,10 +21,13 @@ class SuperAdminHeader extends StatelessWidget implements PreferredSizeWidget {
         statusBarBrightness: Brightness.dark,
       ),
       leading: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Image.asset(
-          'assets/images/logo_white.png',
-          fit: BoxFit.contain,
+        padding: const EdgeInsets.all(10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(Icons.eco, color: Colors.white, size: 22),
         ),
       ),
       title: Text(

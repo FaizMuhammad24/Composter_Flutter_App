@@ -121,6 +121,7 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
                           
                           return _buildRewardCard(
                             context,
+                            rewardId: reward.id,
                             name: reward.name,
                             points: reward.points,
                             icon: icon,
@@ -134,7 +135,7 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
     );
   }
 
-  Widget _buildRewardCard(BuildContext context, {required String name, required int points, required IconData icon, required Color color}) {
+  Widget _buildRewardCard(BuildContext context, {required String rewardId, required String name, required int points, required IconData icon, required Color color}) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -155,7 +156,7 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
           onTap: () {
             Navigator.push(
               context, 
-              MaterialPageRoute(builder: (_) => UserRedeemScreen(userEmail: widget.user.email, rewardName: name, pointsPerItem: points, icon: icon, color: color))
+              MaterialPageRoute(builder: (_) => UserRedeemScreen(userEmail: widget.user.email, rewardId: rewardId, rewardName: name, pointsPerItem: points, icon: icon, color: color))
             );
           },
           child: Padding(

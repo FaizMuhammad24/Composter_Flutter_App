@@ -36,13 +36,44 @@ class UserNotificationService {
     );
   }
 
-  /// Peringatan: Penukaran hadiah diajukan
+  /// Peringatan: Setoran DITOLAK oleh SuperAdmin
+  static Future<void> notifyDepositRejected(String email, double weight, {String reason = ''}) async {
+    final reasonText = reason.isNotEmpty ? ' Alasan: $reason.' : '';
+    await createNotification(
+      userEmail: email,
+      title: 'Setoran Ditolak ❌',
+      message: 'Setoran sampah ($weight kg) Anda telah ditolak.$reasonText Silakan hubungi admin untuk informasi lebih lanjut.',
+      type: 'error',
+    );
+  }
+
+  /// Peringatan: Klaim hadiah diajukan (menunggu konfirmasi SA)
   static Future<void> notifyRewardRedeemed(String email, String rewardName) async {
     await createNotification(
       userEmail: email,
-      title: 'Hadiah Sedang Diproses 🛍️',
-      message: 'Permintaan tukar poin dengan "$rewardName" telah dikirim. Silakan konfirmasi ke Admin untuk pengambilan.',
+      title: 'Klaim Hadiah Dikirim 🛍️',
+      message: 'Permintaan klaim "$rewardName" sedang menunggu konfirmasi SuperAdmin. Poin akan dikurangi setelah disetujui.',
       type: 'reward',
+    );
+  }
+
+  /// Peringatan: Klaim Hadiah DISETUJUI oleh SuperAdmin (poin dipotong)
+  static Future<void> notifyRewardApproved(String email, String rewardName, int quantity) async {
+    await createNotification(
+      userEmail: email,
+      title: 'Hadiah Disetujui! 🎉',
+      message: 'Klaim ${quantity}x "$rewardName" telah disetujui. Poin telah dikurangi. Silakan ambil hadiah di loket terdekat.',
+      type: 'success',
+    );
+  }
+
+  /// Peringatan: Klaim Hadiah DITOLAK oleh SuperAdmin (poin dikembalikan)
+  static Future<void> notifyRewardRejected(String email, String rewardName, int pointsRefunded) async {
+    await createNotification(
+      userEmail: email,
+      title: 'Klaim Hadiah Ditolak',
+      message: 'Klaim "$rewardName" tidak dapat diproses. $pointsRefunded poin telah dikembalikan ke akun Anda.',
+      type: 'error',
     );
   }
 

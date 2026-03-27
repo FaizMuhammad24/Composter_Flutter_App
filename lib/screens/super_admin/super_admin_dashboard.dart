@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../../constants/app_colors.dart';
 import '../../services/rewards/reward_service.dart';
+import '../../services/admin/admin_service.dart';
+import '../../services/user/user_service.dart';
+import '../../services/compost/compost_service.dart';
 import '../../widgets/common/loading_shimmer.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
@@ -16,10 +20,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
-  final int _totalAdmins = 1;
-  final int _totalUsers = 3;
+  int _totalAdmins = 0;
+  int _totalUsers = 0;
   int _totalRewards = 0;
+  int _pendingDeposits = 0;
   int _totalPoints = 0;
+  List<Map<String, dynamic>> _recentActivities = [];
 
   @override
   void initState() {
@@ -46,17 +52,84 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
   Future<void> _loadStats() async {
     setState(() => _isLoading = true);
     _animationController.reset();
-    await Future.delayed(const Duration(milliseconds: 800));
-    final rewardsCount = await RewardService.getTotalRewards();
-    final pointsSum = await RewardService.getTotalPointsValue();
 
-    if (mounted) {
-      setState(() {
-        _totalRewards = rewardsCount;
-        _totalPoints = pointsSum;
-        _isLoading = false;
-      });
-      _animationController.forward();
+    try {
+      final results = await Future.wait([
+        AdminService.getAllAdmins(),
+        UserService.getAllUsers(),
+        RewardService.getAllRewards(),
+        CompostService.getAllComposts(),
+        RewardService.getTotalPointsValue(),
+      ]);
+
+      final adminsList = results[0] as List;
+      final usersList = results[1] as List;
+      final rewardsList = results[2] as List;
+      final allComposts = results[3] as List;
+      final totalPoints = (results[4] as int);
+
+      // Build recent activities from composts (last 5)
+      final activities = <Map<String, dynamic>>[];
+      
+      // Add last 5 composts as activities
+      final recentComposts = allComposts
+          .take(5)
+          .map((c) {
+            final compost = c as dynamic;
+            return {
+              'icon': Icons.recycling,
+              'color': Colors.green,
+              'title': 'Setoran Baru Diterima',
+              'desc': '${compost.weight} kg dari ${compost.userEmail.split('@')[0]}',
+              'time': _formatTime(compost.createdAt),
+            };
+          })
+          .toList();
+      activities.addAll(recentComposts);
+      
+      // Add recent reward claims as activities  
+      try {
+        final claims = await RewardService.getPendingClaims();
+        for (final claim in claims.take(3)) {
+          activities.add({
+            'icon': Icons.card_giftcard,
+            'color': Colors.orange,
+            'title': 'Klaim Hadiah',
+            'desc': '${claim['rewardName']} oleh ${(claim['userEmail'] as String).split('@')[0]}',
+            'time': _formatTime(claim['createdAt']),
+          });
+        }
+      } catch (_) {}
+
+      activities.sort((a, b) => (b['time'] as String).compareTo(a['time'] as String));
+
+      if (mounted) {
+        setState(() {
+          _totalAdmins = adminsList.length;
+          _totalUsers = usersList.length;
+          _totalRewards = rewardsList.length;
+          _pendingDeposits = allComposts.where((c) => (c as dynamic).status == 'pending').length;
+          _totalPoints = totalPoints;
+          _recentActivities = activities.take(5).toList();
+          _isLoading = false;
+        });
+        _animationController.forward();
+      }
+    } catch (e) {
+      debugPrint('Error loading SA dashboard stats: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  String _formatTime(dynamic rawTime) {
+    try {
+      final dt = rawTime is String ? DateTime.parse(rawTime) : (rawTime as DateTime);
+      final diff = DateTime.now().difference(dt);
+      if (diff.inMinutes < 60) return '${diff.inMinutes} menit lalu';
+      if (diff.inHours < 24) return '${diff.inHours} jam lalu';
+      return DateFormat('dd MMM').format(dt);
+    } catch (_) {
+      return '';
     }
   }
 
@@ -80,11 +153,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: LoadingShimmer(width: 100, height: 140, borderRadius: BorderRadius.circular(16))),
-              const SizedBox(width: 10),
-              Expanded(child: LoadingShimmer(width: 100, height: 140, borderRadius: BorderRadius.circular(16))),
-              const SizedBox(width: 10),
-              Expanded(child: LoadingShimmer(width: 100, height: 140, borderRadius: BorderRadius.circular(16))),
+              Expanded(child: LoadingShimmer(width: 100, height: 120, borderRadius: BorderRadius.circular(16))),
+              const SizedBox(width: 8),
+              Expanded(child: LoadingShimmer(width: 100, height: 120, borderRadius: BorderRadius.circular(16))),
+              const SizedBox(width: 8),
+              Expanded(child: LoadingShimmer(width: 100, height: 120, borderRadius: BorderRadius.circular(16))),
+              const SizedBox(width: 8),
+              Expanded(child: LoadingShimmer(width: 100, height: 120, borderRadius: BorderRadius.circular(16))),
             ],
           ),
           const SizedBox(height: 24),
@@ -154,7 +229,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
               shape: BoxShape.circle,
             ),
             child: const Center(
-              child: Icon(Icons.admin_panel_settings, size: 40, color: Colors.white),
+              child: Icon(Icons.eco, size: 40, color: Colors.white),
             ),
           ),
           const SizedBox(width: 16),
@@ -177,9 +252,16 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    '🛡️ Full Access',
-                    style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.shield_outlined, color: Colors.white, size: 14),
+                      SizedBox(width: 6),
+                      Text(
+                        'Full Access',
+                        style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -193,50 +275,55 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
   Widget _buildStatsRow() {
     return Row(
       children: [
-        Expanded(child: _buildStatCard('Total Admin', '$_totalAdmins', Icons.shield_outlined, const Color(0xFFEF5350))),
-        const SizedBox(width: 10),
-        Expanded(child: _buildStatCard('Total User', '$_totalUsers', Icons.people_outlined, const Color(0xFF42A5F5))),
-        const SizedBox(width: 10),
-        Expanded(child: _buildStatCard('Total Hadiah', '$_totalRewards', Icons.card_giftcard_outlined, const Color(0xFF66BB6A))),
+        Expanded(child: _buildStatCard('Total Admin', '$_totalAdmins', Icons.shield_outlined, const Color(0xFFEF5350), 2)),
+        const SizedBox(width: 8),
+        Expanded(child: _buildStatCard('Total User', '$_totalUsers', Icons.people_outlined, const Color(0xFF42A5F5), 2)),
+        const SizedBox(width: 8),
+        Expanded(child: _buildStatCard('Total Hadiah', '$_totalRewards', Icons.card_giftcard_outlined, const Color(0xFF66BB6A), 1)),
+        const SizedBox(width: 8),
+        Expanded(child: _buildStatCard('Setoran\nPending', '$_pendingDeposits', Icons.inbox_outlined, const Color(0xFFFF9800), 2)),
       ],
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              shape: BoxShape.circle,
+  Widget _buildStatCard(String label, String value, IconData icon, Color color, int navIndex) {
+    return GestureDetector(
+      onTap: () => widget.onNavigate(navIndex),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
-            child: Icon(icon, color: color, size: 22),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: color, fontFamily: 'Poppins'),
-          ),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins'),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              value,
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color, fontFamily: 'Poppins'),
+            ),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'Poppins'),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -262,68 +349,59 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
   }
 
   Widget _buildRecentActivityList() {
-    final activities = [
-      {'title': 'User Budi Mendaftar', 'time': '1 jam lalu', 'type': 'user', 'desc': 'Akun baru dibuat'},
-      {'title': 'Reward Diklaim', 'time': '3 jam lalu', 'type': 'reward', 'desc': 'Pupuk Kompos 5kg oleh Ani'},
-      {'title': 'Setoran Baru Diterima', 'time': '5 jam lalu', 'type': 'deposit', 'desc': '12.5 kg dari User C'},
-    ];
+    if (_recentActivities.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: const Center(
+          child: Text('Belum ada aktivitas terbaru', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)),
+        ),
+      );
+    }
 
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: activities.length,
+      itemCount: _recentActivities.length,
       itemBuilder: (context, index) {
-        final act = activities[index];
-        IconData icon;
-        Color color;
-
-        if (act['type'] == 'alert') {
-          icon = Icons.warning_amber_rounded;
-          color = Colors.orange;
-        } else if (act['type'] == 'user') {
-          icon = Icons.person_add_alt_1_rounded;
-          color = Colors.blue;
-        } else {
-          icon = Icons.card_giftcard_rounded;
-          color = Colors.green;
-        }
-
+        final act = _recentActivities[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: (act['color'] as Color).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: color, size: 24),
+                child: Icon(act['icon'] as IconData, color: act['color'] as Color, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(act['title']!, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 13)),
+                    Text(act['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 13)),
                     const SizedBox(height: 2),
-                    Text(act['desc']!, style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins')),
+                    Text(act['desc'] as String, style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins')),
                   ],
                 ),
               ),
-              Text(act['time']!, style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+              Text(
+                act['time'] as String,
+                style: const TextStyle(fontSize: 10, color: Colors.grey, fontFamily: 'Poppins', fontWeight: FontWeight.bold),
+              ),
             ],
           ),
         );
@@ -338,13 +416,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -363,10 +435,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(10),
-          ),
+          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: color, size: 18),
         ),
         const SizedBox(width: 12),
@@ -383,5 +452,3 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
     );
   }
 }
-
-

@@ -3,6 +3,7 @@ import '../../constants/app_colors.dart';
 import '../../models/reward_model.dart';
 import '../../services/rewards/reward_service.dart';
 import 'super_admin_create_reward_screen.dart';
+import 'super_admin_reward_claims_screen.dart';
 
 class ManageRewardsScreen extends StatefulWidget {
   const ManageRewardsScreen({Key? key}) : super(key: key);
@@ -11,7 +12,63 @@ class ManageRewardsScreen extends StatefulWidget {
   State<ManageRewardsScreen> createState() => _ManageRewardsScreenState();
 }
 
-class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
+class _ManageRewardsScreenState extends State<ManageRewardsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Container(
+          color: AppColors.superAdminBg,
+          child: TabBar(
+            controller: _tabController,
+            labelColor: AppColors.superAdminPrimary,
+            unselectedLabelColor: Colors.grey,
+            indicatorColor: AppColors.superAdminPrimary,
+            indicatorWeight: 3,
+            labelStyle: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 13),
+            tabs: const [
+              Tab(icon: Icon(Icons.card_giftcard_outlined, size: 18), text: 'Katalog Hadiah'),
+              Tab(icon: Icon(Icons.pending_actions_outlined, size: 18), text: 'Klaim Pending'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: const [
+              _RewardCatalogTab(),
+              SuperAdminRewardClaimsScreen(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Reward Catalog Tab ───────────────────────────────────────────────────────
+class _RewardCatalogTab extends StatefulWidget {
+  const _RewardCatalogTab();
+
+  @override
+  State<_RewardCatalogTab> createState() => _RewardCatalogTabState();
+}
+
+class _RewardCatalogTabState extends State<_RewardCatalogTab> {
   List<RewardModel> _rewards = [];
   List<RewardModel> _filtered = [];
   String _searchQuery = '';
@@ -25,12 +82,11 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
 
   Future<void> _loadRewards() async {
     setState(() => _isLoading = true);
-    await Future.delayed(const Duration(milliseconds: 500));
     final rewards = await RewardService.getAllRewards();
     if (mounted) {
       setState(() {
         _rewards = rewards;
-        _filtered = _rewards;
+        _filtered = rewards;
         _isLoading = false;
       });
     }
@@ -53,20 +109,14 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
         title: const Text('Hapus Reward', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
         content: Text('Yakin ingin menghapus "${reward.name}"?', style: const TextStyle(fontFamily: 'Poppins')),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(fontFamily: 'Poppins')),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal', style: TextStyle(fontFamily: 'Poppins'))),
           ElevatedButton(
             onPressed: () {
               RewardService.deleteReward(reward.id);
               Navigator.pop(context);
               _loadRewards();
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${reward.name} berhasil dihapus'),
-                  backgroundColor: Colors.red[400],
-                ),
+                SnackBar(content: Text('${reward.name} berhasil dihapus'), backgroundColor: Colors.red[400]),
               );
             },
             style: ElevatedButton.styleFrom(
@@ -81,12 +131,7 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
   }
 
   void _navigateToCreate({RewardModel? existing}) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => CreateRewardScreen(existingReward: existing),
-      ),
-    );
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => CreateRewardScreen(existingReward: existing)));
     _loadRewards();
   }
 
@@ -128,12 +173,11 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Column(
         children: [
-          // Stats Row
           Row(
             children: [
               _buildMiniStat('Total', '${_rewards.length}', Colors.red),
               const SizedBox(width: 8),
-              _buildMiniStat('Poin Total', '${_rewards.fold<int>(0, (sum, r) => sum + r.points)}', Colors.amber[700]!),
+              _buildMiniStat('Total Poin', '${_rewards.fold<int>(0, (sum, r) => sum + r.points)}', Colors.amber[700]!),
               const SizedBox(width: 8),
               Expanded(
                 child: GestureDetector(
@@ -158,7 +202,6 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          // Search Bar
           TextField(
             onChanged: _onSearch,
             decoration: InputDecoration(
@@ -211,11 +254,8 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
             height: 56,
             color: catColor.withOpacity(0.1),
             child: reward.imageUrl.isNotEmpty
-                ? Image.network(
-                    reward.imageUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(Icons.card_giftcard, color: catColor, size: 28),
-                  )
+                ? Image.network(reward.imageUrl, fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Icon(Icons.card_giftcard, color: catColor, size: 28))
                 : Icon(Icons.card_giftcard, color: catColor, size: 28),
           ),
         ),
@@ -233,10 +273,7 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: catColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  decoration: BoxDecoration(color: catColor.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
                   child: Text(reward.category, style: TextStyle(fontSize: 10, color: catColor, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                 ),
                 Row(
@@ -257,12 +294,10 @@ class _ManageRewardsScreenState extends State<ManageRewardsScreen> {
             IconButton(
               icon: const Icon(Icons.edit_outlined, color: Colors.blue, size: 20),
               onPressed: () => _navigateToCreate(existing: reward),
-              tooltip: 'Edit',
             ),
             IconButton(
               icon: Icon(Icons.delete_outline, color: Colors.red[400], size: 20),
               onPressed: () => _deleteReward(reward),
-              tooltip: 'Hapus',
             ),
           ],
         ),

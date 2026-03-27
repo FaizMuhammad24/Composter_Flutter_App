@@ -145,7 +145,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       child: Scaffold(
         // Let the Scaffold resize body when keyboard opens
         resizeToAvoidBottomInset: true,
-        backgroundColor: AppColors.primary,
+        backgroundColor: Colors.white,
         body: SafeArea(
           child: SingleChildScrollView(
             controller: _scrollController,
@@ -157,13 +157,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               ),
               child: Column(
                 children: [
-                  // ── Hero Header (collapses when keyboard opens) ──────────
+                  // ── Hero Header (green background at top) ──────────────
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 250),
                     curve: Curves.easeInOut,
                     height: headerH,
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(40),
+                        bottomRight: Radius.circular(40),
+                      ),
+                    ),
                     child: _buildHeader(keyboardVisible),
                   ),
 
@@ -176,10 +183,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                         width: double.infinity,
                         decoration: const BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.only(
-                            topLeft: Radius.circular(40),
-                            topRight: Radius.circular(40),
-                          ),
                         ),
                     padding: EdgeInsets.fromLTRB(
                       32,
