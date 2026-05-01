@@ -13,7 +13,20 @@
           "package_name": "com.example.kompos_app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "949669109723-pc39raa61skg72q6jca5ctv3v9iilpo7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.kompos_app",
+            "certificate_hash": "ce2f83b4c7b4b3fdba5a050eddb83bc2202be3ce"
+          }
+        },
+        {
+          "client_id": "949669109723-ug0ref82hh8pv2uqb84b92po6vtitb6u.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCa9ZpfsjzC-2iCRf64RaUCddflDziUTPc"
@@ -21,7 +34,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "949669109723-ug0ref82hh8pv2uqb84b92po6vtitb6u.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
