@@ -1,3 +1,0 @@
-class FakeDatabase {
-  // SUDAH DIHAPUS - DIGANTIKAN FIREBASE
-}
