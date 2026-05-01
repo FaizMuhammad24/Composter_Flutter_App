@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
-import 'session_service.dart';
 
 class SignupService {
 
@@ -73,13 +72,18 @@ class SignupService {
         // Simpan ke Firestore menggunakan Auth UID
         await FirebaseFirestore.instance.collection('users').doc(uid).set(newUser);
 
+        // Kirim email verifikasi ke alamat email yang didaftarkan
+        await cred.user!.sendEmailVerification();
+
         var userModel = UserModel.fromJson(newUser);
-        await SessionService.setCurrentUser(userModel);
+        // Jangan simpan sesi dulu — tunggu verifikasi email
+        // await SessionService.setCurrentUser(userModel);
 
         return {
           'success': true,
-          'message': 'Registrasi berhasil',
+          'message': 'Registrasi berhasil! Kami telah mengirimkan link verifikasi ke $email. Silakan cek kotak masuk email Anda dan klik link tersebut sebelum login.',
           'user': userModel,
+          'needsVerification': true,
         };
       }
     } on FirebaseAuthException catch (e) {

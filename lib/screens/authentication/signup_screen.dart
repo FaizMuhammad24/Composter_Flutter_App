@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
-import '../user/user_main_screen.dart';
 import '../../constants/app_colors.dart';
-import '../../models/user_model.dart';
 import '../../services/auth/signup_service.dart';
-import '../super_admin/super_admin_main_screen.dart';
-import '../admin/admin_main_screen.dart';
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
 
@@ -91,27 +87,51 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
       if (!mounted) return;
 
       if (result['success']) {
-        final user = result['user'] as UserModel;
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Pendaftaran berhasil! Anda terdaftar sebagai User'),
-            backgroundColor: Colors.green,
+        // Tampilkan dialog instruksi verifikasi email
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: const [
+                Icon(Icons.mark_email_read_outlined, color: Colors.green, size: 28),
+                SizedBox(width: 8),
+                Flexible(
+                  child: Text('Cek Email Anda!', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16)),
+                ),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Pendaftaran berhasil! 🎉',
+                  style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600, color: Colors.green),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Kami telah mengirimkan link verifikasi ke:\n${_emailController.text.trim()}\n\nSilakan buka email Anda dan klik link verifikasi untuk mengaktifkan akun, lalu kembali ke halaman Login.',
+                  style: const TextStyle(fontFamily: 'Poppins', fontSize: 13, height: 1.5),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context); // tutup dialog
+                  Navigator.pop(context); // kembali ke login screen
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Kembali ke Login', style: TextStyle(fontFamily: 'Poppins')),
+              ),
+            ],
           ),
-        );
-
-        Widget nextScreen;
-        if (user.isSuperAdmin) {
-          nextScreen = const SuperAdminMainScreen();
-        } else if (user.isAdmin) {
-          nextScreen = const AdminMainScreen();
-        } else {
-          nextScreen = UserMainScreen(user: user);
-        }
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => nextScreen),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(

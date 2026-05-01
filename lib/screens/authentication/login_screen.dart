@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_screen.dart';
 import '../super_admin/super_admin_main_screen.dart';
 import '../admin/admin_main_screen.dart';
@@ -8,6 +9,7 @@ import 'reset_password_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/auth/login_service.dart';
+import '../../services/auth/google_sign_in_service.dart';
 import '../../services/notifications/admin_notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -24,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   final _scrollController = ScrollController();
   final _emailFocusNode = FocusNode();
   bool _isLoading = false;
+  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
 
   late AnimationController _animationController;
@@ -85,26 +88,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
       if (result['success']) {
         final user = result['user'] as UserModel;
-        Widget nextScreen;
-
-        if (user.isSuperAdmin) {
-          nextScreen = const SuperAdminMainScreen();
-        } else if (user.isAdmin) {
-          nextScreen = const AdminMainScreen();
-        } else {
-          nextScreen = UserMainScreen(user: user);
-        }
-
-        if (user.isSuperAdmin || user.isAdmin) {
-          await AdminNotificationService().init();
-        }
-
-        if (!mounted) return;
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => nextScreen),
-        );
+        _navigateToHome(user);
+      } else if (result['needsVerification'] == true) {
+        // Email belum diverifikasi — tampilkan dialog dengan opsi kirim ulang
+        _showVerificationDialog(result['email'] ?? _emailController.text.trim());
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -128,6 +115,98 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _navigateToHome(UserModel user) {
+    if (!mounted) return;
+    Widget nextScreen;
+    if (user.isSuperAdmin) {
+      nextScreen = const SuperAdminMainScreen();
+    } else if (user.isAdmin) {
+      nextScreen = const AdminMainScreen();
+    } else {
+      nextScreen = UserMainScreen(user: user);
+    }
+    if (user.isSuperAdmin || user.isAdmin) {
+      AdminNotificationService().init();
+    }
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => nextScreen),
+    );
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isGoogleLoading = true);
+    try {
+      final result = await GoogleSignInService.signInWithGoogle();
+      if (!mounted) return;
+      if (result['success']) {
+        final user = result['user'] as UserModel;
+        _navigateToHome(user);
+      } else if (result['message'] != 'Login dibatalkan') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result['message']),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isGoogleLoading = false);
+    }
+  }
+
+  void _showVerificationDialog(String email) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: const [
+            Icon(Icons.mark_email_unread_outlined, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Verifikasi Email', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'Email Anda ($email) belum diverifikasi.\n\nSilakan cek kotak masuk atau folder spam, lalu klik link verifikasi yang telah dikirimkan.',
+          style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Tutup', style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
+          ),
+          ElevatedButton.icon(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final currentUser = FirebaseAuth.instance.currentUser;
+                if (currentUser != null) {
+                  await currentUser.sendEmailVerification();
+                }
+                if (!mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: const Text('Link verifikasi telah dikirim ulang! Cek email Anda.'),
+                    backgroundColor: Colors.green,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                );
+              } catch (_) {}
+            },
+            icon: const Icon(Icons.send, size: 16),
+            label: const Text('Kirim Ulang', style: TextStyle(fontFamily: 'Poppins')),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -359,7 +438,51 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
                           const SizedBox(height: 20),
 
-                          // Register button
+                          // Tombol Google Sign-In
+                          SizedBox(
+                            height: 54,
+                            child: OutlinedButton(
+                              onPressed: (_isLoading || _isGoogleLoading) ? null : _handleGoogleSignIn,
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: Colors.grey[300]!, width: 1.5),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(28),
+                                ),
+                                backgroundColor: Colors.white,
+                              ),
+                              child: _isGoogleLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Image.network(
+                                          'https://www.google.com/favicon.ico',
+                                          width: 20,
+                                          height: 20,
+                                          errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 22),
+                                        ),
+                                        const SizedBox(width: 10),
+                                        const Text(
+                                          'Masuk dengan Google',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                            color: Colors.black87,
+                                            fontFamily: 'Poppins',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // Divider ke Buat Akun
                           SizedBox(
                             height: 54,
                             child: OutlinedButton(
