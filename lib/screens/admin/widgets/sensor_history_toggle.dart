@@ -94,7 +94,7 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                     color: widget.color,
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
-                      BoxShadow(color: widget.color.withOpacity(0.3), blurRadius: 4, offset: const Offset(0, 2))
+                      BoxShadow(color: widget.color.withValues(alpha: 0.3), blurRadius: 4, offset: const Offset(0, 2))
                     ],
                   ),
                   labelColor: Colors.white,
@@ -134,7 +134,7 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                       decoration: BoxDecoration(
                         color: isSelected ? widget.color : Colors.transparent,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isSelected ? widget.color : widget.color.withOpacity(0.3)),
+                        border: Border.all(color: isSelected ? widget.color : widget.color.withValues(alpha: 0.3)),
                       ),
                       child: Text(labels[i], style: TextStyle(
                         fontSize: 11, fontWeight: FontWeight.w600, fontFamily: 'Poppins',
@@ -191,10 +191,10 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                     extraLinesData: ExtraLinesData(
                       horizontalLines: [
                         if (widget.thresholdMax != null)
-                          HorizontalLine(y: widget.thresholdMax!, color: Colors.orange.withOpacity(0.5), strokeWidth: 2, dashArray: [5, 5],
+                          HorizontalLine(y: widget.thresholdMax!, color: Colors.orange.withValues(alpha: 0.5), strokeWidth: 2, dashArray: [5, 5],
                             label: HorizontalLineLabel(show: true, labelResolver: (line) => 'Batas Atas', style: const TextStyle(color: Colors.orange, fontSize: 10))),
                         if (widget.thresholdMin != null)
-                          HorizontalLine(y: widget.thresholdMin!, color: Colors.red.withOpacity(0.5), strokeWidth: 2, dashArray: [5, 5],
+                          HorizontalLine(y: widget.thresholdMin!, color: Colors.red.withValues(alpha: 0.5), strokeWidth: 2, dashArray: [5, 5],
                             label: HorizontalLineLabel(show: true, padding: const EdgeInsets.only(bottom: 20), labelResolver: (line) => 'Batas Bawah', style: const TextStyle(color: Colors.red, fontSize: 10))),
                       ],
                     ),
@@ -208,7 +208,7 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                         belowBarData: BarAreaData(
                           show: true,
                           gradient: LinearGradient(
-                            colors: [widget.color.withOpacity(0.4), widget.color.withOpacity(0.0)],
+                            colors: [widget.color.withValues(alpha: 0.4), widget.color.withValues(alpha: 0.0)],
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                           ),
@@ -234,7 +234,7 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
         // Table Header
         Container(
           padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-          decoration: BoxDecoration(color: widget.color.withOpacity(0.08), borderRadius: BorderRadius.circular(8)),
+          decoration: BoxDecoration(color: widget.color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
           child: Row(children: [
             Expanded(flex: 3, child: Text('Waktu', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: widget.color))),
             Expanded(flex: 2, child: Text(widget.sensorLabel, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: widget.color))),
@@ -266,7 +266,7 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: (isNormal ? Colors.green : Colors.red).withOpacity(0.1),
+                              color: (isNormal ? Colors.green : Colors.red).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(

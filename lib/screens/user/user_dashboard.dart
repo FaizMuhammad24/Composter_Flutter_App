@@ -534,7 +534,7 @@ class _UserDashboardState extends State<UserDashboard>
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         elevation: 1,
-        shadowColor: Colors.black.withOpacity(0.1),
+        shadowColor: Colors.black.withValues(alpha: 0.1),
         child: InkWell(
           onTap: () async {
             await Navigator.push(
@@ -561,7 +561,7 @@ class _UserDashboardState extends State<UserDashboard>
                 height: 110,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                 ),
                 child: ClipRRect(

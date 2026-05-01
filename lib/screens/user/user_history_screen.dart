@@ -288,7 +288,7 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
+                color: iconColor.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(icon, color: iconColor, size: 24),
           ),
           const SizedBox(width: 14),
@@ -307,7 +307,7 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
+                        color: statusColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8)),
                     child: Text(statusLabel,
                         style: TextStyle(

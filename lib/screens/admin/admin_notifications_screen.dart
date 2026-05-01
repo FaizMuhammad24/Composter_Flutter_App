@@ -173,7 +173,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(
-              color: alert.isRead ? Colors.transparent : iconColor.withOpacity(0.3)),
+              color: alert.isRead ? Colors.transparent : iconColor.withValues(alpha: 0.3)),
         ),
         color: alert.isRead ? Colors.white : cardColor,
         child: ListTile(
@@ -181,7 +181,7 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
           leading: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-                color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
+                color: iconColor.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(icon, color: iconColor, size: 28),
           ),
           title: Row(

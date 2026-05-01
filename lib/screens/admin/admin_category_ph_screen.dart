@@ -162,7 +162,7 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
                                 ])),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                  decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), borderRadius: BorderRadius.circular(25)),
+                                  decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(25)),
                                   child: Text(_isOffline ? 'Offline' : (_isFailed ? 'Gagal' : ((_currentValue >= 6.0 && _currentValue <= 8.0) ? 'Normal' : 'Abnormal')), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                                 ),
                               ]),
@@ -195,10 +195,10 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
                   ),
                 ),
                 if (_isOffline)
-                  Center(child: Container(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), decoration: BoxDecoration(color: Colors.black.withOpacity(0.7), borderRadius: BorderRadius.circular(30)),
+                  Center(child: Container(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.7), borderRadius: BorderRadius.circular(30)),
                     child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.wifi_off_rounded, color: Colors.white, size: 20), SizedBox(width: 8), Text('Sensor Terputus (Offline)', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins'))]))),
                 if (_isFailed && !_isOffline)
-                  Center(child: Container(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), decoration: BoxDecoration(color: Colors.orange.withOpacity(0.8), borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.white, width: 2)),
+                  Center(child: Container(padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12), decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.8), borderRadius: BorderRadius.circular(30), border: Border.all(color: Colors.white, width: 2)),
                     child: const Row(mainAxisSize: MainAxisSize.min, children: [Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24), SizedBox(width: 8), Text('SENSOR TIDAK TERBACA', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins'))]))),
               ],
             ),

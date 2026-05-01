@@ -184,13 +184,13 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           ElevatedButton.icon(
             onPressed: () async {
               Navigator.pop(context);
+              final messenger = ScaffoldMessenger.of(context);
               try {
                 final currentUser = FirebaseAuth.instance.currentUser;
                 if (currentUser != null) {
                   await currentUser.sendEmailVerification();
                 }
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   SnackBar(
                     content: const Text('Link verifikasi telah dikirim ulang! Cek email Anda.'),
                     backgroundColor: Colors.green,
@@ -494,7 +494,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(
                                     color: AppColors.primary
-                                        .withOpacity(0.35),
+                                        .withValues(alpha: 0.35),
                                     width: 1.5),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(28),
@@ -505,7 +505,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 style: TextStyle(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
-                                  color: AppColors.primary.withOpacity(0.85),
+                                  color: AppColors.primary.withValues(alpha: 0.85),
                                   letterSpacing: 0.5,
                                   fontFamily: 'Poppins',
                                 ),
