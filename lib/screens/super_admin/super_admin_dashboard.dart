@@ -249,7 +249,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
         ),
         boxShadow: [
           BoxShadow(
-            color: AppColors.superAdminPrimary.withOpacity(0.3),
+            color: AppColors.superAdminPrimary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
@@ -261,7 +261,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: const Center(
@@ -285,7 +285,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Row(
@@ -340,7 +340,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -351,7 +351,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
+                color: color.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 20),
@@ -399,7 +399,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
         ),
         child: const Center(
           child: Text('Belum ada aktivitas terbaru', style: TextStyle(fontFamily: 'Poppins', color: Colors.grey)),
@@ -419,14 +419,14 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
           ),
           child: Row(
             children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: (act['color'] as Color).withOpacity(0.1),
+                  color: (act['color'] as Color).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(act['icon'] as IconData, color: act['color'] as Color, size: 24),
@@ -460,7 +460,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
@@ -479,7 +479,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard> with SingleTi
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
           child: Icon(icon, color: color, size: 18),
         ),
         const SizedBox(width: 12),

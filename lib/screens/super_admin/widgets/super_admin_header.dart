@@ -25,7 +25,7 @@ class SuperAdminHeader extends StatelessWidget implements PreferredSizeWidget {
         padding: const EdgeInsets.all(10),
         child: Container(
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.2),
+            color: Colors.white.withValues(alpha: 0.2),
             shape: BoxShape.circle,
           ),
           child: const Icon(Icons.admin_panel_settings, color: Colors.white, size: 22),

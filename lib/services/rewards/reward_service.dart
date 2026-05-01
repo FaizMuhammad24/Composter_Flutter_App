@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../../models/reward_model.dart';
 import '../notifications/user_notification_service.dart';
 
@@ -19,7 +20,7 @@ class RewardService {
           .map((doc) => RewardModel.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('Error mengambil rewards: $e');
+      debugPrint('Error mengambil rewards: $e');
       return [];
     }
   }
@@ -36,7 +37,7 @@ class RewardService {
           .map((doc) => RewardModel.fromJson(doc.data() as Map<String, dynamic>))
           .toList();
     } catch (e) {
-      print('Error mengambil popular rewards: $e');
+      debugPrint('Error mengambil popular rewards: $e');
       return [];
     }
   }
@@ -76,7 +77,7 @@ class RewardService {
           .map((doc) => doc.data() as Map<String, dynamic>)
           .toList();
     } catch (e) {
-      print('Error mengambil pending claims: $e');
+      debugPrint('Error mengambil pending claims: $e');
       return [];
     }
   }
@@ -116,7 +117,7 @@ class RewardService {
       docs.sort((a, b) => (b['createdAt'] as String).compareTo(a['createdAt'] as String));
       return docs;
     } catch (e) {
-      print('Error getUserClaims: $e');
+      debugPrint('Error getUserClaims: $e');
       return [];
     }
   }
@@ -160,7 +161,7 @@ class RewardService {
 
       return true;
     } catch (e) {
-      print('Error claiming reward: $e');
+      debugPrint('Error claiming reward: $e');
       if (e is Exception) rethrow;
       return false;
     }

@@ -210,7 +210,7 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     elevation: 4,
-                    shadowColor: AppColors.superAdminPrimary.withOpacity(0.4),
+                    shadowColor: AppColors.superAdminPrimary.withValues(alpha: 0.4),
                   ),
                   child: _isLoading
                       ? const SizedBox(
@@ -240,8 +240,8 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.superAdminPrimary.withOpacity(0.3), width: 2),
-          boxShadow: [BoxShadow(color: AppColors.superAdminPrimary.withOpacity(0.1), blurRadius: 12)],
+          border: Border.all(color: AppColors.superAdminPrimary.withValues(alpha: 0.3), width: 2),
+          boxShadow: [BoxShadow(color: AppColors.superAdminPrimary.withValues(alpha: 0.1), blurRadius: 12)],
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(18),
@@ -270,7 +270,7 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
     );

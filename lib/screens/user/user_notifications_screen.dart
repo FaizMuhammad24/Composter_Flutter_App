@@ -156,22 +156,22 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
       case 'success':
         icon = Icons.check_circle;
         iconColor = Colors.green;
-        backgroundColor = Colors.green.withOpacity(0.05);
+        backgroundColor = Colors.green.withValues(alpha: 0.05);
         break;
       case 'error':
         icon = Icons.cancel;
         iconColor = Colors.red;
-        backgroundColor = Colors.red.withOpacity(0.05);
+        backgroundColor = Colors.red.withValues(alpha: 0.05);
         break;
       case 'reward':
         icon = Icons.card_giftcard;
         iconColor = Colors.blue;
-        backgroundColor = Colors.blue.withOpacity(0.05);
+        backgroundColor = Colors.blue.withValues(alpha: 0.05);
         break;
       default:
         icon = Icons.notifications_outlined;
         iconColor = Colors.orange;
-        backgroundColor = Colors.orange.withOpacity(0.05);
+        backgroundColor = Colors.orange.withValues(alpha: 0.05);
     }
 
     return Dismissible(
@@ -193,7 +193,7 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: notif.isRead ? Colors.transparent : iconColor.withOpacity(0.3),
+          color: notif.isRead ? Colors.transparent : iconColor.withValues(alpha: 0.3),
           width: 1.5,
         ),
       ),
@@ -213,7 +213,7 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.15),
+                  color: iconColor.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: iconColor, size: 26),

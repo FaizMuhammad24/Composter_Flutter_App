@@ -43,8 +43,7 @@ class KomposApp extends StatelessWidget {
           primary: AppColors.primary,
           secondary: AppColors.primaryLight,
           error: AppColors.error,
-          surface: AppColors.surface,
-          background: AppColors.background,
+          surface: AppColors.background,
         ),
         
         appBarTheme: AppBarTheme(

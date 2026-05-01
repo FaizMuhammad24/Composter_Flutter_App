@@ -205,7 +205,7 @@ class _SuperAdminManageDepositsScreenState extends State<SuperAdminManageDeposit
         decoration: BoxDecoration(
           color: isSelected ? color : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: color.withOpacity(0.4)),
+          border: Border.all(color: color.withValues(alpha: 0.4)),
         ),
         child: Text(
           label,
@@ -266,7 +266,7 @@ class _SuperAdminManageDepositsScreenState extends State<SuperAdminManageDeposit
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.1),
+                    color: statusColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(statusLabel, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -322,7 +322,7 @@ class _SuperAdminManageDepositsScreenState extends State<SuperAdminManageDeposit
   Widget _infoItem(IconData icon, String text, {Color color = Colors.black87}) {
     return Row(
       children: [
-        Icon(icon, size: 18, color: color.withOpacity(0.7)),
+        Icon(icon, size: 18, color: color.withValues(alpha: 0.7)),
         const SizedBox(width: 6),
         Text(text, style: TextStyle(fontWeight: FontWeight.bold, color: color, fontFamily: 'Poppins')),
       ],

@@ -214,7 +214,7 @@ class _SensorCalibrationCardState extends State<SensorCalibrationCard> {
                   children: [
                     Container(
                       width: 32, height: 32,
-                      decoration: BoxDecoration(color: widget.color.withOpacity(0.1), shape: BoxShape.circle),
+                      decoration: BoxDecoration(color: widget.color.withValues(alpha: 0.1), shape: BoxShape.circle),
                       child: Center(child: Text(step['step']!, style: TextStyle(fontWeight: FontWeight.bold, color: widget.color, fontFamily: 'Poppins'))),
                     ),
                     const SizedBox(width: 12),

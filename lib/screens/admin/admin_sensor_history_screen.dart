@@ -59,7 +59,7 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
           // Filter chips
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            color: AppColors.adminPrimary.withOpacity(0.05),
+            color: AppColors.adminPrimary.withValues(alpha: 0.05),
             child: Row(
               children: List.generate(3, (index) {
                 final isSelected = _selectedFilter == index;
@@ -73,7 +73,7 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
                     selected: isSelected,
                     selectedColor: AppColors.adminPrimary,
                     backgroundColor: Colors.white,
-                    side: BorderSide(color: AppColors.adminPrimary.withOpacity(0.3)),
+                    side: BorderSide(color: AppColors.adminPrimary.withValues(alpha: 0.3)),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     onSelected: (sel) {
                       if (sel) setState(() => _selectedFilter = index);
@@ -151,7 +151,7 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: (wifi > 60 ? Colors.green : Colors.orange).withOpacity(0.1),
+                      color: (wifi > 60 ? Colors.green : Colors.orange).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Row(
@@ -185,7 +185,7 @@ class _AdminSensorHistoryScreenState extends State<AdminSensorHistoryScreen> {
       children: [
         Container(
           padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.08), shape: BoxShape.circle),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.08), shape: BoxShape.circle),
           child: Icon(icon, size: 16, color: color),
         ),
         const SizedBox(height: 4),

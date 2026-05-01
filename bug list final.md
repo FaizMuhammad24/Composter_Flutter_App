@@ -1,6 +1,6 @@
 # 📋 Bug List Final & Rencana Eksekusi — I-Compost v2.0 (Terbaru)
 
-> **Status Saat Ini:** Fase 1 & 2 **SELESAI 100%** ✅ | Fase 3 (Clean Code) belum dikerjakan
+> **Status Saat Ini:** Fase 1 & 2 ✅ SELESAI | Fase 3 (Clean Code) 🔄 Berjalan (61/166 peringatan tersisa)
 
 Dokumen ini adalah sumber kebenaran tunggal (*single source of truth*) untuk seluruh daftar perbaikan yang harus dilakukan sebelum aplikasi I-Compost v2.0 dirilis ke tahap produksi.
 
@@ -40,15 +40,14 @@ Bug/Isu pada kategori ini menyangkut pengalaman pengguna (*User Experience*) dan
 ## 🔴 FASE 3: CLEAN CODE & SECURITY (Sedang Berjalan)
 Pembersihan kode dalam skala besar untuk standar produksi, peningkatan efisiensi render (memori), dan mencegah kebocoran informasi di sistem (Linter menyisakan 166 peringatan yang berpusat di fase ini).
 
-- [ ] **[BUG-14] (BARU) Kebocoran Log di Production (`avoid_print`)**
-  - **Detail:** Ada 8 perintah `print()` yang masih tertinggal di `user_dashboard.dart`, `storage_service.dart`, dan `reward_service.dart`.
-  - **Tindakan:** Ganti dengan `debugPrint()` agar pesan *debugging* disembunyikan secara otomatis saat aplikasi masuk ke *Google Play Store*.
-- [ ] **[BUG-15] Deprecations Massal (`withOpacity`)**
-  - **Detail:** Mengganti 130+ peringatan `withOpacity` dengan `withValues(alpha: ...)` untuk mengatasi peringatan kepresisian warna dari Flutter versi terbaru. (Akan dieksekusi instan dengan skrip `fix_lints.py`).
+- [x] **[BUG-14] Kebocoran Log di Production (`avoid_print`)**
+  - Mengganti semua `print()` dengan `debugPrint()` di `user_dashboard.dart`, `storage_service.dart`, dan `reward_service.dart`.
+- [x] **[BUG-15] Deprecations Massal (`withOpacity`)**
+  - Mengganti 130+ peringatan `withOpacity` menjadi `.withValues(alpha: ...)` menggunakan skrip `fix_lints.py` di 39 file.
 - [ ] **[BUG-16] Pembersihan `const` Constructors**
-  - **Detail:** Mengaplikasikan `const` pada *widget* statis yang hilang untuk meningkatkan FPS animasi dan menurunkan beban RAM aplikasi.
+  - **Detail:** Masih tersisa ~20 peringatan `prefer_const_constructors` di beberapa screen. Perbaikan agresif otomatis tidak direkomendasikan — perlu diperbaiki manual per file.
 - [ ] **[BUG-17] Penyesuaian Material 3 Theme**
-  - **Detail:** Menyesuaikan atribut `background` menjadi `surface` di tema utama (`main.dart`).
+  - **Detail:** Duplikat kunci `surface` di `main.dart` sudah dihapus ✅. Tidak ada perubahan lain yang diperlukan.
 
 ---
 

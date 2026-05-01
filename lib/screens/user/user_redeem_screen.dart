@@ -157,7 +157,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), shape: BoxShape.circle),
               child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 60),
             ),
             const SizedBox(height: 24),
@@ -228,9 +228,9 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
                     decoration: BoxDecoration(
-                      color: widget.color.withOpacity(0.05),
+                      color: widget.color.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: widget.color.withOpacity(0.2)),
+                      border: Border.all(color: widget.color.withValues(alpha: 0.2)),
                     ),
                     child: Column(
                       children: [
@@ -244,7 +244,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                               fit: BoxFit.cover,
                               errorBuilder: (context, error, stackTrace) => Container(
                                 padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(color: widget.color.withOpacity(0.15), shape: BoxShape.circle),
+                                decoration: BoxDecoration(color: widget.color.withValues(alpha: 0.15), shape: BoxShape.circle),
                                 child: Icon(widget.icon, size: 80, color: widget.color),
                               ),
                             ),
@@ -252,7 +252,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                         else
                           Container(
                             padding: const EdgeInsets.all(24),
-                            decoration: BoxDecoration(color: widget.color.withOpacity(0.15), shape: BoxShape.circle),
+                            decoration: BoxDecoration(color: widget.color.withValues(alpha: 0.15), shape: BoxShape.circle),
                             child: Icon(widget.icon, size: 80, color: widget.color),
                           ),
                         const SizedBox(height: 24),
@@ -276,9 +276,9 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withOpacity(0.08),
+                      color: Colors.orange.withValues(alpha: 0.08),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.orange.withOpacity(0.2)),
+                      border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
                     ),
                     child: const Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,7 +365,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4))],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
             ),
             child: SafeArea(
               child: SizedBox(

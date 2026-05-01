@@ -176,7 +176,7 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
+                    color: Colors.black.withValues(alpha: 0.04),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -252,7 +252,7 @@ class _AdminHistoryLogScreenState extends State<AdminHistoryLogScreen> with Sing
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isOn ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+        color: isOn ? Colors.green.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Text(

@@ -36,7 +36,7 @@ class AlertCard extends StatelessWidget {
             children: [
               // Icon
               CircleAvatar(
-                backgroundColor: _getAlertColor().withOpacity(0.2),
+                backgroundColor: _getAlertColor().withValues(alpha: 0.2),
                 child: Icon(
                   _getAlertIcon(),
                   color: _getAlertColor(),

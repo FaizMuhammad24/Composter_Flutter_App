@@ -225,7 +225,7 @@ class _RewardCatalogTabState extends State<_RewardCatalogTab> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         children: [
@@ -243,7 +243,7 @@ class _RewardCatalogTabState extends State<_RewardCatalogTab> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -252,7 +252,7 @@ class _RewardCatalogTabState extends State<_RewardCatalogTab> {
           child: Container(
             width: 56,
             height: 56,
-            color: catColor.withOpacity(0.1),
+            color: catColor.withValues(alpha: 0.1),
             child: reward.imageUrl.isNotEmpty
                 ? Image.network(reward.imageUrl, fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => Icon(Icons.card_giftcard, color: catColor, size: 28))
@@ -273,7 +273,7 @@ class _RewardCatalogTabState extends State<_RewardCatalogTab> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: catColor.withOpacity(0.12), borderRadius: BorderRadius.circular(20)),
+                  decoration: BoxDecoration(color: catColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(20)),
                   child: Text(reward.category, style: TextStyle(fontSize: 10, color: catColor, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                 ),
                 Row(

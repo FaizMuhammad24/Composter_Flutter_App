@@ -225,7 +225,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Form(
         key: _formKey,
@@ -280,7 +280,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Row(
         children: [
@@ -288,7 +288,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: AppColors.superAdminPrimary.withOpacity(0.1),
+              color: AppColors.superAdminPrimary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Center(

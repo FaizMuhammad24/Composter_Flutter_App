@@ -80,7 +80,7 @@ class _UserDashboardState extends State<UserDashboard>
       }
     } catch (e) {
       // Ignore errors for now
-      print('Dashboard load error: $e');
+      debugPrint('Dashboard load error: $e');
     }
 
     if (mounted) {

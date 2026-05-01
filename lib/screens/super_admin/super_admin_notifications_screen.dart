@@ -302,17 +302,17 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
     switch (alert.severity) {
       case 'danger':
         iconColor = Colors.red;
-        cardColor = Colors.red.withOpacity(0.05);
+        cardColor = Colors.red.withValues(alpha: 0.05);
         icon = Icons.error_outline;
         break;
       case 'warning':
         iconColor = Colors.orange;
-        cardColor = Colors.orange.withOpacity(0.05);
+        cardColor = Colors.orange.withValues(alpha: 0.05);
         icon = Icons.warning_amber_rounded;
         break;
       default:
         iconColor = Colors.blue;
-        cardColor = Colors.blue.withOpacity(0.05);
+        cardColor = Colors.blue.withValues(alpha: 0.05);
         icon = Icons.info_outline;
     }
 
@@ -340,15 +340,15 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: alert.isRead ? Colors.grey.withOpacity(0.2) : iconColor.withOpacity(0.4), width: 1.5),
+            side: BorderSide(color: alert.isRead ? Colors.grey.withValues(alpha: 0.2) : iconColor.withValues(alpha: 0.4), width: 1.5),
           ),
-          color: alert.isRead ? Colors.grey.withOpacity(0.05) : cardColor,
+          color: alert.isRead ? Colors.grey.withValues(alpha: 0.05) : cardColor,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: alert.isRead ? Colors.grey.withOpacity(0.15) : iconColor.withOpacity(0.15), shape: BoxShape.circle), child: Icon(icon, color: alert.isRead ? Colors.grey : iconColor, size: 26)),
+                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: alert.isRead ? Colors.grey.withValues(alpha: 0.15) : iconColor.withValues(alpha: 0.15), shape: BoxShape.circle), child: Icon(icon, color: alert.isRead ? Colors.grey : iconColor, size: 26)),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -390,22 +390,22 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
     switch (alert.type) {
       case 'deposit_pending':
         iconColor = Colors.orange;
-        cardColor = Colors.orange.withOpacity(0.05);
+        cardColor = Colors.orange.withValues(alpha: 0.05);
         icon = Icons.inventory_2;
         break;
       case 'reward_request':
         iconColor = Colors.purple;
-        cardColor = Colors.purple.withOpacity(0.05);
+        cardColor = Colors.purple.withValues(alpha: 0.05);
         icon = Icons.card_giftcard;
         break;
       case 'system_alert':
         iconColor = Colors.red;
-        cardColor = Colors.red.withOpacity(0.05);
+        cardColor = Colors.red.withValues(alpha: 0.05);
         icon = Icons.error_outline;
         break;
       default:
         iconColor = Colors.blue;
-        cardColor = Colors.blue.withOpacity(0.05);
+        cardColor = Colors.blue.withValues(alpha: 0.05);
         icon = Icons.info_outline;
     }
 
@@ -432,15 +432,15 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: alert.isRead ? Colors.grey.withOpacity(0.2) : iconColor.withOpacity(0.4), width: 1.5),
+            side: BorderSide(color: alert.isRead ? Colors.grey.withValues(alpha: 0.2) : iconColor.withValues(alpha: 0.4), width: 1.5),
           ),
-          color: alert.isRead ? Colors.grey.withOpacity(0.05) : cardColor,
+          color: alert.isRead ? Colors.grey.withValues(alpha: 0.05) : cardColor,
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: alert.isRead ? Colors.grey.withOpacity(0.15) : iconColor.withOpacity(0.15), shape: BoxShape.circle), child: Icon(icon, color: alert.isRead ? Colors.grey : iconColor, size: 26)),
+                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: alert.isRead ? Colors.grey.withValues(alpha: 0.15) : iconColor.withValues(alpha: 0.15), shape: BoxShape.circle), child: Icon(icon, color: alert.isRead ? Colors.grey : iconColor, size: 26)),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
@@ -597,7 +597,7 @@ class _SuperAdminNotificationsScreenState extends State<SuperAdminNotificationsS
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle), child: Icon(icon, color: color, size: 22)),
+            Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle), child: Icon(icon, color: color, size: 22)),
             const SizedBox(width: 14),
             Expanded(
               child: Column(

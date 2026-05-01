@@ -437,7 +437,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: (isOffline ? Colors.red : AppColors.adminPrimary).withOpacity(0.1),
+            color: (isOffline ? Colors.red : AppColors.adminPrimary).withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -452,7 +452,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
+                  color: Colors.black.withValues(alpha: 0.05),
                   blurRadius: 10,
                 ),
               ],
@@ -493,7 +493,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: healthColor.withOpacity(0.1),
+                    color: healthColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
@@ -527,7 +527,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 15,
             offset: const Offset(0, 5),
           ),
@@ -539,7 +539,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 20),
@@ -569,7 +569,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: isOk ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+            color: isOk ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(6),
           ),
           child: Text(
@@ -623,7 +623,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.02),
+            color: Colors.black.withValues(alpha: 0.02),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

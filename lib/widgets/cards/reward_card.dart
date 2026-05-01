@@ -37,7 +37,7 @@ class RewardCard extends StatelessWidget {
             Container(
               height: 120,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
+                color: AppColors.primary.withValues(alpha: 0.1),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(AppRadius.md),
                 ),
@@ -46,7 +46,7 @@ class RewardCard extends StatelessWidget {
                 child: Icon(
                   _getCategoryIcon(),
                   size: 48,
-                  color: AppColors.primary.withOpacity(0.5),
+                  color: AppColors.primary.withValues(alpha: 0.5),
                 ),
               ),
             ),

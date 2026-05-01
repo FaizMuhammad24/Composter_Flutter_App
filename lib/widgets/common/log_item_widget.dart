@@ -38,7 +38,7 @@ class LogItemWidget extends StatelessWidget {
                   Container(
                     width: 2,
                     height: 24,
-                    color: AppColors.textSecondary.withOpacity(0.3),
+                    color: AppColors.textSecondary.withValues(alpha: 0.3),
                   ),
 
                 // Circle indicator
@@ -57,7 +57,7 @@ class LogItemWidget extends StatelessWidget {
                   Expanded(
                     child: Container(
                       width: 2,
-                      color: AppColors.textSecondary.withOpacity(0.3),
+                      color: AppColors.textSecondary.withValues(alpha: 0.3),
                     ),
                   ),
               ],
@@ -75,7 +75,7 @@ class LogItemWidget extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(
-                  color: AppColors.textSecondary.withOpacity(0.2),
+                  color: AppColors.textSecondary.withValues(alpha: 0.2),
                 ),
               ),
               child: Column(

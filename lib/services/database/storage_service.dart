@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class StorageService {
@@ -27,11 +28,11 @@ class StorageService {
         return jsonResponse['secure_url'] as String;
       } else {
         final errorResponse = await response.stream.bytesToString();
-        print('Cloudinary upload failed: ${response.statusCode} - $errorResponse');
+        debugPrint('Cloudinary upload failed: ${response.statusCode} - $errorResponse');
         return null;
       }
     } catch (e) {
-      print('Error uploading to Cloudinary: $e');
+      debugPrint('Error uploading to Cloudinary: $e');
       return null;
     }
   }

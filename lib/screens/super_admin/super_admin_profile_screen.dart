@@ -118,7 +118,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
           Container(
             padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.22),
+              color: Colors.white.withValues(alpha: 0.22),
               shape: BoxShape.circle,
             ),
             child: Container(
@@ -157,7 +157,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.22),
+              color: Colors.white.withValues(alpha: 0.22),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white30),
             ),
@@ -185,7 +185,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
         border: Border.all(color: AppColors.superAdminPrimary.withValues(alpha: 0.2)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.superAdminPrimary.withOpacity(0.08),
+            color: AppColors.superAdminPrimary.withValues(alpha: 0.08),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -255,7 +255,7 @@ class _SuperAdminProfileScreenState extends State<SuperAdminProfileScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: color, size: 22),

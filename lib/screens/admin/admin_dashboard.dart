@@ -245,7 +245,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                     decoration: BoxDecoration(
                       color: Colors.red[700],
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.white.withOpacity(0.5)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.5)),
                     ),
                     child: const Row(
                       mainAxisSize: MainAxisSize.min,
@@ -284,9 +284,9 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: Colors.white.withOpacity(0.3)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                         ),
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
@@ -434,7 +434,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),

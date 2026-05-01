@@ -74,7 +74,7 @@ class _SplashScreenState extends State<SplashScreen> {
               height: 140,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: Colors.white.withOpacity(0.15),
+                color: Colors.white.withValues(alpha: 0.15),
               ),
               child: Center(
                 child: Container(
@@ -82,7 +82,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   height: 110,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.white.withOpacity(0.2),
+                    color: Colors.white.withValues(alpha: 0.2),
                   ),
                   child: const Center(
                     child: Icon(Icons.eco, size: 60, color: Colors.white),
@@ -105,7 +105,7 @@ class _SplashScreenState extends State<SplashScreen> {
             Text(
               'by Politeknik Negeri Jakarta',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 fontFamily: 'Poppins',
                 letterSpacing: 1.5,
               ),

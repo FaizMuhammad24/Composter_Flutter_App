@@ -84,7 +84,7 @@ class SensorCard extends StatelessWidget {
                       unit,
                       style: TextStyle(
                         fontSize: 14,
-                        color: color.withOpacity(0.7),
+                        color: color.withValues(alpha: 0.7),
                       ),
                     ),
                   ],
@@ -99,7 +99,7 @@ class SensorCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(2),
                   child: LinearProgressIndicator(
                     value: valuePercent,
-                    backgroundColor: color.withOpacity(0.1),
+                    backgroundColor: color.withValues(alpha: 0.1),
                     valueColor: AlwaysStoppedAnimation<Color>(color),
                     minHeight: 4,
                   ),
@@ -114,7 +114,7 @@ class SensorCard extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(status).withOpacity(0.2),
+                  color: _getStatusColor(status).withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
