@@ -38,6 +38,8 @@ class _SplashScreenState extends State<SplashScreen> {
         await AdminNotificationService().init();
       }
 
+      if (!mounted) return;
+
       if (user.role == 'super_admin') {
         nextScreen = const SuperAdminMainScreen();
       } else if (user.role == 'admin') {

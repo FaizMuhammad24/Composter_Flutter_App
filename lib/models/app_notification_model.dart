@@ -32,15 +32,15 @@ class AppNotificationModel {
   }
 
   static DateTime _parseDateTime(dynamic value) {
-    if (value == null) return DateTime.now();
+    if (value == null) return DateTime(2000);
     if (value is Timestamp) return value.toDate();
     if (value is String) {
-      return DateTime.tryParse(value) ?? DateTime.now();
+      return DateTime.tryParse(value) ?? DateTime(2000);
     }
     if (value is int) {
       return DateTime.fromMillisecondsSinceEpoch(value);
     }
-    return DateTime.now();
+    return DateTime(2000);
   }
 
   Map<String, dynamic> toJson() {
@@ -51,7 +51,7 @@ class AppNotificationModel {
       'message': message,
       'type': type,
       'isRead': isRead,
-      'createdAt': createdAt.toIso8601String(),
+      'createdAt': FieldValue.serverTimestamp(),
     };
   }
 

@@ -56,7 +56,7 @@ class UserNotificationService {
 
   static Future<void> _showPush(String title, String body) async {
     const androidDetails = AndroidNotificationDetails('user_alerts_channel', 'User Notifications', importance: Importance.max, priority: Priority.high);
-    await _plugin.show(id: DateTime.now().millisecond, title: title, body: body, notificationDetails: const NotificationDetails(android: androidDetails));
+    await _plugin.show(id: DateTime.now().microsecondsSinceEpoch.remainder(2147483647), title: title, body: body, notificationDetails: const NotificationDetails(android: androidDetails));
   }
 
   /// Stream notifikasi untuk user tertentu

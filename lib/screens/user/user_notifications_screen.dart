@@ -37,6 +37,7 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
           TextButton(
             onPressed: () async {
               await AppNotificationService.markAllAsRead(widget.userEmail);
+              if (!mounted) return;
               setState(() {});
             },
             child: const Text('Baca Semua',
@@ -173,7 +174,20 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
         backgroundColor = Colors.orange.withOpacity(0.05);
     }
 
-    return Card(
+    return Dismissible(
+      key: Key('user_notif_${notif.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(16)),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      onDismissed: (_) {
+        AppNotificationService.deleteNotification(notif.id);
+      },
+      child: Card(
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
@@ -263,6 +277,7 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -277,8 +292,9 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
           TextButton(
             onPressed: () async {
+              final nav = Navigator.of(context);
               await AppNotificationService.deleteAllNotifications(widget.userEmail);
-              if (mounted) Navigator.pop(context);
+              if (mounted) nav.pop();
             },
             child: const Text('Hapus', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),

@@ -154,57 +154,71 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
         iconColor = Colors.blue;
     }
 
-    return Card(
-      elevation: 0,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-            color: alert.isRead ? Colors.transparent : iconColor.withOpacity(0.3)),
+    return Dismissible(
+      key: Key('admin_alert_${alert.id}'),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
+        child: const Icon(Icons.delete, color: Colors.white),
       ),
-      color: alert.isRead ? Colors.white : cardColor,
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
-          child: Icon(icon, color: iconColor, size: 28),
+      onDismissed: (_) {
+        AdminNotificationService().deleteAlert(alert.id);
+      },
+      child: Card(
+        elevation: 0,
+        margin: const EdgeInsets.only(bottom: 12),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+              color: alert.isRead ? Colors.transparent : iconColor.withOpacity(0.3)),
         ),
-        title: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(
-              child: Text(alert.title,
+        color: alert.isRead ? Colors.white : cardColor,
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+                color: iconColor.withOpacity(0.1), shape: BoxShape.circle),
+            child: Icon(icon, color: iconColor, size: 28),
+          ),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(alert.title,
+                    style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        fontFamily: 'Poppins')),
+              ),
+              if (!alert.isRead)
+                Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                        color: Colors.red, shape: BoxShape.circle)),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 6),
+              Text(alert.message,
                   style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                      fontFamily: 'Poppins')),
-            ),
-            if (!alert.isRead)
-              Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                      color: Colors.red, shape: BoxShape.circle)),
-          ],
+                      fontSize: 13, height: 1.4, fontFamily: 'Poppins')),
+              const SizedBox(height: 8),
+              Text(
+                DateFormat('dd MMM yyyy, HH:mm').format(alert.timestamp),
+                style:
+                    const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins'),
+              ),
+            ],
+          ),
+          onTap: () => setState(() => alert.isRead = true),
         ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 6),
-            Text(alert.message,
-                style: const TextStyle(
-                    fontSize: 13, height: 1.4, fontFamily: 'Poppins')),
-            const SizedBox(height: 8),
-            Text(
-              DateFormat('dd MMM yyyy, HH:mm').format(alert.timestamp),
-              style:
-                  const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins'),
-            ),
-          ],
-        ),
-        onTap: () => setState(() => alert.isRead = true),
       ),
     );
   }

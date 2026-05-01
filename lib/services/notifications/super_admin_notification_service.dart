@@ -17,6 +17,15 @@ class SuperAdminNotificationService {
             .toList());
   }
 
+  /// Stream jumlah notifikasi SuperAdmin yang belum dibaca (untuk badge header)
+  static Stream<int> getUnreadCountStream() {
+    return _notificationsCol
+        .where('type', whereIn: ['deposit_pending', 'reward_request', 'system_alert'])
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snap) => snap.docs.length);
+  }
+
   /// Peringatan: Ada setoran baru yang perlu ACC
   static Future<void> notifyNewDeposit(String userEmail, double weight) async {
     await createNotification(
@@ -75,6 +84,59 @@ class SuperAdminNotificationService {
       await _notificationsCol.doc(id).set(notification.toJson());
     } catch (e) {
       debugPrint('Error creating super admin notification: $e');
+    }
+  }
+
+  /// Menandai satu notifikasi sebagai telah dibaca
+  static Future<void> markAsRead(String id) async {
+    try {
+      await _notificationsCol.doc(id).update({'isRead': true});
+    } catch (e) {
+      debugPrint('Error marking super admin notification as read: $e');
+    }
+  }
+
+  /// Menghapus satu notifikasi
+  static Future<void> deleteNotification(String id) async {
+    try {
+      await _notificationsCol.doc(id).delete();
+    } catch (e) {
+      debugPrint('Error deleting super admin notification: $e');
+    }
+  }
+
+  /// Menandai semua notifikasi SuperAdmin sebagai telah dibaca
+  static Future<void> markAllAsRead() async {
+    try {
+      final snap = await _notificationsCol
+          .where('type', whereIn: ['deposit_pending', 'reward_request', 'system_alert'])
+          .where('isRead', isEqualTo: false)
+          .get();
+      
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in snap.docs) {
+        batch.update(doc.reference, {'isRead': true});
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error marking all super admin notifications as read: $e');
+    }
+  }
+
+  /// Menghapus semua notifikasi SuperAdmin
+  static Future<void> deleteAllNotifications() async {
+    try {
+      final snap = await _notificationsCol
+          .where('type', whereIn: ['deposit_pending', 'reward_request', 'system_alert'])
+          .get();
+      
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in snap.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error deleting all super admin notifications: $e');
     }
   }
 }

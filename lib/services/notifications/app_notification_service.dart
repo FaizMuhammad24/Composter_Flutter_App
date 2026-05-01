@@ -76,6 +76,15 @@ class AppNotificationService {
     }
   }
 
+  /// Menghapus satu notifikasi berdasarkan ID
+  static Future<void> deleteNotification(String id) async {
+    try {
+      await _notificationsCol.doc(id).delete();
+    } catch (e) {
+      debugPrint('Error deleting notification: $e');
+    }
+  }
+
   /// Menghapus semua notifikasi user
   static Future<void> deleteAllNotifications(String email) async {
     try {

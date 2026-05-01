@@ -28,12 +28,14 @@ class _UserDepositHistoryScreenState extends State<UserDepositHistoryScreen> {
     setState(() => _isLoading = true);
     try {
       final history = await HistoryService.getUserHistory(widget.userEmail);
+      if (!mounted) return;
       setState(() {
         _allHistory = history;
         _filterByDate();
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Gagal memuat riwayat: $e')),

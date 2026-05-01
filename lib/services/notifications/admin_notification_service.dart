@@ -10,7 +10,7 @@ class LocalAlert {
   final String id;
   final String title;
   final String message;
-  final String severity; // 'danger' | 'warning' | 'info'
+  final String severity; // 'info', 'warning', 'danger'
   final DateTime timestamp;
   bool isRead;
 
@@ -34,8 +34,28 @@ class AdminNotificationService {
 
   final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
 
+  // Notifier yang bisa di-listen oleh UI (Admin Dashboard / Alert Center)
   static final ValueNotifier<List<LocalAlert>> alertsNotifier = ValueNotifier([]);
   static List<LocalAlert> get alerts => alertsNotifier.value;
+
+  // Menandai alert sebagai sudah dibaca
+  void markAsRead(String id) {
+    final alertsList = alertsNotifier.value;
+    for (var alert in alertsList) {
+      if (alert.id == id) {
+        alert.isRead = true;
+      }
+    }
+    alertsNotifier.value = List.from(alertsList);
+  }
+
+  // Menghapus satu alert
+  void deleteAlert(String id) {
+    final alertsList = alertsNotifier.value;
+    alertsList.removeWhere((alert) => alert.id == id);
+    alertsNotifier.value = List.from(alertsList);
+  }
+
   static final ValueNotifier<bool> deviceOfflineNotifier = ValueNotifier(false);
   static bool get isDeviceOffline => deviceOfflineNotifier.value;
 
@@ -137,7 +157,7 @@ class AdminNotificationService {
       // Case 1: Already received some data, check for staleness from last received time
       if (_lastDataReceive != null) {
         final diff = now.difference(_lastDataReceive!);
-        if (diff.inSeconds > 40) { // 40 seconds tolerance
+        if (diff.inSeconds > 60) { // 60 seconds tolerance
           if (!deviceOfflineNotifier.value) {
             deviceOfflineNotifier.value = true;
             notifyDeviceOffline();
@@ -147,7 +167,7 @@ class AdminNotificationService {
       // Case 2: No data received yet since init, check against init time
       else if (_initTime != null) {
         final diff = now.difference(_initTime!);
-        if (diff.inSeconds > 30) { // 30 seconds wait for first data
+        if (diff.inSeconds > 60) { // 60 seconds wait for first data
           if (!deviceOfflineNotifier.value) {
             deviceOfflineNotifier.value = true;
             notifyDeviceOffline();
@@ -254,10 +274,15 @@ class AdminNotificationService {
         if (_lastNotified.containsKey(key) && !key.contains('failed') && key != 'esp_offline') {
           _lastNotified.remove(key);
           String recoveryTitle = title;
-          if (title.contains('DI BAWAH')) recoveryTitle = title.replaceAll('DI BAWAH', 'SUDAH KEMBALI');
-          else if (title.contains('DI ATAS')) recoveryTitle = title.replaceAll('DI ATAS', 'SUDAH KEMBALI');
-          else if (title.contains('MELEBIHI')) recoveryTitle = title.replaceAll('MELEBIHI', 'SUDAH KEMBALI');
-          else recoveryTitle = 'STATUS $key NORMAL';
+          if (title.contains('DI BAWAH')) {
+            recoveryTitle = title.replaceAll('DI BAWAH', 'SUDAH KEMBALI');
+          } else if (title.contains('DI ATAS')) {
+            recoveryTitle = title.replaceAll('DI ATAS', 'SUDAH KEMBALI');
+          } else if (title.contains('MELEBIHI')) {
+            recoveryTitle = title.replaceAll('MELEBIHI', 'SUDAH KEMBALI');
+          } else {
+            recoveryTitle = 'STATUS $key NORMAL';
+          }
 
           _addAlert('$recoveryTitle ✅', 'Parameter $key telah kembali ke batas normal.', 'info');
         } else {
@@ -295,7 +320,7 @@ class AdminNotificationService {
 
   Future<void> _showPush(String title, String body) async {
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails('komposter_alerts_channel', 'Peringatan Komposter', importance: Importance.max, priority: Priority.high);
-    await _plugin.show(id: DateTime.now().millisecond, title: title, body: body, notificationDetails: const NotificationDetails(android: androidDetails));
+    await _plugin.show(id: DateTime.now().microsecondsSinceEpoch.remainder(2147483647), title: title, body: body, notificationDetails: const NotificationDetails(android: androidDetails));
   }
 
   // ============ MAINTENANCE & COMPOST NOTIFICATIONS ============

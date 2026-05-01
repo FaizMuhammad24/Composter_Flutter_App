@@ -27,11 +27,13 @@ class _SuperAdminManageDepositsScreenState extends State<SuperAdminManageDeposit
     setState(() => _isLoading = true);
     try {
       final all = await CompostService.getAllComposts();
+      if (!mounted) return;
       setState(() {
         _composts = all;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
     }
   }

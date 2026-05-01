@@ -99,6 +99,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           await AdminNotificationService().init();
         }
 
+        if (!mounted) return;
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (_) => nextScreen),

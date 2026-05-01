@@ -34,7 +34,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
   Future<void> _loadData() async {
     setState(() => _isFetching = true);
     try {
-      _currentSuperAdmin = await SessionService.getCurrentUser();
+      _currentSuperAdmin = SessionService.getCurrentUser();
       _admins = await AdminService.getAllAdmins();
       _filtered = _admins;
     } catch (e) {

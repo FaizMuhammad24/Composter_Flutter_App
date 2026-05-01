@@ -49,7 +49,7 @@ class CsvExportHelper {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
         }
         
-        await Share.shareXFiles([XFile(path)], text: 'Data Historis Sensor Komposter (500 Log Terakhir)');
+        await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Data Historis Sensor Komposter (500 Log Terakhir)'));
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak ada data untuk diexport.')));
@@ -104,7 +104,7 @@ class CsvExportHelper {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
         }
         
-        await Share.shareXFiles([XFile(path)], text: 'Data Historis QoS Komposter (500 Log Terakhir)');
+        await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Data Historis QoS Komposter (500 Log Terakhir)'));
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak ada data QoS untuk diexport.')));
@@ -169,7 +169,7 @@ class CsvExportHelper {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
         }
         
-        await Share.shareXFiles([XFile(path)], text: 'Data Historis $actuatorType (500 Log Terakhir)');
+        await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Data Historis $actuatorType (500 Log Terakhir)'));
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak ada data untuk diexport.')));
@@ -226,7 +226,7 @@ class CsvExportHelper {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
         }
         
-        await Share.shareXFiles([XFile(path)], text: 'Data Historis $sensorLabel (500 Log Terakhir)');
+        await SharePlus.instance.share(ShareParams(files: [XFile(path)], text: 'Data Historis $sensorLabel (500 Log Terakhir)'));
       } else {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Tidak ada data untuk diexport.')));
