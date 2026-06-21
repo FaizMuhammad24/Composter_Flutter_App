@@ -638,9 +638,11 @@ static const String _uploadPreset = 'wzrtdwsj';
 - [x] **Notifikasi Aktuator:** Admin mendapatkan Push Notification lokal saat aktuator (Motor, Pompa Air, Pompa EM4, Heater, Fan) menyala otomatis atau dikendalikan.
 - [x] **Optimistic UI Aktuator:** Menghilangkan delay visual pada tombol aktuator (P1/P2/dll) dengan update state langsung dari *countdown timer* sebelum sinkronisasi Firebase.
 - [x] **Format Uptime:** Penambahan format menit pada tampilan Uptime ESP32 di Dashboard Admin.
-
-### 🔄 Dalam Pengerjaan
-- [ ] **[BUG-16]** `prefer_const_constructors` — masih ~20 warning tersisa (perlu diperbaiki manual per file)
+- [x] **Perbaikan Admin Dashboard:** Menambahkan *Empty State* dan memperbaiki loop loading tak terbatas saat data sensor bernilai `null`.
+- [x] **Perbaikan Race Condition:** Mengatasi *race condition* inisialisasi notifikasi di `AdminMainScreen` dengan *await* yang benar.
+- [x] **Perbaikan Layout Shimmer:** Memperbaiki layout terpotong (*Bottom Overflowed by 6 pixels*) pada komponen `SensorCardShimmer`.
+- [x] **Perbaikan CSV Export:** Menambahkan secara eksplisit format byte `UTF-8 BOM` pada *export* CSV agar satuan suhu (°C) terbaca sempurna dan rapi di MS Excel.
+- [x] **Code Quality 100% Clean:** Membersihkan **seluruh** peringatan pada analisis kode `flutter analyze` (0 Errors, 0 Warnings). Termasuk penghapusan parameter usang dan penambahan `final` keyword.
 
 ### 🔴 Belum Dikerjakan (Fase Release)
 - [ ] Daftarkan SHA-1 & SHA-256 Google Play Console ke Firebase (Google Sign-In production)
