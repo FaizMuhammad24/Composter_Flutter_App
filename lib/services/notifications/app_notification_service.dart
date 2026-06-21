@@ -6,14 +6,15 @@ class AppNotificationService {
   static final _notificationsCol = FirebaseFirestore.instance.collection('notifications');
 
   /// Mendapatkan stream notifikasi untuk user tertentu
-  static Stream<List<AppNotificationModel>> getUserNotificationsStream(String email) {
+  static Stream<List<AppNotificationModel>> getUserNotificationsStream(String userEmail) {
     return _notificationsCol
-        .where('userEmail', isEqualTo: email)
-        .orderBy('createdAt', descending: true)
+        .where('userEmail', isEqualTo: userEmail)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => AppNotificationModel.fromJson(doc.data()))
-            .toList());
+        .map((snap) {
+          final list = snap.docs.map((doc) => AppNotificationModel.fromJson(doc.data())).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   /// Mendapatkan jumlah notifikasi yang belum dibaca

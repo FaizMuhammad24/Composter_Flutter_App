@@ -3,7 +3,8 @@ import '../../constants/app_colors.dart';
 import '../../services/user/user_service.dart';
 import '../../services/rewards/reward_service.dart';
 import '../../services/notifications/user_notification_service.dart';
-import '../../services/notifications/super_admin_notification_service.dart';
+import '../../services/notifications/management_notification_service.dart';
+import '../../services/user/points_service.dart';
 import '../../models/user_model.dart';
 
 class UserRedeemScreen extends StatefulWidget {
@@ -81,7 +82,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
     setState(() => _isLoading = true);
     
     try {
-      // 1. Buat klaim ke Firestore (poin TIDAK langsung dipotong)
+      // 1. Buat klaim ke Firestore
       await RewardService.createClaim(
         userEmail: widget.userEmail,
         userName: _userModel?.name ?? 'Pengguna',
@@ -91,6 +92,12 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
         totalPoints: totalRequired,
       );
 
+      // 2. Potong poin user secara otomatis
+      await PointsService.deductUserPoints(
+        userEmail: widget.userEmail,
+        pointsToDeduct: totalRequired,
+      );
+
       // 2. Notifikasi User bahwa klaim sedang menunggu konfirmasi SA
       await UserNotificationService.notifyRewardRedeemed(
         widget.userEmail, 
@@ -98,7 +105,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
       );
 
       // 3. Notifikasi Super Admin ada permintaan klaim baru
-      await SuperAdminNotificationService.notifyRewardRequest(
+      await ManagementNotificationService.notifyRewardRequest(
         userEmail: widget.userEmail,
         userName: _userModel?.name ?? 'Pengguna',
         rewardName: '${_quantity}x ${widget.rewardName}',
@@ -157,14 +164,14 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), shape: BoxShape.circle),
-              child: const Icon(Icons.hourglass_top_rounded, color: Colors.orange, size: 60),
+              decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), shape: BoxShape.circle),
+              child: const Icon(Icons.check_circle_outline, color: Colors.green, size: 60),
             ),
             const SizedBox(height: 24),
             const Text('Klaim Terkirim!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
             const SizedBox(height: 12),
             const Text(
-              'Permintaan klaim Anda sedang menunggu konfirmasi SuperAdmin. Poin akan dikurangi otomatis setelah disetujui.',
+              'Permintaan klaim Anda sedang menunggu konfirmasi Admin. Poin Anda telah berhasil dipotong.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.black87, fontFamily: 'Poppins', fontSize: 13, fontWeight: FontWeight.w500),
             ),
@@ -287,7 +294,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Poin TIDAK langsung dipotong. Klaim perlu dikonfirmasi SuperAdmin terlebih dahulu. Setelah disetujui, poin baru dikurangi.',
+                            'Poin akan langsung dipotong. Jika klaim ditolak oleh Admin, poin akan dikembalikan sepenuhnya ke akun Anda.',
                             style: TextStyle(fontFamily: 'Poppins', fontSize: 13, height: 1.5, color: Colors.black87),
                           ),
                         ),

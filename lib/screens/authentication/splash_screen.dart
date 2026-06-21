@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'login_screen.dart';
 import '../user/user_main_screen.dart';
 import '../admin/admin_main_screen.dart';
-import '../super_admin/super_admin_main_screen.dart';
 import '../../services/auth/session_service.dart';
 import '../../services/notifications/admin_notification_service.dart';
 import '../../constants/app_colors.dart';
@@ -34,15 +33,13 @@ class _SplashScreenState extends State<SplashScreen> {
       final user = SessionService.getCurrentUser()!;
       Widget nextScreen;
 
-      if (user.role == 'super_admin' || user.role == 'admin') {
+      if (user.isAdmin) {
         await AdminNotificationService().init();
       }
 
       if (!mounted) return;
 
-      if (user.role == 'super_admin') {
-        nextScreen = const SuperAdminMainScreen();
-      } else if (user.role == 'admin') {
+      if (user.isAdmin) {
         nextScreen = const AdminMainScreen();
       } else {
         nextScreen = UserMainScreen(user: user);

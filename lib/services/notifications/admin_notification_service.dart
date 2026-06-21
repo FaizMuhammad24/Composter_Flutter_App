@@ -69,6 +69,12 @@ class AdminNotificationService {
   bool _isInitialized = false;
   bool _isSuperAdmin = false;
 
+  bool _motorWasOn = false;
+  bool _p1WasOn = false;
+  bool _p2WasOn = false;
+  bool _heaterWasOn = false;
+  bool _fanWasOn = false;
+
   Future<void> init({bool isSuperAdmin = false}) async {
     if (_isInitialized) return;
     _isSuperAdmin = isSuperAdmin;
@@ -96,9 +102,7 @@ class AdminNotificationService {
     _initTime = DateTime.now();
     _startStatusTimer();
     _isInitialized = true;
-    if (!_isSuperAdmin) {
-      startMaintenanceChecks();
-    } else {
+    if (_isSuperAdmin) {
       _listenToSuperAdminActivity();
     }
   }
@@ -151,13 +155,13 @@ class AdminNotificationService {
 
   void _startStatusTimer() {
     _statusCheckTimer?.cancel();
-    _statusCheckTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+    _statusCheckTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
       final now = DateTime.now();
       
       // Case 1: Already received some data, check for staleness from last received time
       if (_lastDataReceive != null) {
         final diff = now.difference(_lastDataReceive!);
-        if (diff.inSeconds > 60) { // 60 seconds tolerance
+        if (diff.inSeconds > 15) {
           if (!deviceOfflineNotifier.value) {
             deviceOfflineNotifier.value = true;
             notifyDeviceOffline();
@@ -167,7 +171,7 @@ class AdminNotificationService {
       // Case 2: No data received yet since init, check against init time
       else if (_initTime != null) {
         final diff = now.difference(_initTime!);
-        if (diff.inSeconds > 60) { // 60 seconds wait for first data
+        if (diff.inSeconds > 15) {
           if (!deviceOfflineNotifier.value) {
             deviceOfflineNotifier.value = true;
             notifyDeviceOffline();
@@ -183,7 +187,7 @@ class AdminNotificationService {
       final int espUnix = (data['unix_time'] as num).toInt();
       final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
       // Only stale if phone time is significantly ahead of ESP time
-      return (phoneUnix - espUnix) > 60; // 1 minute tolerance
+      return (phoneUnix - espUnix) > 15; // 15 seconds tolerance
     }
     
     // 2. Fallback ke String "time" (HH:mm:ss)
@@ -194,7 +198,7 @@ class AdminNotificationService {
       if (parts.length != 3) return false;
       final now = DateTime.now();
       final dataTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-      return now.difference(dataTime).inSeconds > 60;
+      return now.difference(dataTime).inSeconds > 15;
     } catch (e) {
       return false;
     }
@@ -217,30 +221,73 @@ class AdminNotificationService {
           deviceOfflineNotifier.value = false;
           notifyDeviceOnline();
         }
+
+        final actuators = data['actuators'] is Map ? Map<String, dynamic>.from(data['actuators']) : {};
+        final motorOn = actuators['motor'] == true;
+        final pumpP1On = actuators['water_pump'] == true;
+        final pumpP2On = actuators['em4_pump'] == true;
+        final heaterOn = actuators['heater'] == true;
+        final fanOn = actuators['fan'] == true;
+
+        if (motorOn && !_motorWasOn) {
+          _check('motor_on', true, 'MOTOR PENGADUK AKTIF', 'Motor pengaduk sedang berjalan.', 'info', bypassCooldown: true);
+        }
+        if (pumpP1On && !_p1WasOn) {
+          _check('p1_on', true, 'POMPA MOLASE AKTIF', 'Pompa molase sedang menyemprotkan cairan.', 'info', bypassCooldown: true);
+        }
+        if (pumpP2On && !_p2WasOn) {
+          _check('p2_on', true, 'POMPA EM4 AKTIF', 'Pompa EM4 sedang menyemprotkan cairan.', 'info', bypassCooldown: true);
+        }
+        if (heaterOn && !_heaterWasOn) {
+          _check('heater_on', true, 'HEATER AKTIF', 'Heater menyala untuk menaikkan suhu.', 'info', bypassCooldown: true);
+        }
+        if (fanOn && !_fanWasOn) {
+          _check('fan_on', true, 'EXHAUST FAN AKTIF', 'Exhaust fan menyala untuk menstabilkan suhu.', 'info', bypassCooldown: true);
+        }
+
+        _motorWasOn = motorOn;
+        _p1WasOn = pumpP1On;
+        _p2WasOn = pumpP2On;
+        _heaterWasOn = heaterOn;
+        _fanWasOn = fanOn;
       }
 
       if (deviceOfflineNotifier.value) return; // Don't check sensors if offline
       if (_isSuperAdmin) return; // SuperAdmin only needs offline alerts, skip sensor checks
 
-      _check('temp_failed', temp == 100.0, 'SENSOR SUHU TIDAK TERBACA', 'Data suhu tidak valid (100.0°C). Cek koneksi sensor.', 'danger');
-      _check('soil_failed', soil == 100.0 || soil == 0.0, 'SENSOR KELEMBABAN TIDAK TERBACA', 'Data kelembaban tidak valid. Cek koneksi sensor.', 'danger');
-      _check('ph_failed', ph == 100.0 || ph == 10.0 || ph == 0.0, 'SENSOR pH TIDAK TERBACA', 'Data pH tidak valid. Cek koneksi sensor.', 'danger');
-      _check('gas_failed', gas == 100, 'SENSOR GAS TIDAK TERBACA', 'Data gas tidak valid. Cek koneksi sensor.', 'danger');
+      final thresholds = data['thresholds'] as Map?;
+      final tempTh = thresholds?['temperature'] as Map?;
+      final soilTh = thresholds?['soil'] as Map?;
+      final phTh = thresholds?['ph'] as Map?;
+      final gasTh = thresholds?['gas'] as Map?;
 
-      if (temp != 100.0) {
-        _check('temp_low',  temp < 60.0, 'SUHU DI BAWAH PARAMETER', 'Suhu komposter ${temp.toStringAsFixed(1)}°C (dibawah 60°C).', 'warning');
-        _check('temp_high', temp > 65.0, 'SUHU DI ATAS PARAMETER', 'Suhu komposter ${temp.toStringAsFixed(1)}°C (diatas 65°C).', 'danger');
+      final tempMin = (tempTh?['min'] as num?)?.toDouble() ?? 25.0;
+      final tempMax = (tempTh?['max'] as num?)?.toDouble() ?? 35.0;
+      final soilMin = (soilTh?['min'] as num?)?.toDouble() ?? 40.0;
+      final soilMax = (soilTh?['max'] as num?)?.toDouble() ?? 50.0;
+      final phMin   = (phTh?['min'] as num?)?.toDouble() ?? 6.8;
+      final phMax   = (phTh?['max'] as num?)?.toDouble() ?? 7.5;
+      final gasMax  = (gasTh?['max'] as num?)?.toDouble() ?? 50.0;
+
+      _check('temp_failed', temp < 0, 'SENSOR SUHU TIDAK TERBACA', 'Data suhu tidak valid. Cek koneksi sensor.', 'danger');
+      _check('soil_failed', soil < 0, 'SENSOR KELEMBABAN TIDAK TERBACA', 'Data kelembaban tidak valid. Cek koneksi sensor.', 'danger');
+      _check('ph_failed', ph < 0, 'SENSOR pH TIDAK TERBACA', 'Data pH tidak valid. Cek koneksi sensor.', 'danger');
+      _check('gas_failed', gas < 0, 'SENSOR GAS TIDAK TERBACA', 'Data gas tidak valid. Cek koneksi sensor.', 'danger');
+
+      if (temp >= 0) {
+        _check('temp_low',  temp < tempMin, 'SUHU DI BAWAH PARAMETER', 'Suhu komposter ${temp.toStringAsFixed(1)}°C (dibawah ${tempMin.toStringAsFixed(1)}°C).', 'warning');
+        _check('temp_high', temp > tempMax, 'SUHU DI ATAS PARAMETER', 'Suhu komposter ${temp.toStringAsFixed(1)}°C (diatas ${tempMax.toStringAsFixed(1)}°C).', 'danger');
       }
-      if (soil != 100.0 && soil != 0.0) {
-        _check('soil_low',  soil < 50.0, 'KELEMBABAN DI BAWAH PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (dibawah 50%).', 'warning');
-        _check('soil_high', soil > 70.0, 'KELEMBABAN DI ATAS PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (diatas 70%).', 'warning');
+      if (soil >= 0) {
+        _check('soil_low',  soil < soilMin, 'KELEMBABAN DI BAWAH PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (dibawah ${soilMin.toStringAsFixed(0)}%).', 'warning');
+        _check('soil_high', soil > soilMax, 'KELEMBABAN DI ATAS PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (diatas ${soilMax.toStringAsFixed(0)}%).', 'warning');
       }
-      if (ph != 100.0 && ph != 10.0 && ph != 0.0) {
-        _check('ph_low',  ph < 6.0, 'pH DI BAWAH PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (dibawah 6.0).', 'warning');
-        _check('ph_high', ph > 8.0, 'pH DI ATAS PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (diatas 8.0).', 'warning');
+      if (ph >= 0) {
+        _check('ph_low',  ph < phMin, 'pH DI BAWAH PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (dibawah ${phMin.toStringAsFixed(1)}).', 'warning');
+        _check('ph_high', ph > phMax, 'pH DI ATAS PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (diatas ${phMax.toStringAsFixed(1)}).', 'warning');
       }
-      if (gas != 100) {
-        _check('gas_danger', gas > 500, 'GAS MELEBIHI BATAS AMAN', 'Konsentrasi gas metana $gas ppm.', 'danger');
+      if (gas >= 0) {
+        _check('gas_danger', gas > gasMax, 'GAS MELEBIHI BATAS AMAN', 'Konsentrasi gas metana $gas ppm (diatas ${gasMax.toStringAsFixed(0)} ppm).', 'danger');
       }
     });
   }
@@ -312,10 +359,8 @@ class AdminNotificationService {
 
   void notifyDeviceOnline() {
     debugPrint('AdminNotificationService: Device Online detected');
-    if (_lastNotified.containsKey('esp_offline')) {
-      _lastNotified.remove('esp_offline'); // Allow re-notifying "Offline" later
-      _check('esp_online', true, 'ESP32 TERHUBUNG KEMBALI', 'Koneksi ke alat i-Composter telah pulih.', 'info', bypassCooldown: true);
-    }
+    _lastNotified.remove('esp_offline'); // Allow re-notifying "Offline" later
+    _check('esp_online', true, 'ESP32 TERHUBUNG KEMBALI', 'Koneksi ke alat i-Composter telah pulih.', 'info', bypassCooldown: true);
   }
 
   Future<void> _showPush(String title, String body) async {

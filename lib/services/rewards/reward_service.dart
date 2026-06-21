@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../../models/reward_model.dart';
 import '../notifications/user_notification_service.dart';
+import '../user/points_service.dart';
 
 class RewardService {
   static final CollectionReference _rewardsCol = 
@@ -71,11 +72,12 @@ class RewardService {
     try {
       final snap = await _claimsCol
           .where('status', isEqualTo: 'pending')
-          .orderBy('createdAt', descending: true)
           .get();
-      return snap.docs
+      final docs = snap.docs
           .map((doc) => doc.data() as Map<String, dynamic>)
           .toList();
+      docs.sort((a, b) => (b['createdAt'] as String).compareTo(a['createdAt'] as String));
+      return docs;
     } catch (e) {
       debugPrint('Error mengambil pending claims: $e');
       return [];
@@ -102,9 +104,12 @@ class RewardService {
   static Stream<List<Map<String, dynamic>>> getUserClaimsStream(String userEmail) {
     return _claimsCol
         .where('userEmail', isEqualTo: userEmail)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map((doc) => doc.data() as Map<String, dynamic>).toList());
+        .map((snap) {
+          final docs = snap.docs.map((doc) => doc.data() as Map<String, dynamic>).toList();
+          docs.sort((a, b) => (b['createdAt'] as String).compareTo(a['createdAt'] as String));
+          return docs;
+        });
   }
 
   /// Ambil riwayat klaim user tertentu (Future)
@@ -157,6 +162,12 @@ class RewardService {
         rewardName: rewardName,
         quantity: 1,
         totalPoints: rewardPoints,
+      );
+
+      // Kurangi poin otomatis saat klaim dibuat
+      await PointsService.deductUserPoints(
+        userEmail: userEmail,
+        pointsToDeduct: rewardPoints,
       );
 
       return true;

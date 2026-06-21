@@ -13,6 +13,7 @@ class SensorCard extends StatelessWidget {
   final String unit;
   final String status;
   final String? actuatorInfo;
+  final String? targetNote;
   final IconData icon;
   final Color color;
   final double? valuePercent;
@@ -26,6 +27,7 @@ class SensorCard extends StatelessWidget {
     required this.unit,
     required this.status,
     this.actuatorInfo,
+    this.targetNote,
     required this.icon,
     required this.color,
     this.valuePercent,
@@ -140,6 +142,19 @@ class SensorCard extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
+                ),
+              ],
+              if (targetNote != null) ...[
+                const SizedBox(height: 4),
+                Text(
+                  targetNote!,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Colors.grey[400],
+                    fontFamily: 'Poppins',
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ],
             ],

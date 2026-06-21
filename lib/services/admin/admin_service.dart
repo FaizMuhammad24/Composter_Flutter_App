@@ -20,7 +20,7 @@ class AdminService {
 
     try {
       var superSnap = await FirebaseFirestore.instance.collection('users').where('email', isEqualTo: superAdminEmail).limit(1).get();
-      if (superSnap.docs.isEmpty || (superSnap.docs.first.data()['role'] != 'super_admin' && superSnap.docs.first.data()['role'] != 'superadmin')) {
+      if (superSnap.docs.isEmpty || (superSnap.docs.first.data()['role'] != 'admin')) {
         return {'success': false, 'message': 'Hanya Super Admin yang bisa membuat admin'};
       }
 
@@ -69,7 +69,7 @@ class AdminService {
     superAdminEmail = superAdminEmail.toLowerCase().trim();
     try {
       var superSnap = await FirebaseFirestore.instance.collection('users').where('email', isEqualTo: superAdminEmail).limit(1).get();
-      if (superSnap.docs.isEmpty || (superSnap.docs.first.data()['role'] != 'super_admin' && superSnap.docs.first.data()['role'] != 'superadmin')) {
+      if (superSnap.docs.isEmpty || (superSnap.docs.first.data()['role'] != 'admin')) {
         return {'success': false, 'message': 'Hanya Super Admin yang bisa menghapus admin'};
       }
 

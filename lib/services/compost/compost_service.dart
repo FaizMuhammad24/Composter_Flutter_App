@@ -59,9 +59,11 @@ class CompostService {
   static Future<List<CompostModel>> getUserComposts(String email) async {
     var snap = await FirebaseFirestore.instance.collection('composts')
       .where('userEmail', isEqualTo: email)
-      .orderBy('createdAt', descending: true)
       .get();
-    return snap.docs.map((doc) => CompostModel.fromJson(doc.data())).toList();
+      
+    var list = snap.docs.map((doc) => CompostModel.fromJson(doc.data())).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
   }
 
   static Future<List<CompostModel>> getAllComposts() async {

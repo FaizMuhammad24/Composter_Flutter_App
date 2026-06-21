@@ -38,14 +38,20 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
       // 2. Fetch transaction history
       final history = await HistoryService.getUserHistory(widget.user.email);
       double weightSum = 0;
-      int approvedCount = 0;
       for (var item in history) {
-        weightSum += item.weight;
-        if (item.status == 'approved') approvedCount++;
+        if (item.status == 'approved') {
+          weightSum += item.weight;
+        }
       }
 
       // 3. Fetch reward claims
       final claims = await RewardService.getUserClaims(widget.user.email);
+      int approvedCount = 0;
+      for (var claim in claims) {
+        if (claim['status'] != 'rejected') {
+          approvedCount += (claim['quantity'] as int?) ?? 1;
+        }
+      }
 
       if (mounted) {
         setState(() {
@@ -146,12 +152,12 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
                                   fontWeight: FontWeight.bold,
                                   fontFamily: 'Poppins')),
                         ),
-                        TabBar(
+                        const TabBar(
                           labelColor: AppColors.primary,
                           unselectedLabelColor: Colors.grey,
                           indicatorColor: AppColors.primary,
-                          labelStyle: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold),
-                          tabs: const [
+                          labelStyle: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold),
+                          tabs: [
                             Tab(text: 'Setor Sampah'),
                             Tab(text: 'Tukar Poin'),
                           ],

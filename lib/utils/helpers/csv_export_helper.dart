@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
 import 'package:share_plus/share_plus.dart';
@@ -20,13 +21,28 @@ class CsvExportHelper {
         final data = Map<String, dynamic>.from(snapshot.value as Map);
         
         List<List<dynamic>> rows = [
-          ["Waktu", "Suhu (°C)", "Gas (ppm)", "Kelebaban Tanah (%)", "pH", "WiFi (%)", "Free Heap (Bytes)", "Uptime (ms)"]
+          ["Tanggal", "Waktu", "Suhu (°C)", "Gas (ppm)", "Kelembaban Tanah (%)", "pH", "WiFi (%)", "Free Heap (Bytes)", "Uptime (ms)"]
         ];
 
         final List<String> sortedKeys = data.keys.toList()..sort();
         for (var key in sortedKeys) {
           final log = Map<String, dynamic>.from(data[key] as Map);
+          
+          // Parse date from key (format: YYYY-MM-DD_HH-MM-SS or similar)
+          String dateStr = '-';
+          try {
+            final datePart = key.length >= 10 ? key.substring(0, 10) : key;
+            final parts = datePart.split(RegExp(r'[_\-]'));
+            if (parts.length >= 3) {
+              final dt = DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+              dateStr = DateFormat('dd/MM/yyyy').format(dt);
+            }
+          } catch (_) {
+            dateStr = key.length >= 10 ? key.substring(0, 10) : key;
+          }
+
           rows.add([
+            dateStr,
             log['time']?.toString() ?? '-',
             log['temperature']?.toString() ?? '-',
             log['gas']?.toString() ?? '-',
@@ -43,7 +59,8 @@ class CsvExportHelper {
         final path = '${directory.path}/Riwayat_Sensor_Komposter.csv';
         final file = File(path);
         
-        await file.writeAsString(csvData);
+        final bytes = [0xEF, 0xBB, 0xBF, ...utf8.encode(csvData)];
+        await file.writeAsBytes(bytes);
         
         if (context.mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -98,7 +115,8 @@ class CsvExportHelper {
         final path = '${directory.path}/Riwayat_QoS_Komposter.csv';
         final file = File(path);
         
-        await file.writeAsString(csvData);
+        final bytes = [0xEF, 0xBB, 0xBF, ...utf8.encode(csvData)];
+        await file.writeAsBytes(bytes);
         
         if (context.mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -163,7 +181,8 @@ class CsvExportHelper {
         final path = '${directory.path}/Log_${actuatorType.replaceAll(' ', '_')}.csv';
         final file = File(path);
         
-        await file.writeAsString(csvData);
+        final bytes = [0xEF, 0xBB, 0xBF, ...utf8.encode(csvData)];
+        await file.writeAsBytes(bytes);
         
         if (context.mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -220,7 +239,8 @@ class CsvExportHelper {
         final path = '${directory.path}/Riwayat_${sensorLabel.replaceAll(' ', '_')}.csv';
         final file = File(path);
         
-        await file.writeAsString(csvData);
+        final bytes = [0xEF, 0xBB, 0xBF, ...utf8.encode(csvData)];
+        await file.writeAsBytes(bytes);
         
         if (context.mounted) {
           ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -239,15 +259,16 @@ class CsvExportHelper {
     }
   }
 
-  /// Manual CSV Conversion to avoid package dependency issues
+  /// Manual CSV Conversion — uses semicolon separator for Excel compatibility
   static String _convertToCsv(List<List<dynamic>> rows) {
-    return rows.map((row) => row.map((cell) {
+    final csv = rows.map((row) => row.map((cell) {
       String cellStr = cell?.toString() ?? '-';
-      // Handle commas, quotes, and newlines by quoting the cell
-      if (cellStr.contains(',') || cellStr.contains('"') || cellStr.contains('\n')) {
+      // Handle semicolons, quotes, and newlines by quoting the cell
+      if (cellStr.contains(';') || cellStr.contains('"') || cellStr.contains('\n')) {
         return '"${cellStr.replaceAll('"', '""')}"';
       }
       return cellStr;
-    }).join(',')).join('\n');
+    }).join(';')).join('\n');
+    return csv;
   }
 }

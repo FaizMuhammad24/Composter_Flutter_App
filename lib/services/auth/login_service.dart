@@ -26,26 +26,11 @@ class LoginService {
       );
 
       if (cred.user != null) {
-        // Cek apakah email sudah diverifikasi
-        // Pengecualian untuk admin dan super_admin (yang dibuat manual)
-        final bool isEmailVerified = cred.user!.emailVerified;
-
+        // Karena sudah verifikasi OTP via EmailJS saat signup, kita tidak cek isEmailVerified lagi.
         var doc = await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).get();
         if (doc.exists) {
           var userData = doc.data()!;
           var user = UserModel.fromJson(userData);
-
-          // Blokir login jika email belum diverifikasi (khusus role 'user')
-          if (!isEmailVerified && user.role == 'user') {
-            await FirebaseAuth.instance.signOut();
-            return {
-              'success': false,
-              'message': 'Email Anda belum diverifikasi. Silakan cek kotak masuk email dan klik link verifikasi yang telah dikirimkan.',
-              'needsVerification': true,
-              'email': email,
-            };
-          }
-
           // Update last_login
           user = user.copyWith(lastLogin: DateTime.now());
           await FirebaseFirestore.instance.collection('users').doc(cred.user!.uid).update({

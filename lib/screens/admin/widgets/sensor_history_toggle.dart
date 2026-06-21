@@ -50,6 +50,13 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
     
     return widget.logEntries.where((e) {
       final unix = e['unix_time'] as int? ?? 0;
+      if (unix <= 0) return false;
+      final dt = DateTime.fromMillisecondsSinceEpoch(unix * 1000);
+      if (dt.year < 2024 || dt.year > 2030) return false;
+
+      final val = (e['value'] as num?)?.toDouble() ?? 0.0;
+      if (val <= -50.0 || val >= 200.0) return false; // Abaikan error DHT22 dsb
+
       return unix >= threshold;
     }).toList();
   }
@@ -182,10 +189,10 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                     // Auto scale max Y if possible, or use predefined
                     maxY: widget.maxY,
                     gridData: FlGridData(show: true, drawVerticalLine: false, horizontalInterval: widget.maxY != null ? widget.maxY! / 5 : null),
-                    titlesData: FlTitlesData(
-                      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                      bottomTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)), // Could add time format here
+                    titlesData: const FlTitlesData(
+                      rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                      bottomTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)), // Could add time format here
                     ),
                     borderData: FlBorderData(show: false),
                     extraLinesData: ExtraLinesData(
@@ -233,12 +240,12 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
 
         // Table Header
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
           decoration: BoxDecoration(color: widget.color.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(8)),
           child: Row(children: [
-            Expanded(flex: 3, child: Text('Waktu', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: widget.color))),
-            Expanded(flex: 2, child: Text(widget.sensorLabel, textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: widget.color))),
-            Expanded(flex: 2, child: Text('Status', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: widget.color))),
+            Expanded(flex: 2, child: Text('Waktu', textAlign: TextAlign.left, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: widget.color))),
+            Expanded(flex: 2, child: Text(widget.sensorLabel, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: widget.color))),
+            Expanded(flex: 2, child: Text('Status', textAlign: TextAlign.right, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: widget.color))),
           ]),
         ),
 
@@ -258,20 +265,21 @@ class _SensorHistoryToggleState extends State<SensorHistoryToggle> {
                     final time = entry['time']?.toString() ?? '-';
                     final isNormal = _isInRange(value);
                     return Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
                       child: Row(children: [
-                        Expanded(flex: 3, child: Text(time, style: TextStyle(fontSize: 11, fontFamily: 'Poppins', color: Colors.grey[700]))),
+                        Expanded(flex: 2, child: Text(time, textAlign: TextAlign.left, style: TextStyle(fontSize: 12, fontFamily: 'Poppins', color: Colors.grey[700]))),
                         Expanded(flex: 2, child: Text('${value.toStringAsFixed(1)}${widget.unit}', textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
-                        Expanded(flex: 2, child: Center(
+                        Expanded(flex: 2, child: Align(
+                          alignment: Alignment.centerRight,
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
                               color: (isNormal ? Colors.green : Colors.red).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               isNormal ? 'Normal' : 'Abnormal',
-                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: isNormal ? Colors.green[700] : Colors.red[700], fontFamily: 'Poppins'),
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: isNormal ? Colors.green[700] : Colors.red[700], fontFamily: 'Poppins'),
                             ),
                           ),
                         )),

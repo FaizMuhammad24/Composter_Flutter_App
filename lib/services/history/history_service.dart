@@ -6,9 +6,10 @@ class HistoryService {
   static Future<List<CompostModel>> getUserHistory(String userEmail) async {
     var snap = await FirebaseFirestore.instance.collection('composts')
       .where('userEmail', isEqualTo: userEmail)
-      .orderBy('createdAt', descending: true)
       .get();
-    return snap.docs.map((c) => CompostModel.fromJson(c.data())).toList();
+    var list = snap.docs.map((c) => CompostModel.fromJson(c.data())).toList();
+    list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return list;
   }
 
   static Future<List<CompostModel>> getAllHistory() async {

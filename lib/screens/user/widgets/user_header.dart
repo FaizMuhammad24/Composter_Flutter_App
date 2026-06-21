@@ -12,8 +12,8 @@ class UserHeader extends StatelessWidget implements PreferredSizeWidget {
     return AppBar(
       backgroundColor: AppColors.primary,
       elevation: 0,
-      leading: Padding(
-        padding: const EdgeInsets.all(12),
+      leading: const Padding(
+        padding: EdgeInsets.all(12),
         child: Icon(Icons.eco, color: Colors.white, size: 28),
       ),
       title: const Text(

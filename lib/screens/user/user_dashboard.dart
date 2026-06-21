@@ -66,15 +66,27 @@ class _UserDashboardState extends State<UserDashboard>
       final history = await HistoryService.getUserHistory(_currentUser.email);
       double weightSum = 0;
       for (var item in history) {
-        weightSum += item.weight;
+        if (item.status == 'approved') {
+          weightSum += item.weight;
+        }
       }
 
       // 3. Load Popular Rewards
       final rewards = await RewardService.getPopularRewards();
 
+      // 4. Fetch Claims to get _totalExchanged
+      final claims = await RewardService.getUserClaims(_currentUser.email);
+      int exchangedCount = 0;
+      for (var claim in claims) {
+        if (claim['status'] != 'rejected') {
+          exchangedCount += (claim['quantity'] as int?) ?? 1;
+        }
+      }
+
       if (mounted) {
         setState(() {
           _totalWeight = weightSum;
+          _totalExchanged = exchangedCount;
           _popularRewards = rewards;
         });
       }
@@ -340,11 +352,11 @@ class _UserDashboardState extends State<UserDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             children: [
               Icon(Icons.flash_on, color: Color(0xFF2D5016), size: 22),
-              const SizedBox(width: 6),
-              const Text(
+              SizedBox(width: 6),
+              Text(
                 'Quick Action',
                 style: TextStyle(
                   fontSize: 18,
@@ -389,11 +401,14 @@ class _UserDashboardState extends State<UserDashboard>
                 icon: Icons.redeem,
                 label: 'Tukar\nPoin',
                 color: const Color(0xFFFF9800),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => UserRewardsScreen(user: _currentUser)),
-                ),
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                        builder: (_) => UserRewardsScreen(user: _currentUser)),
+                  );
+                  _loadData();
+                },
               ),
             ],
           ),

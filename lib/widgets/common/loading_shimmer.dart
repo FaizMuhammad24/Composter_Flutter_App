@@ -97,17 +97,17 @@ class SensorCardShimmer extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(12.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const LoadingShimmer.circular(size: 40),
-            const SizedBox(height: 12),
-            LoadingShimmer(width: 80, height: 14, borderRadius: BorderRadius.circular(4)),
+            const LoadingShimmer.circular(size: 36),
             const SizedBox(height: 8),
-            LoadingShimmer(width: 60, height: 24, borderRadius: BorderRadius.circular(4)),
-            const SizedBox(height: 8),
-            LoadingShimmer(width: 70, height: 20, borderRadius: BorderRadius.circular(4)),
+            LoadingShimmer(width: 80, height: 12, borderRadius: BorderRadius.circular(4)),
+            const SizedBox(height: 6),
+            LoadingShimmer(width: 60, height: 20, borderRadius: BorderRadius.circular(4)),
+            const SizedBox(height: 6),
+            LoadingShimmer(width: 70, height: 18, borderRadius: BorderRadius.circular(4)),
           ],
         ),
       ),

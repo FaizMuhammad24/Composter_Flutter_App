@@ -4,6 +4,7 @@ import 'user_redeem_screen.dart';
 import '../../models/user_model.dart';
 import '../../models/reward_model.dart';
 import '../../services/rewards/reward_service.dart';
+import '../../services/user/user_service.dart';
 
 class UserRewardsScreen extends StatefulWidget {
   final UserModel user;
@@ -16,19 +17,25 @@ class UserRewardsScreen extends StatefulWidget {
 class _UserRewardsScreenState extends State<UserRewardsScreen> {
   List<RewardModel> _rewards = [];
   bool _isLoading = true;
+  int _currentPoints = 0;
 
   @override
   void initState() {
     super.initState();
+    _currentPoints = widget.user.points ?? 0;
     _loadData();
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     final rewards = await RewardService.getAllRewards();
+    final freshUser = await UserService.getUserByEmail(widget.user.email);
     if (mounted) {
       setState(() {
         _rewards = rewards;
+        if (freshUser != null) {
+          _currentPoints = freshUser.points ?? widget.user.points ?? 0;
+        }
         _isLoading = false;
       });
     }
@@ -74,7 +81,7 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
                     const Icon(Icons.stars, color: Colors.amber, size: 32),
                     const SizedBox(width: 8),
                     Text(
-                      '${widget.user.points ?? 0}',
+                      '$_currentPoints',
                       style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                     ),
                     const SizedBox(width: 4),
@@ -158,7 +165,10 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
             Navigator.push(
               context, 
               MaterialPageRoute(builder: (_) => UserRedeemScreen(userEmail: widget.user.email, rewardId: rewardId, rewardName: name, pointsPerItem: points, icon: icon, color: color, imageUrl: imageUrl))
-            );
+            ).then((_) {
+              // Refresh points after returning from redeem screen
+              _loadData();
+            });
           },
           child: Padding(
             padding: const EdgeInsets.all(16),

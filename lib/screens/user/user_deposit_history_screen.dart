@@ -296,6 +296,7 @@ class _UserDepositHistoryScreenState extends State<UserDepositHistoryScreen> {
   }
 
   void _showImageDialog(String url) {
+    final urls = url.split(',').where((u) => u.trim().isNotEmpty).toList();
     showDialog(
       context: context,
       builder: (_) => Dialog(
@@ -303,10 +304,22 @@ class _UserDepositHistoryScreenState extends State<UserDepositHistoryScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              child: Image.network(url, fit: BoxFit.cover),
-            ),
+            if (urls.length == 1)
+              ClipRRect(
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                child: Image.network(urls.first, fit: BoxFit.cover),
+              )
+            else
+              SizedBox(
+                height: 300,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  child: PageView.builder(
+                    itemCount: urls.length,
+                    itemBuilder: (context, index) => Image.network(urls[index], fit: BoxFit.cover),
+                  ),
+                ),
+              ),
             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Tutup', style: TextStyle(fontFamily: 'Poppins'))),
           ],
         ),

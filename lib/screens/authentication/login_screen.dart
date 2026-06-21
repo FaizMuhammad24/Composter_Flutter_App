@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'signup_screen.dart';
-import '../super_admin/super_admin_main_screen.dart';
 import '../admin/admin_main_screen.dart';
 import '../user/user_main_screen.dart';
 import 'reset_password_screen.dart';
@@ -120,14 +119,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   void _navigateToHome(UserModel user) {
     if (!mounted) return;
     Widget nextScreen;
-    if (user.isSuperAdmin) {
-      nextScreen = const SuperAdminMainScreen();
-    } else if (user.isAdmin) {
+    if (user.isAdmin) {
       nextScreen = const AdminMainScreen();
     } else {
       nextScreen = UserMainScreen(user: user);
     }
-    if (user.isSuperAdmin || user.isAdmin) {
+    if (user.isAdmin) {
       AdminNotificationService().init();
     }
     Navigator.pushReplacement(
@@ -165,8 +162,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
+        title: const Row(
+          children: [
             Icon(Icons.mark_email_unread_outlined, color: Colors.orange),
             SizedBox(width: 8),
             Text('Verifikasi Email', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16)),
@@ -225,16 +222,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       child: Scaffold(
         // Let the Scaffold resize body when keyboard opens
         resizeToAvoidBottomInset: true,
-        backgroundColor: Colors.white,
+        backgroundColor: AppColors.primary,
         body: SafeArea(
-          child: SingleChildScrollView(
-            controller: _scrollController,
-            physics: const BouncingScrollPhysics(),
-            child: ConstrainedBox(
-              // Ensure the scroll area is at least the full screen height
-              constraints: BoxConstraints(
-                minHeight: screenH - MediaQuery.of(context).padding.top,
-              ),
+          bottom: false,
+          child: Container(
+            color: Colors.white,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              physics: const ClampingScrollPhysics(),
+              child: ConstrainedBox(
+                // Ensure the scroll area is at least the full screen height
+                constraints: BoxConstraints(
+                  minHeight: screenH - MediaQuery.of(context).padding.top,
+                ),
               child: Column(
                 children: [
                   // ── Hero Header (green background at top) ──────────────
@@ -244,9 +244,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     height: headerH,
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 24),
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       color: AppColors.primary,
-                      borderRadius: const BorderRadius.only(
+                      borderRadius: BorderRadius.only(
                         bottomLeft: Radius.circular(40),
                         bottomRight: Radius.circular(40),
                       ),
@@ -521,14 +521,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               ),
             ],
-          ),
-        ),
-      ),
-    ),
-  ),
-);
+          ), // Column
+        ), // ConstrainedBox
+      ), // SingleChildScrollView
+      ), // Container
+    ), // SafeArea
+  ), // Scaffold
+); // AnnotatedRegion
   }
-
   // ─────────────────────────── Header ────────────────────────────────
   Widget _buildHeader(bool compact) {
     return Column(

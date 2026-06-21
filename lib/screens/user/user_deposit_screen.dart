@@ -5,7 +5,7 @@ import '../../constants/app_colors.dart';
 import '../../services/compost/compost_service.dart';
 import '../../services/database/storage_service.dart';
 import '../../services/notifications/user_notification_service.dart';
-import '../../services/notifications/super_admin_notification_service.dart';
+import '../../services/notifications/management_notification_service.dart';
 
 class UserDepositScreen extends StatefulWidget {
   final String userEmail;
@@ -21,7 +21,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
   final ImagePicker _picker = ImagePicker();
   final StorageService _storageService = StorageService();
 
-  File? _selectedImage;
+  final List<File> _selectedImages = [];
   int _poinDidapat = 0;
   bool _isSubmitting = false;
 
@@ -40,16 +40,27 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
 
   Future<void> _pickImage(ImageSource source) async {
     try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        imageQuality: 70, // Kompresi agar hemat storage
-        maxWidth: 1080,
-      );
-
-      if (image != null) {
-        setState(() {
-          _selectedImage = File(image.path);
-        });
+      if (source == ImageSource.gallery) {
+        final List<XFile> images = await _picker.pickMultiImage(
+          imageQuality: 70,
+          maxWidth: 1080,
+        );
+        if (images.isNotEmpty) {
+          setState(() {
+            _selectedImages.addAll(images.map((img) => File(img.path)));
+          });
+        }
+      } else {
+        final XFile? image = await _picker.pickImage(
+          source: source,
+          imageQuality: 70,
+          maxWidth: 1080,
+        );
+        if (image != null) {
+          setState(() {
+            _selectedImages.add(File(image.path));
+          });
+        }
       }
     } catch (e) {
       _showErrorSnackBar('Gagal mengambil gambar: $e');
@@ -91,7 +102,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
       return;
     }
 
-    if (_selectedImage == null) {
+    if (_selectedImages.isEmpty) {
       _showErrorSnackBar('Mohon ambil foto bukti setor sampah.');
       return;
     }
@@ -109,7 +120,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
             Text('Estimasi Poin: $_poinDidapat Pts', style: const TextStyle(fontFamily: 'Poppins')),
             const SizedBox(height: 12),
             const Text(
-              'Catatan: Setoran akan diproses dengan status "Pending" dan poin akan ditambahkan setelah disetujui SuperAdmin.',
+              'Catatan: Setoran akan diproses dengan status "Pending" dan poin akan ditambahkan setelah disetujui Admin.',
               style: TextStyle(fontFamily: 'Poppins', fontSize: 11, color: Colors.grey),
             ),
           ],
@@ -131,20 +142,28 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
 
     try {
       // 1. Upload ke Firebase Storage
-      final imageUrl = await _storageService.uploadCompostPhoto(
-        userEmail: widget.userEmail,
-        imageFile: _selectedImage!,
-      );
+      List<String> uploadedUrls = [];
+      for (var imageFile in _selectedImages) {
+        final imageUrl = await _storageService.uploadCompostPhoto(
+          userEmail: widget.userEmail,
+          imageFile: imageFile,
+        );
+        if (imageUrl != null) {
+          uploadedUrls.add(imageUrl);
+        }
+      }
 
-      if (imageUrl == null) {
+      if (uploadedUrls.isEmpty) {
         throw Exception('Gagal mengunggah foto ke storage.');
       }
+
+      final imageUrlsJoined = uploadedUrls.join(',');
 
       // 2. Simpan ke Firestore
       final result = await CompostService.addCompost(
         userEmail: widget.userEmail,
         weight: double.parse(_weightController.text),
-        imageUrl: imageUrl,
+        imageUrl: imageUrlsJoined,
       );
 
       if (result['success']) {
@@ -155,7 +174,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
         );
 
         // 4. Notifikasi SuperAdmin
-        await SuperAdminNotificationService.notifyNewDeposit(
+        await ManagementNotificationService.notifyNewDeposit(
           widget.userEmail, 
           double.parse(_weightController.text),
         );
@@ -190,7 +209,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
             const Text('Berhasil!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
             const SizedBox(height: 8),
             const Text(
-              'Sampah berhasil diajukan. Status setoran saat ini "PENDING". Poin akan ditambahkan ke saldo Anda setelah disetujui oleh SuperAdmin.',
+              'Sampah berhasil diajukan. Status setoran saat ini "PENDING". Poin akan ditambahkan ke saldo Anda setelah disetujui oleh Admin.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey, fontFamily: 'Poppins', fontSize: 13),
             ),
@@ -328,31 +347,90 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
                     // PHOTO SECTION
                     const Text('Foto Bukti', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
                     const SizedBox(height: 12),
-                    GestureDetector(
-                      onTap: _isSubmitting ? null : _showPickerOptions,
-                      child: Container(
-                        height: 200,
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: _selectedImage != null ? Colors.green : Colors.grey[300]!, width: 2),
+                    if (_selectedImages.isEmpty)
+                      GestureDetector(
+                        onTap: _isSubmitting ? null : _showPickerOptions,
+                        child: Container(
+                          height: 160,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[100],
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: Colors.grey[300]!, width: 2),
+                          ),
+                          child: const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
+                              SizedBox(height: 12),
+                              Text('Ambil Foto / Pilih Galeri', style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
+                            ],
+                          ),
                         ),
-                        child: _selectedImage != null
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(18),
-                                child: Image.file(_selectedImage!, fit: BoxFit.cover),
-                              )
-                            : const Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.add_a_photo, size: 48, color: Colors.grey),
-                                  SizedBox(height: 12),
-                                  Text('Ambil Foto / Pilih Galeri', style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
-                                ],
-                              ),
+                      )
+                    else
+                      SizedBox(
+                        height: 120,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _selectedImages.length + (_isSubmitting ? 0 : 1),
+                          itemBuilder: (context, index) {
+                            if (index == _selectedImages.length) {
+                              // Add button card
+                              return GestureDetector(
+                                onTap: _showPickerOptions,
+                                child: Container(
+                                  width: 100,
+                                  margin: const EdgeInsets.only(right: 8, top: 4, bottom: 4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[100],
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.grey[300]!, width: 1.5, style: BorderStyle.solid),
+                                  ),
+                                  child: const Icon(Icons.add_a_photo_outlined, color: Colors.grey),
+                                ),
+                              );
+                            }
+                            final file = _selectedImages[index];
+                            return Stack(
+                              children: [
+                                Container(
+                                  width: 100,
+                                  margin: const EdgeInsets.only(right: 12, top: 4, bottom: 4, left: 2),
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(color: Colors.grey[300]!),
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(15),
+                                    child: Image.file(file, fit: BoxFit.cover),
+                                  ),
+                                ),
+                                if (!_isSubmitting)
+                                  Positioned(
+                                    right: 4,
+                                    top: 0,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        setState(() {
+                                          _selectedImages.removeAt(index);
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.all(4),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.red,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.close, size: 12, color: Colors.white),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            );
+                          },
+                        ),
                       ),
-                    ),
 
                     const SizedBox(height: 40),
 

@@ -63,11 +63,12 @@ class UserNotificationService {
   static Stream<List<AppNotificationModel>> getNotifications(String email) {
     return _notificationsCol
         .where('userEmail', isEqualTo: email)
-        .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((doc) => AppNotificationModel.fromJson(doc.data()))
-            .toList());
+        .map((snap) {
+          final list = snap.docs.map((doc) => AppNotificationModel.fromJson(doc.data())).toList();
+          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return list;
+        });
   }
 
   /// Peringatan: Setoran baru diajukan (Pending)
@@ -75,7 +76,7 @@ class UserNotificationService {
     await createNotification(
       userEmail: email,
       title: 'Setoran Berhasil Diajukan ♻️',
-      message: 'Setoran $weight kg telah diterima. Menunggu verifikasi dari SuperAdmin sebelum poin ditambahkan.',
+      message: 'Setoran $weight kg telah diterima. Menunggu verifikasi dari Admin sebelum poin ditambahkan.',
       type: 'pending',
     );
   }
@@ -105,18 +106,18 @@ class UserNotificationService {
   static Future<void> notifyRewardRedeemed(String email, String rewardName) async {
     await createNotification(
       userEmail: email,
-      title: 'Klaim Hadiah Dikirim 🛍️',
-      message: 'Permintaan klaim "$rewardName" sedang menunggu konfirmasi SuperAdmin. Poin akan dikurangi setelah disetujui.',
-      type: 'reward',
+      title: 'Klaim Hadiah Berhasil 🛍️',
+      message: 'Permintaan klaim "$rewardName" telah diajukan dan poin berhasil dipotong. Menunggu konfirmasi Admin.',
+      type: 'success', // Use success to show green checkmark
     );
   }
 
-  /// Peringatan: Klaim Hadiah DISETUJUI oleh SuperAdmin (poin dipotong)
+  /// Peringatan: Klaim Hadiah DISETUJUI oleh SuperAdmin
   static Future<void> notifyRewardApproved(String email, String rewardName, int quantity) async {
     await createNotification(
       userEmail: email,
       title: 'Hadiah Disetujui! 🎉',
-      message: 'Klaim ${quantity}x "$rewardName" telah disetujui. Poin telah dikurangi. Silakan ambil hadiah di loket terdekat.',
+      message: 'Klaim ${quantity}x "$rewardName" telah disetujui. Silakan ambil hadiah di loket terdekat.',
       type: 'success',
     );
   }
