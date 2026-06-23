@@ -250,7 +250,7 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
                         itemBuilder: (context, index) {
                           final alert = filtered[index];
                           if (alert is AppNotificationModel) {
-                            return _buildSuperAdminNotificationCard(alert);
+                            return _buildAdminNotificationCard(alert);
                           } else {
                             return _buildAlertCard(alert as LocalAlert);
                           }
@@ -381,7 +381,7 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
     );
   }
 
-  Widget _buildSuperAdminNotificationCard(AppNotificationModel alert) {
+  Widget _buildAdminNotificationCard(AppNotificationModel alert) {
     Color iconColor;
     Color cardColor;
     IconData icon;

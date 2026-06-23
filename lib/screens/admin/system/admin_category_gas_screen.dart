@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../../utils/helpers/csv_export_helper.dart';
-import '../widgets/sensor_calibration_card.dart';
 import '../widgets/sensor_history_toggle.dart';
 
 class AdminCategoryGasScreen extends StatefulWidget {
@@ -227,15 +226,7 @@ class _AdminCategoryGasScreenState extends State<AdminCategoryGasScreen> {
 
                         const SizedBox(height: 20),
 
-                        // Kalibrasi & Threshold
-                        SensorCalibrationCard(
-                          sensorKey: 'gas',
-                          sensorLabel: 'Gas',
-                          unit: 'ppm',
-                          color: Colors.grey[800]!,
-                          defaultMin: 0.0,
-                          defaultMax: 500.0,
-                        ),
+                        // Kalibrasi & Threshold telah dihapus
                       ],
                     ),
                   ),

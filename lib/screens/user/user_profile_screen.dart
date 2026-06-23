@@ -5,6 +5,7 @@ import '../authentication/login_screen.dart';
 import '../authentication/reset_password_screen.dart';
 import '../../services/auth/session_service.dart';
 import '../../services/history/history_service.dart';
+import '../../services/rewards/reward_service.dart';
 import '../../services/user/user_service.dart';
 
 class UserProfileScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class UserProfileScreen extends StatefulWidget {
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
   double _totalWeight = 0;
+  int _rewardExchangeCount = 0;
   late UserModel _currentUser;
 
   @override
@@ -40,9 +42,20 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       for (var item in history) {
         weightSum += item.weight;
       }
+
+      // 3. Hitung jumlah reward yang ditukar
+      final claims = await RewardService.getUserClaims(_currentUser.email);
+      int exchangedCount = 0;
+      for (var claim in claims) {
+        if (claim['status'] != 'rejected') {
+          exchangedCount += (claim['quantity'] as int?) ?? 1;
+        }
+      }
+
       if (mounted) {
         setState(() {
           _totalWeight = weightSum;
+          _rewardExchangeCount = exchangedCount;
         });
       }
     } catch (e) {
@@ -130,7 +143,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Double-ring avatar (same style as admin/super admin)
+            // Double-ring avatar (same style as admin)
             Container(
               padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
@@ -222,7 +235,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           _buildDivider(),
           _buildStat('Disetor', '${_totalWeight.toStringAsFixed(1)} kg', Colors.green),
           _buildDivider(),
-          _buildStat('Reward', '0x', Colors.blue), // Hardcoded for now till RewardService
+          _buildStat('Reward', '${_rewardExchangeCount}x', Colors.blue),
         ],
       ),
     );

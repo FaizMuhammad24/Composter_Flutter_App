@@ -6,7 +6,7 @@ import '../../services/compost/compost_service.dart';
 import '../../services/database/storage_service.dart';
 import '../../services/notifications/user_notification_service.dart';
 import '../../services/notifications/management_notification_service.dart';
-
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 class UserDepositScreen extends StatefulWidget {
   final String userEmail;
   const UserDepositScreen({Key? key, required this.userEmail}) : super(key: key);
@@ -34,7 +34,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
   void _calculatePoints(String value) {
     final weight = double.tryParse(value) ?? 0;
     setState(() {
-      _poinDidapat = (weight * 10).toInt();
+      _poinDidapat = CompostService.calculatePoints(weight);
     });
   }
 
@@ -97,8 +97,18 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
   }
 
   Future<void> _submitDeposit() async {
-    if (_weightController.text.isEmpty || (double.tryParse(_weightController.text) ?? 0) <= 0) {
-      _showErrorSnackBar('Masukkan berat sampah yang valid.');
+    final weight = double.tryParse(_weightController.text) ?? 0;
+    
+    final minWeight = double.tryParse(dotenv.env['MIN_WEIGHT_KG'] ?? '0.5') ?? 0.5;
+    final maxWeight = double.tryParse(dotenv.env['MAX_WEIGHT_KG'] ?? '50') ?? 50;
+    
+    if (weight <= 0 || weight < minWeight) {
+      _showErrorSnackBar('Berat minimal $minWeight kg.');
+      return;
+    }
+    
+    if (weight > maxWeight) {
+      _showErrorSnackBar('Berat maksimal $maxWeight kg.');
       return;
     }
 
@@ -173,7 +183,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
           double.parse(_weightController.text),
         );
 
-        // 4. Notifikasi SuperAdmin
+        // 4. Notifikasi Admin
         await ManagementNotificationService.notifyNewDeposit(
           widget.userEmail, 
           double.parse(_weightController.text),
@@ -338,6 +348,16 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
                         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
                       ),
                       onChanged: _calculatePoints,
+                      validator: (value) {
+                        if (value == null || value.isEmpty) return 'Masukkan berat sampah';
+                        final weight = double.tryParse(value);
+                        if (weight == null) return 'Format berat tidak valid';
+                        final minWeight = double.tryParse(dotenv.env['MIN_WEIGHT_KG'] ?? '0.5') ?? 0.5;
+                        final maxWeight = double.tryParse(dotenv.env['MAX_WEIGHT_KG'] ?? '50') ?? 50;
+                        if (weight < minWeight) return 'Berat minimal $minWeight kg';
+                        if (weight > maxWeight) return 'Berat maksimal $maxWeight kg';
+                        return null;
+                      },
                     ),
                     const SizedBox(height: 8),
                     Text('1 kg = 10 Pts', style: TextStyle(color: Colors.grey[600], fontSize: 12, fontFamily: 'Poppins')),

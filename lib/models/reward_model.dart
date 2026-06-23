@@ -3,8 +3,7 @@ class RewardModel {
   final String name;
   final String description;
   final int points;
-  final int stock;
-  final String imageUrl; // URL or local asset path
+  final String imageUrl;
   final String category;
   final bool isActive;
   final DateTime createdAt;
@@ -14,7 +13,6 @@ class RewardModel {
     required this.name,
     this.description = '',
     required this.points,
-    this.stock = 0,
     required this.imageUrl,
     this.category = 'Umum',
     this.isActive = true,
@@ -27,7 +25,6 @@ class RewardModel {
       name: json['name'] ?? '',
       description: json['description'] ?? '',
       points: json['points'] ?? 0,
-      stock: json['stock'] ?? 0,
       imageUrl: json['imageUrl'] ?? '',
       category: json['category'] ?? 'Umum',
       isActive: json['isActive'] ?? true,
@@ -43,7 +40,6 @@ class RewardModel {
       'name': name,
       'description': description,
       'points': points,
-      'stock': stock,
       'imageUrl': imageUrl,
       'category': category,
       'isActive': isActive,
@@ -56,7 +52,6 @@ class RewardModel {
     String? name,
     String? description,
     int? points,
-    int? stock,
     String? imageUrl,
     String? category,
     bool? isActive,
@@ -67,7 +62,6 @@ class RewardModel {
       name: name ?? this.name,
       description: description ?? this.description,
       points: points ?? this.points,
-      stock: stock ?? this.stock,
       imageUrl: imageUrl ?? this.imageUrl,
       category: category ?? this.category,
       isActive: isActive ?? this.isActive,

@@ -1,0 +1,26 @@
+{
+  "rules": {
+    /* Hanya izinkan user yang login */
+    ".read": "auth != null",
+    ".write": "auth != null",
+    
+    "komposter": {
+      ".read": "auth != null",
+      ".write": "auth != null"
+    },
+    
+    "komposter_logs": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+      ".indexOn": ["unix_time"]
+    },
+    
+    "logs": {
+      "actuators": {
+        ".read": "auth != null",
+        ".write": "auth != null",
+        ".indexOn": ["actuator", "unix_time"]
+      }
+    }
+  }
+}

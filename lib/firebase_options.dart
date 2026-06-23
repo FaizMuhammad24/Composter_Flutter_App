@@ -3,6 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -52,13 +53,13 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCa9ZpfsjzC-2iCRf64RaUCddflDziUTPc',
-    appId: '1:949669109723:android:14d27867ee0d6b4bc011fe',
-    messagingSenderId: '949669109723',
-    projectId: 'icompost-db',
-    databaseURL: 'https://icompost-db-default-rtdb.asia-southeast1.firebasedatabase.app',
-    storageBucket: 'icompost-db.appspot.com',
+  static FirebaseOptions get android => FirebaseOptions(
+    apiKey: dotenv.env['FIREBASE_API_KEY'] ?? '',
+    appId: dotenv.env['FIREBASE_APP_ID'] ?? '',
+    messagingSenderId: dotenv.env['FIREBASE_MESSAGING_SENDER_ID'] ?? '',
+    projectId: dotenv.env['FIREBASE_PROJECT_ID'] ?? '',
+    databaseURL: dotenv.env['FIREBASE_DATABASE_URL'] ?? '',
+    storageBucket: dotenv.env['FIREBASE_STORAGE_BUCKET'] ?? '',
   );
 
 }

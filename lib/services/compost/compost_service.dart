@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../models/compost_model.dart';
 import '../notifications/user_notification_service.dart';
 
 class CompostService {
 
   static int calculatePoints(double weight) {
-    // 1 kg = 10 points
-    return (weight * 10).toInt();
+    final int pointsPerKg = int.tryParse(dotenv.env['POINTS_PER_KG'] ?? '10') ?? 10;
+    return (weight * pointsPerKg).toInt();
   }
 
   static Future<Map<String, dynamic>> addCompost({
@@ -43,8 +44,8 @@ class CompostService {
         // ignore errors
       }
 
-      // Poin HANYA ditambahkan setelah SuperAdmin menyetujui (ACC)
-      // PointsService.addUserPoints dipanggil di SuperAdmin approval logic
+      // Poin HANYA ditambahkan setelah Admin menyetujui (ACC)
+      // PointsService.addUserPoints dipanggil di Admin approval logic
 
       return {
         'success': true,

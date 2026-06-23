@@ -1,12 +1,13 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class EmailJSService {
-  static const String _serviceId = 'service_5wqh1cp';
-  static const String _templateId = 'template_hqzjvd8';
-  static const String _userId = 'i9bzLf0q8zxpFumId'; // Public Key
-  static const String _privateKey = 'ih_oyOZY9ucPypRyc2Pfp'; // Private Key
+  static final String _serviceId = dotenv.env['EMAILJS_SERVICE_ID'] ?? '';
+  static final String _templateId = dotenv.env['EMAILJS_TEMPLATE_ID'] ?? '';
+  static final String _userId = dotenv.env['EMAILJS_PUBLIC_KEY'] ?? '';
+  static final String _privateKey = dotenv.env['EMAILJS_PRIVATE_KEY'] ?? '';
 
   static Future<bool> sendOtpEmail(String toEmail, String otpCode) async {
     // Coba beberapa format API yang didukung EmailJS

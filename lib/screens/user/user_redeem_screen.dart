@@ -104,7 +104,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
         '${_quantity}x ${widget.rewardName}',
       );
 
-      // 3. Notifikasi Super Admin ada permintaan klaim baru
+      // 3. Notifikasi Admin ada permintaan klaim baru
       await ManagementNotificationService.notifyRewardRequest(
         userEmail: widget.userEmail,
         userName: _userModel?.name ?? 'Pengguna',

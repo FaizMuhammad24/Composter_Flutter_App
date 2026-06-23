@@ -179,7 +179,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           final user = result['user'];
           // Langsung navigasi ke Home sesuai role, bukan ke Login
           Widget homeScreen;
-          if (user.role == 'admin' || user.role == 'super_admin') {
+          if (user.role == 'admin') {
             homeScreen = const AdminMainScreen();
           } else {
             homeScreen = UserMainScreen(user: user);

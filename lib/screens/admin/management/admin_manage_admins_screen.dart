@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../constants/app_colors.dart';
 import '../../../models/user_model.dart';
 import '../../../services/admin/admin_service.dart';
-import '../../../services/auth/session_service.dart';
 
 class ManageAdminsScreen extends StatefulWidget {
   const ManageAdminsScreen({Key? key}) : super(key: key);
@@ -23,8 +22,6 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
   List<UserModel> _admins = [];
   List<UserModel> _filtered = [];
 
-  UserModel? _currentSuperAdmin;
-
   @override
   void initState() {
     super.initState();
@@ -34,7 +31,6 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
   Future<void> _loadData() async {
     setState(() => _isFetching = true);
     try {
-      _currentSuperAdmin = SessionService.getCurrentUser();
       _admins = await AdminService.getAllAdmins();
       _filtered = _admins;
     } catch (e) {
@@ -60,49 +56,35 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
 
   Future<void> _createAdmin() async {
     if (!_formKey.currentState!.validate()) return;
-    
-    if (_currentSuperAdmin == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Sesi tidak valid. Harap login ulang.')));
-      return;
-    }
-
     setState(() => _isLoading = true);
-    
-    final result = await AdminService.createAdminBySuperAdmin(
-      superAdminEmail: _currentSuperAdmin!.email,
+
+    final result = await AdminService.createAdmin(
       name: _nameCtrl.text.trim(),
       email: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
     );
 
     if (!mounted) return;
+    setState(() => _isLoading = false);
 
     if (result['success']) {
       _nameCtrl.clear();
       _emailCtrl.clear();
       _passwordCtrl.clear();
-      
-      setState(() {
-        _showForm = false;
-      });
-      
+      setState(() => _showForm = false);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result['message']), backgroundColor: Colors.green),
       );
-      
-      _loadData(); // Reload the list
+      _loadData();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(result['message']), backgroundColor: Colors.red),
       );
     }
-    
-    setState(() => _isLoading = false);
   }
 
   void _deleteAdmin(int index) {
     final admin = _filtered[index];
-    
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -113,18 +95,10 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () async {
-              Navigator.pop(context); // Close dialog
-              
-              if (_currentSuperAdmin == null) return;
-              
+              Navigator.pop(context);
               setState(() => _isFetching = true);
-              final result = await AdminService.deleteAdmin(
-                superAdminEmail: _currentSuperAdmin!.email,
-                adminUid: admin.uid,
-              );
-              
+              final result = await AdminService.deleteAdmin(adminUid: admin.uid);
               if (!mounted) return;
-              
               if (result['success']) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(content: Text(result['message']), backgroundColor: Colors.orange),

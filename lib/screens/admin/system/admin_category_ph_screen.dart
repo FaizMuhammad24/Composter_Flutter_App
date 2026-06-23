@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../../utils/helpers/csv_export_helper.dart';
-import '../widgets/sensor_calibration_card.dart';
 import '../widgets/sensor_history_toggle.dart';
 
 class AdminCategoryPhScreen extends StatefulWidget {
@@ -190,7 +189,7 @@ class _AdminCategoryPhScreenState extends State<AdminCategoryPhScreen> {
                             _buildStatRow('Tertinggi', _isOffline ? '-' : _calculateMax().toStringAsFixed(1)),
                           ]))),
                         const SizedBox(height: 20),
-                        const SensorCalibrationCard(sensorKey: 'ph', sensorLabel: 'pH', unit: '', color: Color(0xFF9C27B0), defaultMin: 6.0, defaultMax: 8.0),
+                        // SensorCalibrationCard telah dihapus
                       ],
                     ),
                   ),

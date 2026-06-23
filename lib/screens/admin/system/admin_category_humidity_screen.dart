@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../../utils/helpers/csv_export_helper.dart';
-import '../widgets/sensor_calibration_card.dart';
 import '../widgets/sensor_history_toggle.dart';
 
 class AdminCategoryHumidityScreen extends StatefulWidget {
@@ -230,15 +229,7 @@ class _AdminCategoryHumidityScreenState extends State<AdminCategoryHumidityScree
 
                         const SizedBox(height: 20),
 
-                        // Kalibrasi & Threshold
-                        const SensorCalibrationCard(
-                          sensorKey: 'soil',
-                          sensorLabel: 'Kelembaban',
-                          unit: '%',
-                          color: Color(0xFF00B4D8),
-                          defaultMin: 30.0,
-                          defaultMax: 80.0,
-                        ),
+                        // Kalibrasi & Threshold telah dihapus
                       ],
                     ),
                   ),

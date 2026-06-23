@@ -67,7 +67,7 @@ class RewardService {
     return id;
   }
 
-  /// Ambil semua klaim pending (untuk SuperAdmin)
+  /// Ambil semua klaim pending (untuk Admin)
   static Future<List<Map<String, dynamic>>> getPendingClaims() async {
     try {
       final snap = await _claimsCol
@@ -84,7 +84,7 @@ class RewardService {
     }
   }
 
-  /// Approve klaim (SuperAdmin) — potong poin user
+  /// Approve klaim (Admin) — potong poin user
   static Future<void> approveClaim(String claimId) async {
     await _claimsCol.doc(claimId).update({
       'status': 'approved',
@@ -92,7 +92,7 @@ class RewardService {
     });
   }
 
-  /// Reject klaim (SuperAdmin) — tidak perlu potong poin karena belum dipotong
+  /// Reject klaim (Admin) — tidak perlu potong poin karena belum dipotong
   static Future<void> rejectClaim(String claimId) async {
     await _claimsCol.doc(claimId).update({
       'status': 'rejected',

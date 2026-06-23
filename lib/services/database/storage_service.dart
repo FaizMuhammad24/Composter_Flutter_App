@@ -2,11 +2,12 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class StorageService {
   // Cloudinary credentials provided by user
-  static const String _cloudName = 'dwnym5d5h';
-  static const String _uploadPreset = 'wzrtdwsj';
+  static final String _cloudName = dotenv.env['CLOUDINARY_CLOUD_NAME'] ?? '';
+  static final String _uploadPreset = dotenv.env['CLOUDINARY_UPLOAD_PRESET'] ?? '';
 
   /// Uploads an image to Cloudinary and returns the secure URL.
   Future<String?> uploadCompostPhoto({

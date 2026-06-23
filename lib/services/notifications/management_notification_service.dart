@@ -6,7 +6,7 @@ import './user_notification_service.dart';
 class ManagementNotificationService {
   static final _notificationsCol = FirebaseFirestore.instance.collection('notifications');
 
-  /// Stream notifikasi untuk super admin
+  /// Stream notifikasi untuk admin
   static Stream<List<AppNotificationModel>> getNotifications() {
     return _notificationsCol
         .where('type', whereIn: ['deposit_pending', 'reward_request', 'system_alert'])
@@ -18,7 +18,7 @@ class ManagementNotificationService {
         });
   }
 
-  /// Stream jumlah notifikasi SuperAdmin yang belum dibaca (untuk badge header)
+  /// Stream jumlah notifikasi Admin yang belum dibaca (untuk badge header)
   static Stream<int> getUnreadCountStream() {
     return _notificationsCol
         .where('type', whereIn: ['deposit_pending', 'reward_request', 'system_alert'])
@@ -27,41 +27,76 @@ class ManagementNotificationService {
         .map((snap) => snap.docs.length);
   }
 
-  /// Peringatan: Ada setoran baru yang perlu Terima
+  // ✅ HELPER: Kirim notifikasi ke semua Admin
+  static Future<void> _notifyAllAdmins({
+    required String title,
+    required String message,
+    required String type,
+  }) async {
+    try {
+      // Ambil semua user dengan role 'admin'
+      final adminSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'admin')
+          .get();
+
+      if (adminSnap.docs.isEmpty) {
+        debugPrint('Tidak ada admin untuk dikirim notifikasi');
+        return;
+      }
+
+      final batch = FirebaseFirestore.instance.batch();
+      for (var doc in adminSnap.docs) {
+        final adminEmail = doc.data()['email'] as String?;
+        if (adminEmail == null || adminEmail.isEmpty) continue;
+
+        final id = _notificationsCol.doc().id;
+        final notification = AppNotificationModel(
+          id: id,
+          userEmail: adminEmail, // ✅ Kirim ke setiap admin
+          title: title,
+          message: message,
+          type: type,
+          isRead: false,
+          createdAt: DateTime.now(),
+        );
+        batch.set(_notificationsCol.doc(id), notification.toJson());
+      }
+      await batch.commit();
+    } catch (e) {
+      debugPrint('Error notifying all admins: $e');
+    }
+  }
+
+  // ✅ UPDATE: Peringatan setoran baru
   static Future<void> notifyNewDeposit(String userEmail, double weight) async {
-    await createNotification(
-      userEmail: 'superadmin@icompost.com',
+    await _notifyAllAdmins(
       title: '♻️ Setoran Baru Menunggu Terima',
       message: 'User $userEmail menginput setoran $weight kg. Silakan cek menu Manajemen > Setoran.',
       type: 'deposit_pending',
     );
   }
 
-  /// Peringatan: Ada user yang menukarkan poin (Hadiah)
+  // ✅ UPDATE: Peringatan klaim reward baru
   static Future<void> notifyRewardRequest({
     required String userEmail,
     required String userName,
     required String rewardName,
   }) async {
-    await createNotification(
-      userEmail: 'superadmin@icompost.com',
+    await _notifyAllAdmins(
       title: '🎁 Permintaan Hadiah Baru!',
       message: 'User $userName ($userEmail) telah menukarkan poin untuk "$rewardName". Segera siapkan hadiah!',
       type: 'reward_request',
     );
   }
 
-  /// Peringatan: Broadcast update sistem ke semua user
+  // ✅ UPDATE: Broadcast system
   static Future<void> broadcastSystemUpdate(String title, String message) async {
-    // Kirim notifikasi ke superadmin sendiri sebagai record
-    await createNotification(
-      userEmail: 'superadmin@icompost.com',
+    await _notifyAllAdmins(
       title: '📢 Broadcast: $title',
       message: 'Pesan: $message',
       type: 'system_alert',
     );
-    
-    // Sebar ke semua user
     await UserNotificationService.broadcastAnnouncement(title, message);
   }
 
@@ -84,7 +119,7 @@ class ManagementNotificationService {
       );
       await _notificationsCol.doc(id).set(notification.toJson());
     } catch (e) {
-      debugPrint('Error creating super admin notification: $e');
+      debugPrint('Error creating admin notification: $e');
     }
   }
 
@@ -93,7 +128,7 @@ class ManagementNotificationService {
     try {
       await _notificationsCol.doc(id).update({'isRead': true});
     } catch (e) {
-      debugPrint('Error marking super admin notification as read: $e');
+      debugPrint('Error marking admin notification as read: $e');
     }
   }
 
@@ -102,7 +137,7 @@ class ManagementNotificationService {
     try {
       await _notificationsCol.doc(id).delete();
     } catch (e) {
-      debugPrint('Error deleting super admin notification: $e');
+      debugPrint('Error deleting admin notification: $e');
     }
   }
 
@@ -111,7 +146,6 @@ class ManagementNotificationService {
     try {
       final snap = await _notificationsCol
           .where('type', isEqualTo: 'deposit_pending')
-          .where('userEmail', isEqualTo: 'superadmin@icompost.com')
           .get();
       
       final batch = FirebaseFirestore.instance.batch();
@@ -128,7 +162,7 @@ class ManagementNotificationService {
     }
   }
 
-  /// Menandai semua notifikasi SuperAdmin sebagai telah dibaca
+  /// Menandai semua notifikasi Admin sebagai telah dibaca
   static Future<void> markAllAsRead() async {
     try {
       final snap = await _notificationsCol
@@ -142,11 +176,11 @@ class ManagementNotificationService {
       }
       await batch.commit();
     } catch (e) {
-      debugPrint('Error marking all super admin notifications as read: $e');
+      debugPrint('Error marking all admin notifications as read: $e');
     }
   }
 
-  /// Menghapus semua notifikasi SuperAdmin
+  /// Menghapus semua notifikasi Admin
   static Future<void> deleteAllNotifications() async {
     try {
       final snap = await _notificationsCol
@@ -159,7 +193,7 @@ class ManagementNotificationService {
       }
       await batch.commit();
     } catch (e) {
-      debugPrint('Error deleting all super admin notifications: $e');
+      debugPrint('Error deleting all admin notifications: $e');
     }
   }
 }

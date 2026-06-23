@@ -6,8 +6,6 @@ class UserModel {
   final int? points; // null untuk admin, int untuk user
   final DateTime createdAt;
   final DateTime? lastLogin;
-  final String? createdBy; // Email yang membuat akun ini (untuk admin)
-  final bool isEmailVerified; // True jika email sudah diverifikasi dengan OTP
 
   UserModel({
     required this.uid,
@@ -17,12 +15,10 @@ class UserModel {
     this.points,
     required this.createdAt,
     this.lastLogin,
-    this.createdBy,
-    this.isEmailVerified = false,
   });
 
   // Cek role
-  bool get isAdmin => role == 'admin' || role == 'super_admin' || role == 'superadmin';
+  bool get isAdmin => role == 'admin';
   bool get isUser => role == 'user';
 
   // Convert dari Map/JSON
@@ -39,8 +35,6 @@ class UserModel {
       lastLogin: json['last_login'] != null
           ? DateTime.parse(json['last_login'])
           : null,
-      createdBy: json['created_by'],
-      isEmailVerified: json['is_email_verified'] ?? false,
     );
   }
 
@@ -54,8 +48,6 @@ class UserModel {
       'points': points,
       'created_at': createdAt.toIso8601String(),
       'last_login': lastLogin?.toIso8601String(),
-      'created_by': createdBy,
-      'is_email_verified': isEmailVerified,
     };
   }
 
@@ -68,8 +60,6 @@ class UserModel {
     int? points,
     DateTime? createdAt,
     DateTime? lastLogin,
-    String? createdBy,
-    bool? isEmailVerified,
   }) {
     return UserModel(
       uid: uid ?? this.uid,
@@ -79,8 +69,6 @@ class UserModel {
       points: points ?? this.points,
       createdAt: createdAt ?? this.createdAt,
       lastLogin: lastLogin ?? this.lastLogin,
-      createdBy: createdBy ?? this.createdBy,
-      isEmailVerified: isEmailVerified ?? this.isEmailVerified,
     );
   }
 }

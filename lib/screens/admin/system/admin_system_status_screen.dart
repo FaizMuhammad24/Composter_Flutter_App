@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'admin_sensor_history_screen.dart';
+import '../../../utils/helpers/csv_export_helper.dart';
 
 import '../../../constants/app_colors.dart';
 import '../../../constants/app_spacing.dart';
@@ -17,6 +17,7 @@ class SystemStatusData {
   final Map<String, int> uptime;
   final String esp32Status;
   final int wifiStrength;
+  final int freeHeap;
   final String lastPing;
   final Map<String, String> sensorStatus;
   final Map<String, String> actuatorStatus;
@@ -27,6 +28,7 @@ class SystemStatusData {
     required this.uptime,
     required this.esp32Status,
     required this.wifiStrength,
+    required this.freeHeap,
     required this.lastPing,
     required this.sensorStatus,
     required this.actuatorStatus,
@@ -41,6 +43,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
     uptime: {'days': 0, 'hours': 0, 'minutes': 0},
     esp32Status: 'offline',
     wifiStrength: 0,
+    freeHeap: 0,
     lastPing: '-',
     sensorStatus: {
       'Sensor Suhu': 'inactive',
@@ -113,6 +116,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
             uptime: {'days': 0, 'hours': 0, 'minutes': 0},
             esp32Status: 'offline',
             wifiStrength: 0,
+            freeHeap: 0,
             lastPing: _status.lastPing,
             sensorStatus: _status.sensorStatus.map((k, v) => MapEntry(k, 'inactive')),
             actuatorStatus: _status.actuatorStatus.map((k, v) => MapEntry(k, 'OFF')),
@@ -184,6 +188,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                   uptime: {'days': 0, 'hours': 0, 'minutes': 0},
                   esp32Status: 'offline',
                   wifiStrength: 0,
+                  freeHeap: 0,
                   lastPing: data['time']?.toString() ?? _status.lastPing,
                   sensorStatus: _status.sensorStatus.map((k, v) => MapEntry(k, 'inactive')),
                   actuatorStatus: _status.actuatorStatus.map((k, v) => MapEntry(k, 'OFF')),
@@ -201,7 +206,6 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
             return;
           }
 
-          _lastUpdate = now;
           _lastUpdate = now;
           
           // Kalkulasi Uptime
@@ -223,6 +227,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                 uptime: {'days': days, 'hours': hours, 'minutes': minutes},
                 esp32Status: 'online',
                 wifiStrength: wifiStrength,
+                freeHeap: freeHeap,
                 lastPing: data['time']?.toString() ?? _status.lastPing,
                 sensorStatus: {
                   'Sensor Suhu': (data['temperature'] == 100.0) ? 'inactive' : 'active',
@@ -262,6 +267,116 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
   Future<void> _refreshStatus() async {
     _lastUpdate = null;
     await Future.delayed(const Duration(milliseconds: 500));
+  }
+
+  void _showRekapMenu(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const Text(
+              'Pilih Rekap Data',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Pilih jenis data yang ingin diunduh dalam format CSV',
+              style: TextStyle(fontSize: 12, color: Colors.grey[600], fontFamily: 'Poppins'),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+
+            // Option 1: QoS
+            _buildRekapOption(
+              icon: Icons.network_check,
+              color: Colors.blue,
+              title: 'Rekap QoS (Jaringan)',
+              subtitle: 'Status, Delay, Packet Loss, Throughput',
+              onTap: () {
+                Navigator.pop(ctx);
+                CsvExportHelper.exportQosLogs(context);
+              },
+            ),
+            const SizedBox(height: 12),
+
+            // Option 2: ESP
+            _buildRekapOption(
+              icon: Icons.developer_board,
+              color: Colors.orange,
+              title: 'Rekap ESP32 (Sensor)',
+              subtitle: 'Suhu, Gas, Kelembaban, pH, WiFi, Heap, Uptime',
+              onTap: () {
+                Navigator.pop(ctx);
+                CsvExportHelper.exportKomposterLogs(context);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRekapOption({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withValues(alpha: 0.2)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins')),
+                  const SizedBox(height: 4),
+                  Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.grey[600], fontFamily: 'Poppins')),
+                ],
+              ),
+            ),
+            Icon(Icons.download_rounded, color: color, size: 22),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -359,6 +474,28 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
             _buildDeviceStatusGrid(),
             const SizedBox(height: AppSpacing.xl),
 
+            // ESP32 Hardware Monitoring
+            Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: AppColors.adminPrimary,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Monitoring ESP32 (Hardware)', 
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                ),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _buildEspMonitoringCard(),
+            const SizedBox(height: AppSpacing.xl),
+
             // QoS Monitoring
             Row(
               children: [
@@ -385,14 +522,9 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const AdminSensorHistoryScreen()),
-                  );
-                },
-                icon: const Icon(Icons.analytics_outlined, size: 20),
-                label: const Text('Lihat Rekap Data QoS (1 Menit)'),
+                onPressed: () => _showRekapMenu(context),
+                icon: const Icon(Icons.download, size: 20),
+                label: const Text('Unduh Rekap Data (CSV)'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.adminPrimary,
                   padding: const EdgeInsets.symmetric(vertical: 16),
@@ -661,6 +793,60 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                     fontSize: 13, 
                     fontFamily: 'Poppins',
                     color: isStatus ? Colors.green[700] : Colors.black87,
+                  )
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildEspMonitoringCard() {
+    final Map<String, String> espData = {
+      'Kekuatan WiFi': '${_status.wifiStrength} %',
+      'Free Heap': '${(_status.freeHeap / 1024).toStringAsFixed(1)} KB',
+      'Uptime': '${_status.uptime['days']} Hari, ${_status.uptime['hours']} Jam, ${_status.uptime['minutes']} Mnt',
+    };
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white, 
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: espData.entries.map((e) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  e.key, 
+                  style: TextStyle(
+                    color: Colors.grey[600], 
+                    fontSize: 13, 
+                    fontFamily: 'Poppins',
+                    fontWeight: FontWeight.w500,
+                  )
+                ),
+                Text(
+                  e.value, 
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600, 
+                    fontSize: 13, 
+                    fontFamily: 'Poppins',
+                    color: Colors.black87,
                   )
                 ),
               ],

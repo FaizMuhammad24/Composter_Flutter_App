@@ -91,7 +91,7 @@ class UserNotificationService {
     );
   }
 
-  /// Peringatan: Setoran DITOLAK oleh SuperAdmin
+  /// Peringatan: Setoran DITOLAK oleh Admin
   static Future<void> notifyDepositRejected(String email, double weight, {String reason = ''}) async {
     final reasonText = reason.isNotEmpty ? ' Alasan: $reason.' : '';
     await createNotification(
@@ -112,7 +112,7 @@ class UserNotificationService {
     );
   }
 
-  /// Peringatan: Klaim Hadiah DISETUJUI oleh SuperAdmin
+  /// Peringatan: Klaim Hadiah DISETUJUI oleh Admin
   static Future<void> notifyRewardApproved(String email, String rewardName, int quantity) async {
     await createNotification(
       userEmail: email,
@@ -122,7 +122,7 @@ class UserNotificationService {
     );
   }
 
-  /// Peringatan: Klaim Hadiah DITOLAK oleh SuperAdmin (poin dikembalikan)
+  /// Peringatan: Klaim Hadiah DITOLAK oleh Admin (poin dikembalikan)
   static Future<void> notifyRewardRejected(String email, String rewardName, int pointsRefunded) async {
     await createNotification(
       userEmail: email,

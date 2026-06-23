@@ -36,7 +36,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
   }
 
   Future<void> _initNotifications() async {
-    await AdminNotificationService().init();
+    await AdminNotificationService().init(isAdmin: true);
   }
 
   @override

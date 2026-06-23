@@ -67,7 +67,7 @@ class AdminNotificationService {
   DateTime? _lastDataReceive;
   DateTime? _initTime;
   bool _isInitialized = false;
-  bool _isSuperAdmin = false;
+  bool _isAdmin = false;
 
   bool _motorWasOn = false;
   bool _p1WasOn = false;
@@ -75,9 +75,9 @@ class AdminNotificationService {
   bool _heaterWasOn = false;
   bool _fanWasOn = false;
 
-  Future<void> init({bool isSuperAdmin = false}) async {
+  Future<void> init({bool isAdmin = false}) async {
     if (_isInitialized) return;
-    _isSuperAdmin = isSuperAdmin;
+    _isAdmin = isAdmin;
     const AndroidInitializationSettings androidSettings =
         AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -102,12 +102,12 @@ class AdminNotificationService {
     _initTime = DateTime.now();
     _startStatusTimer();
     _isInitialized = true;
-    if (_isSuperAdmin) {
-      _listenToSuperAdminActivity();
+    if (_isAdmin) {
+      _listenToAdminActivity();
     }
   }
 
-  void _listenToSuperAdminActivity() {
+  void _listenToAdminActivity() {
     // Listen to new deposits
     FirebaseFirestore.instance.collection('composts').snapshots().listen((snap) {
       if (!deviceOfflineNotifier.value) { // just a safety check
@@ -253,7 +253,6 @@ class AdminNotificationService {
       }
 
       if (deviceOfflineNotifier.value) return; // Don't check sensors if offline
-      if (_isSuperAdmin) return; // SuperAdmin only needs offline alerts, skip sensor checks
 
       final thresholds = data['thresholds'] as Map?;
       final tempTh = thresholds?['temperature'] as Map?;
@@ -368,50 +367,13 @@ class AdminNotificationService {
     await _plugin.show(id: DateTime.now().microsecondsSinceEpoch.remainder(2147483647), title: title, body: body, notificationDetails: const NotificationDetails(android: androidDetails));
   }
 
-  // ============ MAINTENANCE & COMPOST NOTIFICATIONS ============
+  // ============ COMPOST MATURITY NOTIFICATIONS ============
 
-  Timer? _maintenanceTimer;
-  Timer? _inactivityTimer;
+  Timer? _maturityTimer;
 
   void startMaintenanceChecks() {
-    // Check calibration every hour
-    _maintenanceTimer = Timer.periodic(const Duration(hours: 1), (_) => _checkCalibrationReminders());
-    // Check inactivity every 10 minutes
-    _inactivityTimer = Timer.periodic(const Duration(minutes: 10), (_) => _checkInactivity());
-    // Initial checks
-    _checkCalibrationReminders();
+    _maturityTimer = Timer.periodic(const Duration(hours: 24), (_) => _checkCompostMaturity());
     _checkCompostMaturity();
-  }
-
-  Future<void> _checkCalibrationReminders() async {
-    final sensors = ['ph', 'temperature', 'soil', 'gas'];
-    final labels = {'ph': 'pH', 'temperature': 'Suhu', 'soil': 'Kelembaban', 'gas': 'Gas'};
-    
-    for (var sensor in sensors) {
-      try {
-        final snap = await FirebaseDatabase.instance.ref('komposter/calibration/$sensor').get();
-        if (snap.value != null) {
-          final int ts = (snap.value as num).toInt();
-          final lastCal = DateTime.fromMillisecondsSinceEpoch(ts * 1000);
-          final daysSince = DateTime.now().difference(lastCal).inDays;
-          if (daysSince >= 30) {
-            _check('cal_$sensor', true, 'KALIBRASI ${labels[sensor]!.toUpperCase()} DIPERLUKAN', 
-              'Sensor ${labels[sensor]} belum dikalibrasi selama $daysSince hari. Disarankan kalibrasi setiap 30 hari.', 'warning');
-          }
-        }
-      } catch (e) {
-        debugPrint('Error checking calibration for $sensor: $e');
-      }
-    }
-  }
-
-  void _checkInactivity() {
-    if (_lastDataReceive == null) return;
-    final hours = DateTime.now().difference(_lastDataReceive!).inHours;
-    if (hours >= 24) {
-      _check('inactivity_24h', true, 'TIDAK ADA AKTIVITAS 24 JAM', 
-        'Tidak ada perubahan data sensor selama $hours jam terakhir.', 'warning');
-    }
   }
 
   Future<void> _checkCompostMaturity() async {
@@ -434,8 +396,7 @@ class AdminNotificationService {
   void dispose() { 
     _rtdbSubscription?.cancel(); 
     _statusCheckTimer?.cancel();
-    _maintenanceTimer?.cancel();
-    _inactivityTimer?.cancel();
+    _maturityTimer?.cancel();
     _rtdbSubscription = null; 
     _statusCheckTimer = null;
     _isInitialized = false; 

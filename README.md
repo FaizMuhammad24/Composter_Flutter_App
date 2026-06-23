@@ -26,8 +26,7 @@ Sistem dilengkapi dengan logika pintar untuk mengontrol 5 komponen secara otomat
 - **Export Data CSV**: Memungkinkan Admin mengunduh data riwayat sensor ke format file Excel/CSV.
 
 ### 4. Manajemen Pengguna (Role-Based)
-- **Super Admin**: Mengelola seluruh akun Admin, User, serta sistem penukaran Reward.
-- **Admin**: Fokus pada monitoring sistem, grafik sensor, dan kesehatan perangkat.
+- **Admin**: Mengelola seluruh akun User, verifikasi setoran, kelola reward, serta monitoring sistem.
 - **User**: Berpartisipasi dalam penyetoran sampah untuk mendapatkan poin dan reward.
 
 ### 5. Stabilitas & Kesehatan Sistem

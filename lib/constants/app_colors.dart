@@ -21,12 +21,11 @@ class AppColors {
   static const Color info = Color(0xFF2196F3); // Blue for info
   
   // Role Colors (Specific themes for each role)
-  static const Color superAdminPrimary = Color(0xFFD32F2F); // Red
-  static const Color superAdminBg = Color(0xFFFFEBEE);      // Lightest red
+
   static const Color adminPrimary = Color(0xFFFBC02D);      // Yellow/Amber
   static const Color adminBg = Color(0xFFFFF8E1);           // Lightest yellow
   static const Color admin = Color(0xFFFBC02D);
-  static const Color superAdmin = Color(0xFFD32F2F);
+
   static const Color user = Color(0xFF2D5016); // User stays Green
 
   // Neutral

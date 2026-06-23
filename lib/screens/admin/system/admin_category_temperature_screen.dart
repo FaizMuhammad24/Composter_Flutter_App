@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_database/firebase_database.dart';
 import '../../../utils/helpers/csv_export_helper.dart';
-import '../widgets/sensor_calibration_card.dart';
 import '../widgets/sensor_history_toggle.dart';
 
 class AdminCategoryTemperatureScreen extends StatefulWidget {
@@ -227,15 +226,7 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
 
                         const SizedBox(height: 20),
 
-                        // Kalibrasi & Threshold
-                        const SensorCalibrationCard(
-                          sensorKey: 'temperature',
-                          sensorLabel: 'Suhu',
-                          unit: '°C',
-                          color: Color(0xFFFF6B35),
-                          defaultMin: 25.0,
-                          defaultMax: 60.0,
-                        ),
+                        // Kalibrasi & Threshold telah dihapus
                       ],
                     ),
                   ),

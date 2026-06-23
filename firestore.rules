@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ================================================
+    // FUNGSI HELPER
+    // ================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    function isUser() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'user';
+    }
+
+    function isOwnEmail(email) {
+      return request.auth.token.email == email;
+    }
+
+    function isOwnUid(uid) {
+      return request.auth.uid == uid;
+    }
+
+    // ================================================
+    // KOLEKSI USERS
+    // ================================================
+    match /users/{userId} {
+      // User bisa membaca semua user (untuk cek email, dll)
+      allow read: if isAuthenticated();
+      // User hanya bisa menulis data miliknya sendiri (atau admin)
+      allow write: if isAuthenticated() && (isOwnUid(userId) || isAdmin());
+    }
+
+    // ================================================
+    // KOLEKSI COMPOSTS (Setoran Sampah)
+    // ================================================
+    match /composts/{docId} {
+      // Semua user yang login bisa membaca
+      allow read: if isAuthenticated();
+      
+      // User bisa membuat setoran (hanya dengan email sendiri)
+      allow create: if isAuthenticated() && isOwnEmail(request.resource.data.userEmail);
+      
+      // Hanya admin yang bisa update status (approve/reject) atau delete
+      allow update: if isAdmin() && 
+        request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if isAdmin();
+    }
+
+    // ================================================
+    // KOLEKSI REWARDS (Katalog Hadiah)
+    // ================================================
+    match /rewards/{docId} {
+      // Semua user yang login bisa membaca
+      allow read: if isAuthenticated();
+      
+      // Hanya admin yang bisa create, update, delete
+      allow write: if isAdmin();
+    }
+
+    // ================================================
+    // KOLEKSI REWARD_CLAIMS (Klaim Hadiah)
+    // ================================================
+    match /reward_claims/{docId} {
+      // Semua user yang login bisa membaca klaim (misal untuk lihat riwayat sendiri)
+      allow read: if isAuthenticated();
+      
+      // User bisa membuat klaim (hanya dengan email sendiri)
+      allow create: if isAuthenticated() && isOwnEmail(request.resource.data.userEmail);
+      
+      // Hanya admin yang bisa update status (approve/reject)
+      allow update: if isAdmin() && 
+        request.resource.data.status in ['approved', 'rejected'];
+      allow delete: if isAdmin();
+    }
+
+    // ================================================
+    // KOLEKSI NOTIFICATIONS
+    // ================================================
+    match /notifications/{docId} {
+      // User hanya bisa membaca notifikasi miliknya sendiri
+      // Admin bisa membaca semua notifikasi (untuk badge counter di header)
+      allow read: if isAuthenticated() && 
+        (isOwnEmail(resource.data.userEmail) || isAdmin());
+      
+      // User/admin bisa membuat notifikasi (dari service)
+      allow create: if isAuthenticated();
+      
+      // User bisa update isRead (tandai sudah dibaca)
+      allow update: if isAuthenticated() && isOwnEmail(resource.data.userEmail);
+      
+      // Admin bisa menghapus notifikasi (termasuk milik orang lain)
+      allow delete: if isAdmin();
+    }
+  }
+}
