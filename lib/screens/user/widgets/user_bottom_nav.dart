@@ -18,7 +18,6 @@ class UserBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return CurvedNavigationBar(
       index: currentIndex,
-      height: 60.0,
       backgroundColor: backgroundColor,
       color: AppColors.primary,
       buttonBackgroundColor: AppColors.primary,

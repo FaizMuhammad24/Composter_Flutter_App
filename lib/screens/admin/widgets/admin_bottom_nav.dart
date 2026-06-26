@@ -18,7 +18,6 @@ class AdminBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return CurvedNavigationBar(
       index: currentIndex,
-      height: 60.0,
       backgroundColor: backgroundColor,
       color: AppColors.adminPrimary,
       buttonBackgroundColor: AppColors.adminPrimary,

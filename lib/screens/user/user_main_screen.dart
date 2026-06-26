@@ -5,6 +5,7 @@ import 'user_history_screen.dart';
 import 'user_profile_screen.dart';
 import 'widgets/user_bottom_nav.dart';
 import '../../services/notifications/user_notification_service.dart';
+import '../../services/notifications/push_notification_service.dart';
 
 class UserMainScreen extends StatefulWidget {
   final UserModel user;
@@ -24,6 +25,7 @@ class _UserMainScreenState extends State<UserMainScreen> {
   void initState() {
     super.initState();
     UserNotificationService.initPushNotifications(widget.user.email);
+    PushNotificationService.init();
     _pages = [
       UserDashboard(user: widget.user),
       UserHistoryScreen(user: widget.user),

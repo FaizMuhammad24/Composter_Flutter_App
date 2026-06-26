@@ -16,9 +16,12 @@ class AdminSystemNotificationsScreen extends StatefulWidget {
 
 class _AdminSystemNotificationsScreenState extends State<AdminSystemNotificationsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  String _filter = 'Semua'; // 'Semua', 'Belum Dibaca', 'Sudah Dibaca'
+  
+  // Fitlers for each tab
+  String _sysFilter = 'Semua'; 
+  String _mgtFilter = 'Semua';
 
-  // Streams for activities
+  // Streams for user activities
   StreamSubscription? _depSub;
   StreamSubscription? _claimSub;
   List<Map<String, dynamic>> _activities = [];
@@ -28,7 +31,7 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _initStreams();
   }
 
@@ -135,23 +138,61 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
           unselectedLabelColor: Colors.white70,
           labelStyle: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 13),
           tabs: const [
-            Tab(text: 'Admin (System)'),
-            Tab(text: 'Aktivitas User'),
+            Tab(text: 'Sistem'),
+            Tab(text: 'Manajemen'),
+            Tab(text: 'Aktiv. User'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildAdminTab(),
+          _buildSystemTab(),
+          _buildManagementTab(),
           _buildUserActivityTab(),
         ],
       ),
     );
   }
 
-  // ============== TAB 1: SYSTEM / ADMIN =================
-  Widget _buildAdminTab() {
+  // ==================== TABS ====================
+  Widget _buildSystemTab() {
+    return ValueListenableBuilder<List<LocalAlert>>(
+      valueListenable: AdminNotificationService.alertsNotifier,
+      builder: (context, localAlerts, child) {
+        final filteredLocalAlerts = localAlerts.where((a) => a.severity != 'info').toList();
+        filteredLocalAlerts.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+        final filtered = filteredLocalAlerts.where((alert) {
+          if (_sysFilter == 'Belum Dibaca') return !alert.isRead;
+          if (_sysFilter == 'Sudah Dibaca') return alert.isRead;
+          return true;
+        }).toList();
+
+        return Column(
+          children: [
+            _buildFilterTabs(
+              currentFilter: _sysFilter,
+              onFilterChanged: (val) => setState(() => _sysFilter = val)
+            ),
+            Expanded(
+              child: filtered.isEmpty
+                ? _buildEmptyState('Sistem Berjalan Normal', Icons.check_circle_outline, Colors.green)
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      return _buildAlertCard(filtered[index]);
+                    },
+                  ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildManagementTab() {
     return StreamBuilder<List<AppNotificationModel>>(
       stream: ManagementNotificationService.getNotifications(),
       builder: (context, snapshot) {
@@ -160,337 +201,44 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
         }
 
         final firestoreNotifications = snapshot.data ?? [];
+        firestoreNotifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-        return ValueListenableBuilder<List<LocalAlert>>(
-          valueListenable: AdminNotificationService.alertsNotifier,
-          builder: (context, localAlerts, child) {
-            final filteredLocalAlerts = localAlerts.where((a) => a.severity != 'info').toList();
+        final filtered = firestoreNotifications.where((alert) {
+          if (_mgtFilter == 'Belum Dibaca') return !alert.isRead;
+          if (_mgtFilter == 'Sudah Dibaca') return alert.isRead;
+          return true;
+        }).toList();
 
-            if (firestoreNotifications.isEmpty && filteredLocalAlerts.isEmpty) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.check_circle_outline, size: 72, color: Colors.green),
-                    SizedBox(height: 16),
-                    Text('Sistem Berjalan Normal', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey)),
-                  ],
-                ),
-              );
-            }
-
-            // Gabungkan kedua notifikasi
-            final List<dynamic> combined = [...firestoreNotifications, ...filteredLocalAlerts];
-            
-            combined.sort((a, b) {
-              DateTime dateA = a is AppNotificationModel ? a.createdAt : (a as LocalAlert).timestamp;
-              DateTime dateB = b is AppNotificationModel ? b.createdAt : (b as LocalAlert).timestamp;
-              return dateB.compareTo(dateA);
-            });
-
-            // Terapkan Filter
-            final filtered = combined.where((alert) {
-              bool isRead = alert is AppNotificationModel ? alert.isRead : (alert as LocalAlert).isRead;
-              if (_filter == 'Belum Dibaca') return !isRead;
-              if (_filter == 'Sudah Dibaca') return isRead;
-              return true;
-            }).toList();
-
-            return Column(
-              children: [
-                // Filter Tabs
-                Container(
-                  color: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: ['Semua', 'Belum Dibaca', 'Sudah Dibaca'].map((cat) {
-                      final isSelected = _filter == cat;
-                      return InkWell(
-                        onTap: () => setState(() => _filter = cat),
-                        child: Column(
-                          children: [
-                            Text(
-                              cat,
-                              style: TextStyle(
-                                color: isSelected ? AppColors.adminPrimary : Colors.grey,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                                fontFamily: 'Poppins',
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Container(
-                              width: 40,
-                              height: 2,
-                              color: isSelected ? AppColors.adminPrimary : Colors.transparent,
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
+        return Column(
+          children: [
+            _buildFilterTabs(
+              currentFilter: _mgtFilter,
+              onFilterChanged: (val) => setState(() => _mgtFilter = val)
+            ),
+            Expanded(
+              child: filtered.isEmpty
+                ? _buildEmptyState('Tidak ada notifikasi baru', Icons.done_all, Colors.grey)
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) {
+                      return _buildAdminNotificationCard(filtered[index]);
+                    },
                   ),
-                ),
-                
-                // List View
-                Expanded(
-                  child: filtered.isEmpty
-                    ? const Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.done_all, size: 72, color: Colors.grey),
-                            SizedBox(height: 16),
-                            Text('Tidak ada notifikasi', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey)),
-                          ],
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          final alert = filtered[index];
-                          if (alert is AppNotificationModel) {
-                            return _buildAdminNotificationCard(alert);
-                          } else {
-                            return _buildAlertCard(alert as LocalAlert);
-                          }
-                        },
-                      ),
-                ),
-              ],
-            );
-          },
+            ),
+          ],
         );
       },
     );
   }
 
-  void _showDeleteAllDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Hapus Semua Notifikasi', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        content: const Text('Apakah Anda yakin ingin menghapus semua notifikasi ini secara permanen?', style: TextStyle(fontFamily: 'Poppins')),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Batal', style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              Navigator.pop(context);
-              AdminNotificationService().clearAll();
-              await ManagementNotificationService.deleteAllNotifications();
-              if (!mounted) return;
-              setState(() {});
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Hapus Semua', style: TextStyle(color: Colors.white, fontFamily: 'Poppins')),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAlertCard(LocalAlert alert) {
-    Color iconColor;
-    Color cardColor;
-    IconData icon;
-
-    switch (alert.severity) {
-      case 'danger':
-        iconColor = Colors.red;
-        cardColor = Colors.red.withValues(alpha: 0.05);
-        icon = Icons.error_outline;
-        break;
-      case 'warning':
-        iconColor = Colors.orange;
-        cardColor = Colors.orange.withValues(alpha: 0.05);
-        icon = Icons.warning_amber_rounded;
-        break;
-      default:
-        iconColor = Colors.blue;
-        cardColor = Colors.blue.withValues(alpha: 0.05);
-        icon = Icons.info_outline;
-    }
-
-    return Dismissible(
-      key: Key('local_${alert.id}'),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      onDismissed: (_) {
-        AdminNotificationService().deleteAlert(alert.id);
-      },
-      child: InkWell(
-        onTap: () {
-          AdminNotificationService().markAsRead(alert.id);
-          setState(() {});
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: alert.isRead ? Colors.grey.withValues(alpha: 0.2) : iconColor.withValues(alpha: 0.4), width: 1.5),
-          ),
-          color: alert.isRead ? Colors.grey.withValues(alpha: 0.05) : cardColor,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: alert.isRead ? Colors.grey.withValues(alpha: 0.15) : iconColor.withValues(alpha: 0.15), shape: BoxShape.circle), child: Icon(icon, color: alert.isRead ? Colors.grey : iconColor, size: 26)),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(alert.title, style: TextStyle(fontWeight: alert.isRead ? FontWeight.normal : FontWeight.bold, fontSize: 14, fontFamily: 'Poppins')),
-                      const SizedBox(height: 4),
-                      Text(alert.message, style: TextStyle(fontSize: 12, height: 1.4, fontFamily: 'Poppins', color: alert.isRead ? Colors.grey : Colors.black87)),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 12, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(DateFormat('dd MMM yyyy, HH:mm').format(alert.timestamp), style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins')),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (!alert.isRead)
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: iconColor, shape: BoxShape.circle),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAdminNotificationCard(AppNotificationModel alert) {
-    Color iconColor;
-    Color cardColor;
-    IconData icon;
-
-    switch (alert.type) {
-      case 'deposit_pending':
-        iconColor = Colors.orange;
-        cardColor = Colors.orange.withValues(alpha: 0.05);
-        icon = Icons.inventory_2;
-        break;
-      case 'reward_request':
-        iconColor = Colors.purple;
-        cardColor = Colors.purple.withValues(alpha: 0.05);
-        icon = Icons.card_giftcard;
-        break;
-      case 'system_alert':
-        iconColor = Colors.red;
-        cardColor = Colors.red.withValues(alpha: 0.05);
-        icon = Icons.error_outline;
-        break;
-      default:
-        iconColor = Colors.blue;
-        cardColor = Colors.blue.withValues(alpha: 0.05);
-        icon = Icons.info_outline;
-    }
-
-    return Dismissible(
-      key: Key('firestore_${alert.id}'),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 20),
-        margin: const EdgeInsets.only(bottom: 12),
-        decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.delete, color: Colors.white),
-      ),
-      onDismissed: (_) {
-        ManagementNotificationService.deleteNotification(alert.id);
-      },
-      child: InkWell(
-        onTap: () {
-          ManagementNotificationService.markAsRead(alert.id);
-        },
-        borderRadius: BorderRadius.circular(16),
-        child: Card(
-          elevation: 0,
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: alert.isRead ? Colors.grey.withValues(alpha: 0.2) : iconColor.withValues(alpha: 0.4), width: 1.5),
-          ),
-          color: alert.isRead ? Colors.grey.withValues(alpha: 0.05) : cardColor,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: alert.isRead ? Colors.grey.withValues(alpha: 0.15) : iconColor.withValues(alpha: 0.15), shape: BoxShape.circle), child: Icon(icon, color: alert.isRead ? Colors.grey : iconColor, size: 26)),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(alert.title, style: TextStyle(fontWeight: alert.isRead ? FontWeight.normal : FontWeight.bold, fontSize: 14, fontFamily: 'Poppins')),
-                      const SizedBox(height: 4),
-                      Text(alert.message, style: TextStyle(fontSize: 12, height: 1.4, fontFamily: 'Poppins', color: alert.isRead ? Colors.grey : Colors.black87)),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.access_time, size: 12, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(DateFormat('dd MMM yyyy, HH:mm').format(alert.createdAt), style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins')),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (!alert.isRead)
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(color: iconColor, shape: BoxShape.circle),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-
-  // ============== TAB 2: USER ACTIVITY =================
   Widget _buildUserActivityTab() {
     if (_activities.isEmpty) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.history_toggle_off, size: 72, color: Colors.grey),
-            SizedBox(height: 16),
-            Text('Belum ada aktivitas user terbaru', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey)),
-          ],
-        ),
-      );
+      return _buildEmptyState('Belum ada aktivitas user terbaru', Icons.history_toggle_off, Colors.grey);
     }
 
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       itemCount: _activities.length,
       itemBuilder: (context, index) {
         final act = _activities[index];
@@ -502,6 +250,128 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
           return _buildRewardActivity(act);
         }
       },
+    );
+  }
+
+  // ==================== COMPONENTS ====================
+  Widget _buildFilterTabs({required String currentFilter, required Function(String) onFilterChanged}) {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: ['Semua', 'Belum Dibaca', 'Sudah Dibaca'].map((cat) {
+          final isSelected = currentFilter == cat;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: ChoiceChip(
+              label: Text(
+                cat,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : Colors.black54,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontFamily: 'Poppins',
+                  fontSize: 12,
+                ),
+              ),
+              selected: isSelected,
+              selectedColor: AppColors.adminPrimary,
+              backgroundColor: Colors.grey.withValues(alpha: 0.1),
+              onSelected: (_) => onFilterChanged(cat),
+              showCheckmark: false,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+                side: BorderSide.none,
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(String text, IconData icon, Color color) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 72, color: color),
+          const SizedBox(height: 16),
+          Text(text, style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  // ==================== CARDS ====================
+  Widget _buildAlertCard(LocalAlert alert) {
+    Color iconColor;
+    IconData icon;
+
+    switch (alert.severity) {
+      case 'danger':
+        iconColor = Colors.red;
+        icon = Icons.error_outline;
+        break;
+      case 'warning':
+        iconColor = Colors.orange;
+        icon = Icons.warning_amber_rounded;
+        break;
+      default:
+        iconColor = Colors.blue;
+        icon = Icons.info_outline;
+    }
+
+    return _buildGlobalCard(
+      id: alert.id,
+      keyPrefix: 'local',
+      icon: icon,
+      color: iconColor,
+      title: alert.title,
+      subtitle: alert.message,
+      time: alert.timestamp,
+      isRead: alert.isRead,
+      onTap: () {
+        AdminNotificationService().markAsRead(alert.id);
+        setState(() {});
+      },
+      onDismissed: () => AdminNotificationService().deleteAlert(alert.id),
+    );
+  }
+
+  Widget _buildAdminNotificationCard(AppNotificationModel alert) {
+    Color iconColor;
+    IconData icon;
+
+    switch (alert.type) {
+      case 'deposit_pending':
+        iconColor = Colors.orange;
+        icon = Icons.inventory_2;
+        break;
+      case 'reward_request':
+        iconColor = Colors.purple;
+        icon = Icons.card_giftcard;
+        break;
+      case 'system_alert':
+        iconColor = Colors.red;
+        icon = Icons.error_outline;
+        break;
+      default:
+        iconColor = Colors.blue;
+        icon = Icons.info_outline;
+    }
+
+    return _buildGlobalCard(
+      id: alert.id,
+      keyPrefix: 'firestore',
+      icon: icon,
+      color: iconColor,
+      title: alert.title,
+      subtitle: alert.message,
+      time: alert.createdAt,
+      isRead: alert.isRead,
+      onTap: () => ManagementNotificationService.markAsRead(alert.id),
+      onDismissed: () => ManagementNotificationService.deleteNotification(alert.id),
     );
   }
 
@@ -533,12 +403,17 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
       statusStr = 'Setoran Ditolak';
     }
 
-    return _buildActivityCard(
+    return _buildGlobalCard(
+      id: data['doc_id'] ?? DateTime.now().toString(),
+      keyPrefix: 'deposit',
       icon: icon,
       color: color,
-      title: '$userEmail - $statusStr',
-      subtitle: status == 'approved' ? 'Berhasil menyetorkan $weight kg (+$points Pts)' : 'Setoran seberat $weight kg (${status.toUpperCase()})',
+      title: statusStr,
+      subtitle: '$userEmail\n${status == 'approved' ? 'Berhasil menyetorkan $weight kg (+$points Pts)' : 'Setoran seberat $weight kg (${status.toUpperCase()})'}',
       time: time,
+      isRead: true, // Activities don't have read state, consider them read
+      onTap: null,
+      onDismissed: null, // History cannot be swiped away here
     );
   }
 
@@ -570,78 +445,150 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
       statusStr = 'Klaim Ditolak';
     }
 
-    return _buildActivityCard(
+    return _buildGlobalCard(
+      id: data['doc_id'] ?? DateTime.now().toString(),
+      keyPrefix: 'reward',
       icon: icon,
       color: color,
-      title: '$userEmail - $statusStr',
-      subtitle: status == 'approved' ? 'Telah mengambil "$rewardName" (-$points Pts)' : 'Permintaan "$rewardName" (${status.toUpperCase()})',
+      title: statusStr,
+      subtitle: '$userEmail\n${status == 'approved' ? 'Telah mengambil "$rewardName" (-$points Pts)' : 'Permintaan "$rewardName" (${status.toUpperCase()})'}',
       time: time,
+      isRead: true,
+      onTap: null,
+      onDismissed: null,
     );
   }
 
-  Widget _buildActivityCard({
+  // UNIFIED CARD WIDGET
+  Widget _buildGlobalCard({
+    required String id,
+    required String keyPrefix,
     required IconData icon,
     required Color color,
     required String title,
     required String subtitle,
     required DateTime time,
+    required bool isRead,
+    Function()? onTap,
+    Function()? onDismissed,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Stack(
-        children: [
-          // Left color indicator
-          Positioned(
-            left: 0, top: 0, bottom: 0,
-            width: 5,
-            child: Container(decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.horizontal(left: Radius.circular(20)))),
+    Color cardColor = color.withValues(alpha: 0.05);
+
+    Widget cardBody = InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Card(
+        elevation: 0,
+        margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isRead ? Colors.grey.withValues(alpha: 0.3) : color.withValues(alpha: 0.4), 
+            width: 1.5
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Icon with gradient background
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [color.withValues(alpha: 0.2), color.withValues(alpha: 0.05)],
-                      begin: Alignment.topLeft, end: Alignment.bottomRight,
-                    ),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, fontFamily: 'Poppins', color: Colors.black87)),
-                      const SizedBox(height: 6),
-                      Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[700], fontFamily: 'Poppins', height: 1.4)),
-                      const SizedBox(height: 10),
-                      Row(
-                        children: [
-                          Icon(Icons.access_time_rounded, size: 14, color: Colors.grey[400]),
-                          const SizedBox(width: 4),
-                          Text(DateFormat('dd MMM yyyy • HH:mm').format(time), style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins', fontWeight: FontWeight.w500)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+        ),
+        color: isRead ? Colors.white : cardColor,
+        child: Stack(
+          children: [
+            // Indicator line on the left side
+            Positioned(
+              left: 0, top: 0, bottom: 0,
+              width: 6,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: color, 
+                  borderRadius: const BorderRadius.horizontal(left: Radius.circular(16))
+                )
+              ),
             ),
+            Padding(
+              padding: const EdgeInsets.only(left: 22, right: 16, top: 16, bottom: 16),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12), 
+                    decoration: BoxDecoration(
+                      color: isRead ? Colors.grey.withValues(alpha: 0.1) : color.withValues(alpha: 0.15), 
+                      shape: BoxShape.circle
+                    ), 
+                    child: Icon(icon, color: isRead ? Colors.grey[600] : color, size: 24)
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title, style: TextStyle(fontWeight: isRead ? FontWeight.w600 : FontWeight.bold, fontSize: 14, fontFamily: 'Poppins', color: isRead ? Colors.black54 : Colors.black87)),
+                        const SizedBox(height: 6),
+                        Text(subtitle, style: TextStyle(fontSize: 12, height: 1.4, fontFamily: 'Poppins', color: isRead ? Colors.black54 : Colors.grey[700])),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Icon(Icons.access_time_rounded, size: 13, color: Colors.grey[400]),
+                            const SizedBox(width: 4),
+                            Text(DateFormat('dd MMM yyyy • HH:mm').format(time), style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins', fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (!isRead)
+                    Container(
+                      margin: const EdgeInsets.only(top: 4),
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (onDismissed != null) {
+      return Dismissible(
+        key: Key('${keyPrefix}_$id'),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          margin: const EdgeInsets.only(bottom: 12, left: 16, right: 16),
+          decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(16)),
+          child: const Icon(Icons.delete, color: Colors.white),
+        ),
+        onDismissed: (_) => onDismissed(),
+        child: cardBody,
+      );
+    }
+
+    return cardBody;
+  }
+
+  void _showDeleteAllDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hapus Semua Notifikasi', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+        content: const Text('Apakah Anda yakin ingin menghapus semua notifikasi ini secara permanen?', style: TextStyle(fontFamily: 'Poppins')),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal', style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              AdminNotificationService().clearAll();
+              await ManagementNotificationService.deleteAllNotifications();
+              if (!mounted) return;
+              setState(() {});
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Hapus Semua', style: TextStyle(color: Colors.white, fontFamily: 'Poppins')),
           ),
         ],
       ),

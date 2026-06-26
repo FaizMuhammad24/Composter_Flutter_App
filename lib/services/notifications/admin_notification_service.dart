@@ -155,23 +155,24 @@ class AdminNotificationService {
 
   void _startStatusTimer() {
     _statusCheckTimer?.cancel();
-    _statusCheckTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    // Cek setiap 5 detik (lebih hemat resource)
+    _statusCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       final now = DateTime.now();
       
-      // Case 1: Already received some data, check for staleness from last received time
+      // Case 1: Sudah pernah terima data — tunggu 30 detik sebelum nyatakan offline
       if (_lastDataReceive != null) {
         final diff = now.difference(_lastDataReceive!);
-        if (diff.inSeconds > 15) {
+        if (diff.inSeconds > 30) {
           if (!deviceOfflineNotifier.value) {
             deviceOfflineNotifier.value = true;
             notifyDeviceOffline();
           }
         }
       } 
-      // Case 2: No data received yet since init, check against init time
+      // Case 2: Belum pernah terima data — beri kelonggaran 45 detik saat pertama kali
       else if (_initTime != null) {
         final diff = now.difference(_initTime!);
-        if (diff.inSeconds > 15) {
+        if (diff.inSeconds > 45) {
           if (!deviceOfflineNotifier.value) {
             deviceOfflineNotifier.value = true;
             notifyDeviceOffline();
@@ -182,26 +183,11 @@ class AdminNotificationService {
   }
 
   bool _isDataStale(Map<dynamic, dynamic> data) {
-    // 1. Cek via Unix Timestamp
-    if (data.containsKey('unix_time')) {
-      final int espUnix = (data['unix_time'] as num).toInt();
-      final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      // Only stale if phone time is significantly ahead of ESP time
-      return (phoneUnix - espUnix) > 15; // 15 seconds tolerance
-    }
-    
-    // 2. Fallback ke String "time" (HH:mm:ss)
-    final String? timeStr = data['time']?.toString();
-    if (timeStr == null || timeStr.isEmpty) return false; // Can't tell, assume ok
-    try {
-      final parts = timeStr.split(':');
-      if (parts.length != 3) return false;
-      final now = DateTime.now();
-      final dataTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-      return now.difference(dataTime).inSeconds > 15;
-    } catch (e) {
-      return false;
-    }
+    // Tidak lagi menggunakan unix_time untuk cek staleness
+    // karena rentan terhadap perbedaan timezone antara RTC ESP32 dan HP.
+    // Status online/offline ditentukan sepenuhnya oleh timer di _startStatusTimer()
+    // yang mengukur selisih waktu penerimaan data terakhir dari Firebase.
+    return false;
   }
 
   void _listenToFirebase() {
@@ -274,39 +260,44 @@ class AdminNotificationService {
       _check('gas_failed', gas < 0, 'SENSOR GAS TIDAK TERBACA', 'Data gas tidak valid. Cek koneksi sensor.', 'danger');
 
       if (temp >= 0) {
-        _check('temp_low',  temp < tempMin, 'SUHU DI BAWAH PARAMETER', 'Suhu komposter ${temp.toStringAsFixed(1)}°C (dibawah ${tempMin.toStringAsFixed(1)}°C).', 'warning');
-        _check('temp_high', temp > tempMax, 'SUHU DI ATAS PARAMETER', 'Suhu komposter ${temp.toStringAsFixed(1)}°C (diatas ${tempMax.toStringAsFixed(1)}°C).', 'danger');
+        _check('temp_low',  temp < tempMin, 'SUHU DI BAWAH PARAMETER', 'Suhu komposter ${temp.toStringAsFixed(1)}°C (dibawah ${tempMin.toStringAsFixed(1)}°C).', 'warning', showPopup: false);
+        _check('temp_high', temp > tempMax, 'SUHU DI ATAS PARAMETER', 'Suhu komposter ${temp.toStringAsFixed(1)}°C (diatas ${tempMax.toStringAsFixed(1)}°C).', 'danger', showPopup: false);
       }
       if (soil >= 0) {
-        _check('soil_low',  soil < soilMin, 'KELEMBABAN DI BAWAH PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (dibawah ${soilMin.toStringAsFixed(0)}%).', 'warning');
-        _check('soil_high', soil > soilMax, 'KELEMBABAN DI ATAS PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (diatas ${soilMax.toStringAsFixed(0)}%).', 'warning');
+        _check('soil_low',  soil < soilMin, 'KELEMBABAN DI BAWAH PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (dibawah ${soilMin.toStringAsFixed(0)}%).', 'warning', showPopup: false);
+        _check('soil_high', soil > soilMax, 'KELEMBABAN DI ATAS PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (diatas ${soilMax.toStringAsFixed(0)}%).', 'warning', showPopup: false);
       }
       if (ph >= 0) {
-        _check('ph_low',  ph < phMin, 'pH DI BAWAH PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (dibawah ${phMin.toStringAsFixed(1)}).', 'warning');
-        _check('ph_high', ph > phMax, 'pH DI ATAS PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (diatas ${phMax.toStringAsFixed(1)}).', 'warning');
+        _check('ph_low',  ph < phMin, 'pH DI BAWAH PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (dibawah ${phMin.toStringAsFixed(1)}).', 'warning', showPopup: false);
+        _check('ph_high', ph > phMax, 'pH DI ATAS PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (diatas ${phMax.toStringAsFixed(1)}).', 'warning', showPopup: false);
       }
       if (gas >= 0) {
-        _check('gas_danger', gas > gasMax, 'GAS MELEBIHI BATAS AMAN', 'Konsentrasi gas metana $gas ppm (diatas ${gasMax.toStringAsFixed(0)} ppm).', 'danger');
+        _check('gas_danger', gas > gasMax, 'GAS MELEBIHI BATAS AMAN', 'Konsentrasi gas metana $gas ppm (diatas ${gasMax.toStringAsFixed(0)} ppm).', 'danger', showPopup: false);
       }
     });
   }
 
-  void _addAlert(String title, String message, String severity) {
+  void _addAlert(String title, String message, String severity, {bool showPopup = true}) {
     final now = DateTime.now();
     alertsNotifier.value = [
       LocalAlert(id: '${title.hashCode}-${now.millisecondsSinceEpoch}', title: title, message: message, severity: severity, timestamp: now),
       ...alertsNotifier.value
     ];
-    _showPush(title, message);
+    
+    // Hanya tampilkan popup lokal jika showPopup = true
+    // (Peringatan parameter ditangani oleh OneSignal lewat Google Apps Script)
+    if (showPopup) {
+      _showPush(title, message);
+    }
   }
 
-  void _check(String key, bool condition, String title, String message, String severity, {bool bypassCooldown = false}) {
+  void _check(String key, bool condition, String title, String message, String severity, {bool bypassCooldown = false, bool showPopup = true}) {
     final now = DateTime.now();
     if (condition) {
       final last = _lastNotified[key];
       if (bypassCooldown || last == null || now.difference(last) > _cooldown) {
         _lastNotified[key] = now;
-        _addAlert(title, message, severity);
+        _addAlert(title, message, severity, showPopup: showPopup);
       }
     } else {
       // If condition is false, we might want to clear status for some keys

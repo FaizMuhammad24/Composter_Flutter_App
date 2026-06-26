@@ -128,17 +128,18 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final isSmallScreen = size.height < 700;
+    final titleSize = isSmallScreen ? 28.0 : 34.0;
 
     return Scaffold(
       backgroundColor: AppColors.primary,
       body: SafeArea(
-        child: SizedBox(
-          height: size.height - MediaQuery.of(context).padding.top,
-          child: Column(
+        bottom: false,
+        child: Column(
             children: [
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+                padding: EdgeInsets.fromLTRB(24, isSmallScreen ? 12 : 20, 24, isSmallScreen ? 16 : 28),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -150,48 +151,15 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                       ),
                     ),
                     
-                    const SizedBox(height: 20),
+                    SizedBox(height: isSmallScreen ? 8 : 16),
                     
-                    const Text(
-                      "Let's",
+                    Text(
+                      "Let's Create\nYour Account",
                       style: TextStyle(
-                        fontSize: 38,
-                        fontWeight: FontWeight.w300,
-                        color: Colors.white,
-                        height: 1.2,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                    
-                    const Text(
-                      'Create',
-                      style: TextStyle(
-                        fontSize: 38,
+                        fontSize: titleSize,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
-                        height: 1.2,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                    
-                    const Text(
-                      'Your',
-                      style: TextStyle(
-                        fontSize: 38,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        height: 1.2,
-                        fontFamily: 'Poppins',
-                      ),
-                    ),
-                    
-                    const Text(
-                      'Account',
-                      style: TextStyle(
-                        fontSize: 38,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        height: 1.2,
+                        height: 1.3,
                         fontFamily: 'Poppins',
                       ),
                     ),
@@ -441,8 +409,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
         ],
       ),
     ),
-  ),
-);
+  );
   }
 
   Widget _buildTextField({

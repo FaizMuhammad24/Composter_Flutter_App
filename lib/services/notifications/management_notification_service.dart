@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/app_notification_model.dart';
 import 'package:flutter/foundation.dart';
 import './user_notification_service.dart';
+import './push_notification_service.dart';
 
 class ManagementNotificationService {
   static final _notificationsCol = FirebaseFirestore.instance.collection('notifications');
@@ -63,6 +64,10 @@ class ManagementNotificationService {
         batch.set(_notificationsCol.doc(id), notification.toJson());
       }
       await batch.commit();
+
+      // ✅ Memicu Push Notification ke layar HP semua Admin!
+      PushNotificationService.sendPushToAdmins(title: title, message: message);
+
     } catch (e) {
       debugPrint('Error notifying all admins: $e');
     }

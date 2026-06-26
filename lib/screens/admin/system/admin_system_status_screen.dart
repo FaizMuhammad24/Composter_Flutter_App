@@ -81,35 +81,20 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
   }
 
   bool _isDataStale(Map<dynamic, dynamic> data) {
-    // 1. Cek via Unix Timestamp (Paling robust)
-    if (data.containsKey('unix_time')) {
-      final int espUnix = (data['unix_time'] as num).toInt();
-      final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final diff = (phoneUnix - espUnix).abs();
-      return diff > 15; // 15 Seconds tolerance
-    }
-
-    // 2. Fallback ke String "time" (HH:mm:ss)
-    final String? timeStr = data['time']?.toString();
-    if (timeStr == null || timeStr.isEmpty) return true;
-    try {
-      final parts = timeStr.split(':');
-      if (parts.length != 3) return true;
-      final now = DateTime.now();
-      final dataTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-      return now.difference(dataTime).inSeconds.abs() > 15;
-    } catch (e) {
-      return true;
-    }
+    // Tidak lagi menggunakan unix_time/time string untuk cek staleness
+    // karena rentan terhadap perbedaan timezone antara RTC ESP32 dan HP.
+    // Status online/offline ditentukan sepenuhnya oleh _startOfflineTimer()
+    // yang mengukur selisih waktu sejak data terakhir diterima dari Firebase.
+    return false;
   }
 
   void _startOfflineTimer() {
-    _offlineCheckTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _offlineCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
       if (_lastUpdate == null) return;
       
       final diff = DateTime.now().difference(_lastUpdate!);
-      if (diff.inSeconds > 15 && _status.esp32Status == 'online') {
-        // Device likely offline
+      // Nyatakan offline setelah 30 detik tidak ada data baru
+      if (diff.inSeconds > 30 && _status.esp32Status == 'online') {
         setState(() {
           _status = SystemStatusData(
             health: 0,
@@ -230,10 +215,10 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                 freeHeap: freeHeap,
                 lastPing: data['time']?.toString() ?? _status.lastPing,
                 sensorStatus: {
-                  'Sensor Suhu': (data['temperature'] == 100.0) ? 'inactive' : 'active',
-                  'Sensor Kelembaban': (data['soil'] == 100.0 || data['soil'] == 0.0) ? 'inactive' : 'active',
-                  'Sensor pH': (data['ph'] == 100.0 || data['ph'] == 10.0 || data['ph'] == 0.0) ? 'inactive' : 'active',
-                  'Sensor Gas': (data['gas'] == 100) ? 'inactive' : 'active'
+                  'Sensor Suhu': (data['temperature'] == -1.0 || data['temperature'] == -1) ? 'inactive' : 'active',
+                  'Sensor Kelembaban': (data['soil'] == -1.0 || data['soil'] == -1) ? 'inactive' : 'active',
+                  'Sensor pH': (data['ph'] == -1.0 || data['ph'] == -1) ? 'inactive' : 'active',
+                  'Sensor Gas': (data['gas'] == -1.0 || data['gas'] == -1) ? 'inactive' : 'active'
                 },
                 actuatorStatus: {
                   'Exhaust Fan': (actuators['fan'] == true) ? 'ON' : 'OFF',

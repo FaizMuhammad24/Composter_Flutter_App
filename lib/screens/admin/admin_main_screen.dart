@@ -7,6 +7,7 @@ import 'profile/admin_profile_screen.dart';
 import 'widgets/admin_header.dart';
 import 'widgets/admin_bottom_nav.dart';
 import '../../services/notifications/admin_notification_service.dart';
+import '../../services/notifications/push_notification_service.dart';
 
 import 'management/admin_management_screen.dart';
 
@@ -37,6 +38,7 @@ class _AdminMainScreenState extends State<AdminMainScreen> {
 
   Future<void> _initNotifications() async {
     await AdminNotificationService().init(isAdmin: true);
+    await PushNotificationService.init();
   }
 
   @override

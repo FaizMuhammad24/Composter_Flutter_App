@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../../models/app_notification_model.dart';
 import 'package:flutter/foundation.dart';
+import './push_notification_service.dart';
 
 class UserNotificationService {
   static final _notificationsCol = FirebaseFirestore.instance.collection('notifications');
@@ -73,9 +74,10 @@ class UserNotificationService {
 
   /// Peringatan: Setoran baru diajukan (Pending)
   static Future<void> notifyDepositPending(String email, double weight) async {
+    const title = 'Setoran Berhasil Diajukan ♻️';
     await createNotification(
       userEmail: email,
-      title: 'Setoran Berhasil Diajukan ♻️',
+      title: title,
       message: 'Setoran $weight kg telah diterima. Menunggu verifikasi dari Admin sebelum poin ditambahkan.',
       type: 'pending',
     );
@@ -83,23 +85,30 @@ class UserNotificationService {
 
   /// Peringatan: Setoran berhasil disetujui
   static Future<void> notifyDepositApproved(String email, double weight, int points) async {
+    const title = 'Hore! Poin Baru 🌟';
+    final message = 'Setoran sampah ($weight kg) telah disetujui. +$points poin telah masuk ke akunmu.';
     await createNotification(
       userEmail: email,
-      title: 'Hore! Poin Baru 🌟',
-      message: 'Setoran sampah ($weight kg) telah disetujui. +$points poin telah masuk ke akunmu.',
+      title: title,
+      message: message,
       type: 'success',
     );
+    // Cari uid user berdasarkan email lalu kirim push
+    _sendPushByEmail(email, title: title, message: message);
   }
 
   /// Peringatan: Setoran DITOLAK oleh Admin
   static Future<void> notifyDepositRejected(String email, double weight, {String reason = ''}) async {
     final reasonText = reason.isNotEmpty ? ' Alasan: $reason.' : '';
+    const title = 'Setoran Ditolak ❌';
+    final message = 'Setoran sampah ($weight kg) Anda telah ditolak.$reasonText Silakan hubungi admin untuk informasi lebih lanjut.';
     await createNotification(
       userEmail: email,
-      title: 'Setoran Ditolak ❌',
-      message: 'Setoran sampah ($weight kg) Anda telah ditolak.$reasonText Silakan hubungi admin untuk informasi lebih lanjut.',
+      title: title,
+      message: message,
       type: 'error',
     );
+    _sendPushByEmail(email, title: title, message: message);
   }
 
   /// Peringatan: Klaim hadiah diajukan (menunggu konfirmasi SA)
@@ -108,38 +117,47 @@ class UserNotificationService {
       userEmail: email,
       title: 'Klaim Hadiah Berhasil 🛍️',
       message: 'Permintaan klaim "$rewardName" telah diajukan dan poin berhasil dipotong. Menunggu konfirmasi Admin.',
-      type: 'success', // Use success to show green checkmark
+      type: 'success',
     );
   }
 
   /// Peringatan: Klaim Hadiah DISETUJUI oleh Admin
   static Future<void> notifyRewardApproved(String email, String rewardName, int quantity) async {
+    const title = 'Hadiah Disetujui! 🎉';
+    final message = 'Klaim ${quantity}x "$rewardName" telah disetujui. Silakan ambil hadiah di loket terdekat.';
     await createNotification(
       userEmail: email,
-      title: 'Hadiah Disetujui! 🎉',
-      message: 'Klaim ${quantity}x "$rewardName" telah disetujui. Silakan ambil hadiah di loket terdekat.',
+      title: title,
+      message: message,
       type: 'success',
     );
+    _sendPushByEmail(email, title: title, message: message);
   }
 
   /// Peringatan: Klaim Hadiah DITOLAK oleh Admin (poin dikembalikan)
   static Future<void> notifyRewardRejected(String email, String rewardName, int pointsRefunded) async {
+    const title = 'Klaim Hadiah Ditolak';
+    final message = 'Klaim "$rewardName" tidak dapat diproses. $pointsRefunded poin telah dikembalikan ke akun Anda.';
     await createNotification(
       userEmail: email,
-      title: 'Klaim Hadiah Ditolak',
-      message: 'Klaim "$rewardName" tidak dapat diproses. $pointsRefunded poin telah dikembalikan ke akun Anda.',
+      title: title,
+      message: message,
       type: 'error',
     );
+    _sendPushByEmail(email, title: title, message: message);
   }
 
   /// Peringatan: Milestone Poin
   static Future<void> notifyMilestone(String email, int points) async {
+    const title = 'Selamat! 🎉';
+    final message = 'Kamu telah mencapai milestone sebesar $points poin! Teruslah mengompos untuk lingkungan yang lebih baik.';
     await createNotification(
       userEmail: email,
-      title: 'Selamat! 🎉',
-      message: 'Kamu telah mencapai milestone sebesar $points poin! Teruslah mengompos untuk lingkungan yang lebih baik.',
+      title: title,
+      message: message,
       type: 'success',
     );
+    _sendPushByEmail(email, title: title, message: message);
   }
 
   /// Broadcast Pengumuman Global
@@ -165,8 +183,27 @@ class UserNotificationService {
         }
       }
       await batch.commit();
+      // ✅ Kirim push ke SEMUA subscriber (Admin + User)
+      PushNotificationService.sendPushToAdmins(title: '📢 $title', message: message);
     } catch (e) {
       debugPrint('Error broadcasting announcement: $e');
+    }
+  }
+
+  /// Helper: Cari uid user berdasarkan email, lalu kirim push
+  static Future<void> _sendPushByEmail(String email, {required String title, required String message}) async {
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .where('email', isEqualTo: email)
+          .limit(1)
+          .get();
+      if (snap.docs.isNotEmpty) {
+        final uid = snap.docs.first.id;
+        PushNotificationService.sendPushToUser(userId: uid, title: title, message: message);
+      }
+    } catch (e) {
+      debugPrint('Error sending push by email: $e');
     }
   }
 

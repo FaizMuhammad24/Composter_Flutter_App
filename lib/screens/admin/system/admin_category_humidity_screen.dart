@@ -70,7 +70,7 @@ class _AdminCategoryHumidityScreenState extends State<AdminCategoryHumidityScree
         final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
         final bool stale = _isDataStale(data);
         final double soilVal = (data['soil'] as num?)?.toDouble() ?? 0.0;
-        final bool failed = soilVal == 100.0 || soilVal == 0.0;
+        final bool failed = soilVal == -1.0 || soilVal == -1;
         final thresholds = data['thresholds'] as Map?;
         final soilTh = thresholds?['soil'] as Map?;
         final double thMin = (soilTh?['min'] as num?)?.toDouble() ?? 50.0;
@@ -139,6 +139,11 @@ class _AdminCategoryHumidityScreenState extends State<AdminCategoryHumidityScree
         backgroundColor: const Color(0xFF00B4D8),
         elevation: 0,
         actions: [
+            IconButton(
+              icon: const Icon(Icons.settings, color: Colors.white),
+              tooltip: 'Ubah Threshold',
+              onPressed: _showThresholdDialog,
+            ),
           IconButton(
             icon: const Icon(Icons.download),
             tooltip: 'Download CSV',
@@ -290,6 +295,56 @@ class _AdminCategoryHumidityScreenState extends State<AdminCategoryHumidityScree
         children: [
           Text(label, style: const TextStyle(color: Colors.black54, fontFamily: 'Poppins')),
           Text(value, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+        ],
+      ),
+    );
+  }
+
+  void _showThresholdDialog() {
+    final TextEditingController minCtrl = TextEditingController(text: _thresholdMin.toString());
+    final TextEditingController maxCtrl = TextEditingController(text: _thresholdMax.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Ubah Batas Kelembaban', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: minCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Batas Minimum %'),
+            ),
+            TextField(
+              controller: maxCtrl,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(labelText: 'Batas Maksimum %'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Batal'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E88E5)),
+            onPressed: () {
+              final double? newMin = double.tryParse(minCtrl.text);
+              final double? newMax = double.tryParse(maxCtrl.text);
+              if (newMin != null && newMax != null) {
+                FirebaseDatabase.instance.ref('komposter/thresholds/soil').update({
+                  'min': newMin,
+                  'max': newMax,
+                });
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Threshold berhasil diupdate!')));
+              }
+            },
+            child: const Text('Simpan', style: TextStyle(color: Colors.white)),
+          ),
         ],
       ),
     );
