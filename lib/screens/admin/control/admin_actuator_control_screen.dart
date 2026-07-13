@@ -31,6 +31,9 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
   TimeOfDay? _selectedTime;
   List<TimeOfDay> _motorScheduleTimes = [];
 
+  DateTime? _lastUpdate;
+  Timer? _offlineCheckTimer;
+
   StreamSubscription? _actuatorSub;
 
   @override
@@ -38,6 +41,16 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
     super.initState();
     _listenActuators();
     _loadMotorSchedule();
+    _startOfflineTimer();
+  }
+
+  void _startOfflineTimer() {
+    _offlineCheckTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      if (_lastUpdate == null) return;
+      if (DateTime.now().difference(_lastUpdate!).inSeconds > 30 && !_isOffline) {
+        setState(() => _isOffline = true);
+      }
+    });
   }
 
   void _listenActuators() {
@@ -45,22 +58,17 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
       if (!mounted || event.snapshot.value == null) return;
       final data = Map<dynamic, dynamic>.from(event.snapshot.value as Map);
 
-      bool stale = true;
-      if (data.containsKey('unix_time')) {
-        final int espUnix = (data['unix_time'] as num).toInt();
-        final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-        stale = (phoneUnix - espUnix).abs() > 60;
-      }
+      _lastUpdate = DateTime.now();
 
       final actuators = data['actuators'] is Map ? Map<String, dynamic>.from(data['actuators']) : {};
 
       setState(() {
-        _isOffline = stale;
+        _isOffline = false;
         _heaterOn = actuators['heater'] == true;
         _fanOn = actuators['fan'] == true;
         _motorOn = actuators['motor'] == true;
-        _pumpP1On = actuators['water_pump'] == true;
-        _pumpP2On = actuators['em4_pump'] == true;
+        _pumpP1On = actuators['p1'] == true;
+        _pumpP2On = actuators['p2'] == true;
       });
     });
   }
@@ -73,13 +81,21 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
         setState(() {
           _motorEnabled = data['enabled'] == true;
           _motorDuration = (data['duration_minutes'] as num?)?.toInt() ?? 5;
+          _motorScheduleTimes.clear(); // Bersihkan list sebelum memuat data baru
           final hoursStr = data['schedule_hours']?.toString() ?? '';
           if (hoursStr.isNotEmpty) {
             _motorScheduleTimes = hoursStr.split(',').map((h) {
-              final hour = int.tryParse(h.trim()) ?? 0;
-              return TimeOfDay(hour: hour, minute: 0);
+              final parts = h.trim().split(':');
+              if (parts.length == 2) {
+                final hour = int.tryParse(parts[0]) ?? 0;
+                final min = int.tryParse(parts[1]) ?? 0;
+                return TimeOfDay(hour: hour, minute: min);
+              } else {
+                final hour = int.tryParse(parts[0]) ?? 0;
+                return TimeOfDay(hour: hour, minute: 0);
+              }
             }).toList()
-              ..sort((a, b) => a.hour.compareTo(b.hour));
+              ..sort((a, b) => (a.hour * 60 + a.minute).compareTo(b.hour * 60 + b.minute));
           }
         });
       }
@@ -143,7 +159,7 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
             ? '${((_p1Countdown / 30) * 100).round()}ml'
             : '${((_p2Countdown / 20) * 50).round()}ml';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-          content: Text('${isP1 ? "Molase" : "EM4"} +${addSec}s (total: ~$vol)'),
+          content: Text('${isP1 ? "Pompa P1" : "Pompa P2"} +${addSec}s (total: ~$vol)'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 1),
         ));
@@ -166,8 +182,8 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
     );
     if (picked != null) {
       setState(() {
-        // Remove duplicate hour
-        _motorScheduleTimes.removeWhere((t) => t.hour == picked.hour);
+        // Hapus duplikat waktu yang SAMA PERSIS (bukan hanya jamnya)
+        _motorScheduleTimes.removeWhere((t) => t.hour == picked.hour && t.minute == picked.minute);
         _motorScheduleTimes.add(picked);
         _motorScheduleTimes.sort((a, b) => a.hour * 60 + a.minute - b.hour * 60 - b.minute);
         _selectedTime = picked;
@@ -183,7 +199,7 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
 
   Future<void> _saveMotorSchedule() async {
     try {
-      final hoursStr = _motorScheduleTimes.map((t) => t.hour.toString()).join(',');
+      final hoursStr = _motorScheduleTimes.map((t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}').join(',');
       await FirebaseDatabase.instance.ref('komposter/controls/motor').update({
         'enabled': _motorEnabled,
         'duration_minutes': _motorDuration,
@@ -203,6 +219,7 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
 
   @override
   void dispose() {
+    _offlineCheckTimer?.cancel();
     _actuatorSub?.cancel();
     _p1Timer?.cancel();
     _p2Timer?.cancel();
@@ -232,23 +249,23 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
             Row(
               children: [
                 Expanded(child: _buildPumpCard(
-                  title: 'Pompa Molase',
+                  title: 'Pompa P1',
                   subtitle: 'Setiap tekan +30s (~100ml)',
                   icon: Icons.water_drop,
                   color: Colors.blue,
                   isActive: _pumpP1On,
                   countdown: _p1Countdown,
-                  onTap: () => _triggerPump('water_pump', 30, true),
+                  onTap: () => _triggerPump('p1', 30, true),
                 )),
                 const SizedBox(width: 12),
                 Expanded(child: _buildPumpCard(
-                  title: 'Pompa EM4',
+                  title: 'Pompa P2',
                   subtitle: 'Setiap tekan +20s (~50ml)',
                   icon: Icons.science,
                   color: Colors.purple,
                   isActive: _pumpP2On,
                   countdown: _p2Countdown,
-                  onTap: () => _triggerPump('em4_pump', 20, false),
+                  onTap: () => _triggerPump('p2', 20, false),
                 )),
               ],
             ),
@@ -389,7 +406,7 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
               child: OutlinedButton.icon(
                 onPressed: _isOffline ? null : onTap,
                 icon: const Icon(Icons.add, size: 16),
-                label: Text('+${title.contains("Molase") ? "30" : "20"}s', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12)),
+                label: Text('+${title.contains("P1") ? "30" : "20"}s', style: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12)),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: color,
                   side: BorderSide(color: color),
@@ -448,7 +465,14 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
               ),
               Switch(
                 value: _motorEnabled,
-                onChanged: (v) => setState(() => _motorEnabled = v),
+                onChanged: (v) async {
+                  setState(() => _motorEnabled = v);
+                  try {
+                    await FirebaseDatabase.instance.ref('komposter/controls/motor').update({
+                      'enabled': v,
+                    });
+                  } catch (_) {}
+                },
                 activeTrackColor: Colors.teal,
               ),
             ],
@@ -572,7 +596,7 @@ class _AdminActuatorControlScreenState extends State<AdminActuatorControlScreen>
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _isOffline ? null : _saveMotorSchedule,
+              onPressed: _saveMotorSchedule,
               icon: const Icon(Icons.save, size: 18, color: Colors.white),
               label: const Text('Simpan Jadwal', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', color: Colors.white)),
               style: ElevatedButton.styleFrom(

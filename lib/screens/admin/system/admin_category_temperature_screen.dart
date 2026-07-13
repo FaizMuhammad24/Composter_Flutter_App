@@ -25,23 +25,9 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
   Timer? _offlineTimer;
 
   bool _isDataStale(Map<dynamic, dynamic> data) {
-    if (data.containsKey('unix_time')) {
-      final int espUnix = (data['unix_time'] as num).toInt();
-      final int phoneUnix = DateTime.now().millisecondsSinceEpoch ~/ 1000;
-      final diff = (phoneUnix - espUnix).abs();
-      return diff > 120;
-    }
-    final String? timeStr = data['time']?.toString();
-    if (timeStr == null || timeStr.isEmpty) return true;
-    try {
-      final parts = timeStr.split(':');
-      if (parts.length != 3) return true;
-      final now = DateTime.now();
-      final dataTime = DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-      return now.difference(dataTime).inSeconds.abs() > 120;
-    } catch (e) {
-      return true;
-    }
+    // Tidak lagi menggunakan unix_time/time string untuk cek staleness
+    // karena rentan terhadap perbedaan timezone antara RTC ESP32 dan HP.
+    return false;
   }
   
   StreamSubscription? _rtdbSubLog;
@@ -155,9 +141,7 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
           ? const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B35)))
           : Stack(
               children: [
-                Opacity(
-                  opacity: _isOffline ? 0.4 : 1.0,
-                  child: SingleChildScrollView(
+                SingleChildScrollView(
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,28 +217,6 @@ class _AdminCategoryTemperatureScreenState extends State<AdminCategoryTemperatur
 
                         // Kalibrasi & Threshold telah dihapus
                       ],
-                    ),
-                  ),
-                ),
-                if (_isOffline)
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.wifi_off_rounded, color: Colors.white, size: 20),
-                          SizedBox(width: 8),
-                          Text(
-                            'Sensor Terputus (Offline)',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
               ],

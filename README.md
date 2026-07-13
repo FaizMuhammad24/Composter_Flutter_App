@@ -9,15 +9,14 @@ Sistem monitoring kompos cerdas berbasis IoT (Internet of Things) yang menginteg
 Pantau kondisi kompos Anda secara instan dari mana saja:
 - **Suhu**: Memastikan suhu dekomposisi tetap dalam rentang optimal.
 - **Kelembaban (Soil Moisture)**: Memantau kadar air agar media kompos tidak kering.
-- **pH Tanah**: Menjaga tingkat keasaman ideal untuk aktivitas mikroba pengurai.
 - **Kadar Gas (MQ-4)**: Deteksi gas metana/biogas untuk keamanan dan indikator kematangan.
 
 ### 2. Otomasi Alat (Actuators)
 Sistem dilengkapi dengan logika pintar untuk mengontrol 5 komponen secara otomatis:
 - **Heater**: Menjaga suhu tetap hangat saat kondisi lingkungan dingin.
 - **Exhaust Fan**: Mengatur sirkulasi udara dan membuang gas berlebih.
-- **Pompa Air**: Menyiram media secara otomatis jika kelembaban rendah.
-- **Pompa EM4**: Injeksi cairan pengurai otomatis saat pH tidak stabil.
+- **Pompa P1**: Menyiram media secara otomatis jika kelembaban rendah.
+- **Pompa P2**: Injeksi cairan pengurai otomatis.
 - **Motor Aduk**: Pengadukan periodik untuk memastikan aerasi udara merata.
 
 ### 3. Logika & Analasis Data

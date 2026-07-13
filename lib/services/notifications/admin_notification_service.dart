@@ -197,7 +197,6 @@ class AdminNotificationService {
 
       final double temp = (data['temperature'] as num?)?.toDouble() ?? 60.0;
       final double soil = (data['soil'] as num?)?.toDouble() ?? 60.0;
-      final double ph   = (data['ph'] as num?)?.toDouble() ?? 7.0;
       final int gas     = (data['gas'] as num?)?.toInt() ?? 0;
 
       final bool stale = _isDataStale(data);
@@ -210,8 +209,8 @@ class AdminNotificationService {
 
         final actuators = data['actuators'] is Map ? Map<String, dynamic>.from(data['actuators']) : {};
         final motorOn = actuators['motor'] == true;
-        final pumpP1On = actuators['water_pump'] == true;
-        final pumpP2On = actuators['em4_pump'] == true;
+        final pumpP1On = actuators['p1'] == true;
+        final pumpP2On = actuators['p2'] == true;
         final heaterOn = actuators['heater'] == true;
         final fanOn = actuators['fan'] == true;
 
@@ -219,10 +218,10 @@ class AdminNotificationService {
           _check('motor_on', true, 'MOTOR PENGADUK AKTIF', 'Motor pengaduk sedang berjalan.', 'info', bypassCooldown: true);
         }
         if (pumpP1On && !_p1WasOn) {
-          _check('p1_on', true, 'POMPA MOLASE AKTIF', 'Pompa molase sedang menyemprotkan cairan.', 'info', bypassCooldown: true);
+          _check('p1_on', true, 'POMPA P1 AKTIF', 'Pompa P1 sedang menyemprotkan cairan.', 'info', bypassCooldown: true);
         }
         if (pumpP2On && !_p2WasOn) {
-          _check('p2_on', true, 'POMPA EM4 AKTIF', 'Pompa EM4 sedang menyemprotkan cairan.', 'info', bypassCooldown: true);
+          _check('p2_on', true, 'POMPA P2 AKTIF', 'Pompa P2 sedang menyemprotkan cairan.', 'info', bypassCooldown: true);
         }
         if (heaterOn && !_heaterWasOn) {
           _check('heater_on', true, 'HEATER AKTIF', 'Heater menyala untuk menaikkan suhu.', 'info', bypassCooldown: true);
@@ -243,20 +242,16 @@ class AdminNotificationService {
       final thresholds = data['thresholds'] as Map?;
       final tempTh = thresholds?['temperature'] as Map?;
       final soilTh = thresholds?['soil'] as Map?;
-      final phTh = thresholds?['ph'] as Map?;
       final gasTh = thresholds?['gas'] as Map?;
 
       final tempMin = (tempTh?['min'] as num?)?.toDouble() ?? 25.0;
       final tempMax = (tempTh?['max'] as num?)?.toDouble() ?? 35.0;
       final soilMin = (soilTh?['min'] as num?)?.toDouble() ?? 40.0;
       final soilMax = (soilTh?['max'] as num?)?.toDouble() ?? 50.0;
-      final phMin   = (phTh?['min'] as num?)?.toDouble() ?? 6.8;
-      final phMax   = (phTh?['max'] as num?)?.toDouble() ?? 7.5;
       final gasMax  = (gasTh?['max'] as num?)?.toDouble() ?? 50.0;
 
       _check('temp_failed', temp < 0, 'SENSOR SUHU TIDAK TERBACA', 'Data suhu tidak valid. Cek koneksi sensor.', 'danger');
       _check('soil_failed', soil < 0, 'SENSOR KELEMBABAN TIDAK TERBACA', 'Data kelembaban tidak valid. Cek koneksi sensor.', 'danger');
-      _check('ph_failed', ph < 0, 'SENSOR pH TIDAK TERBACA', 'Data pH tidak valid. Cek koneksi sensor.', 'danger');
       _check('gas_failed', gas < 0, 'SENSOR GAS TIDAK TERBACA', 'Data gas tidak valid. Cek koneksi sensor.', 'danger');
 
       if (temp >= 0) {
@@ -266,10 +261,6 @@ class AdminNotificationService {
       if (soil >= 0) {
         _check('soil_low',  soil < soilMin, 'KELEMBABAN DI BAWAH PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (dibawah ${soilMin.toStringAsFixed(0)}%).', 'warning', showPopup: false);
         _check('soil_high', soil > soilMax, 'KELEMBABAN DI ATAS PARAMETER', 'Kelembaban tanah ${soil.toStringAsFixed(0)}% (diatas ${soilMax.toStringAsFixed(0)}%).', 'warning', showPopup: false);
-      }
-      if (ph >= 0) {
-        _check('ph_low',  ph < phMin, 'pH DI BAWAH PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (dibawah ${phMin.toStringAsFixed(1)}).', 'warning', showPopup: false);
-        _check('ph_high', ph > phMax, 'pH DI ATAS PARAMETER', 'pH komposter ${ph.toStringAsFixed(1)} (diatas ${phMax.toStringAsFixed(1)}).', 'warning', showPopup: false);
       }
       if (gas >= 0) {
         _check('gas_danger', gas > gasMax, 'GAS MELEBIHI BATAS AMAN', 'Konsentrasi gas metana $gas ppm (diatas ${gasMax.toStringAsFixed(0)} ppm).', 'danger', showPopup: false);

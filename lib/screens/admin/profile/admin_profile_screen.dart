@@ -39,14 +39,12 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         
         final temp = (data['temperature'] as num?)?.toDouble() ?? 0;
         final soil = (data['soil'] as num?)?.toDouble() ?? 0;
-        final ph = (data['ph'] as num?)?.toDouble() ?? 0;
         final gas = (data['gas'] as num?)?.toDouble() ?? 0;
 
 
         int healthyCount = 0;
         if (temp != 100.0 && temp != 0.0) healthyCount++;
         if (soil != 100.0 && soil != 0.0) healthyCount++;
-        if (ph != 100.0 && ph != 10.0 && ph != 0.0) healthyCount++;
         if (gas != 100 && gas != 100.0 && gas != 0.0) healthyCount++;
 
         // Count active actuators
@@ -226,7 +224,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         children: [
           _buildStat('Status', isOffline ? 'Offline' : 'Online', isOffline ? Colors.grey : Colors.green),
           _buildDivider(),
-          _buildStat('Sistem', '${isOffline ? 0 : _sensorCount} Sensor', (isOffline || _sensorCount == 0) ? Colors.grey : (_sensorCount == 4 ? Colors.green : Colors.red)),
+          _buildStat('Sistem', '${isOffline ? 0 : _sensorCount} Sensor', (isOffline || _sensorCount == 0) ? Colors.grey : (_sensorCount == 3 ? Colors.green : Colors.red)),
           _buildDivider(),
           _buildStat('Alat', '${isOffline ? 0 : _activeAlerts} Aktif', (!isOffline && _activeAlerts > 0) ? Colors.yellow.shade700 : Colors.grey),
         ],

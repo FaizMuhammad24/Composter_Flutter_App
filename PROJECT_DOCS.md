@@ -33,7 +33,7 @@
 
   | Fitur | Deskripsi |
   |-------|-----------|
-  | **Monitoring Real-time** | Data sensor (suhu, kelembaban, pH, gas) distream langsung dari ESP32 via Firebase RTDB |
+  | **Monitoring Real-time** | Data sensor (suhu, kelembaban, gas) distream langsung dari ESP32 via Firebase RTDB |
   | **Sistem Poin** | User mendapat poin tiap setoran sampah yang diapprove admin |
   | **Tukar Reward** | User bisa tukar poin dengan reward (voucher, produk, merchandise) |
   | **Notifikasi Multi-layer** | Local push notification + Firestore stream per role |
@@ -140,7 +140,6 @@
   │   │   │   │   ├── admin_sensor_history_screen.dart # Rekap data QoS (1 menit)
   │   │   │   │   ├── admin_category_temperature_screen.dart  # Detail grafik suhu
   │   │   │   │   ├── admin_category_humidity_screen.dart     # Detail grafik kelembaban
-  │   │   │   │   ├── admin_category_ph_screen.dart           # Detail grafik pH
   │   │   │   │   └── admin_category_gas_screen.dart          # Detail grafik gas
   │   │   │   ├── compost/
   │   │   │   │   └── admin_compost_status_screen.dart # Halaman pantau kompos dan maturity
@@ -167,7 +166,7 @@
   │   │           └── user_bottom_nav.dart          # Bottom navigation user
   │   ├── widgets/                    # Reusable widgets (lintas role)
   │   │   ├── cards/
-  │   │   │   ├── sensor_card.dart        # Card monitoring sensor (suhu/lembab/pH/gas)
+  │   │   │   ├── sensor_card.dart        # Card monitoring sensor (suhu/lembab/gas)
   │   │   │   ├── reward_card.dart        # Card item reward di katalog
   │   │   │   └── stats_card.dart         # Card statistik angka
   │   │   ├── buttons/
@@ -519,7 +518,6 @@
   /komposter
     ├── temperature: double    // Suhu (°C)
     ├── soil: double           // Kelembaban tanah (%)
-    ├── ph: double             // Tingkat keasaman
     ├── gas: int               // Konsentrasi gas MQ4 (ppm)
     ├── time: String           // Waktu ESP32 (HH:mm:ss)
     ├── unix_time: int         // Unix timestamp ESP32 (sumber kebenaran offline detection)
@@ -527,8 +525,8 @@
     │   ├── fan: bool          // Exhaust Fan
     │   ├── heater: bool       // Heater
     │   ├── motor: bool        // Motor Pengaduk
-    │   ├── em4_pump: bool     // Pompa EM4
-    │   └── water_pump: bool   // Pompa Air
+    │   ├── p2: bool           // Pompa P2
+    │   └── p1: bool           // Pompa P1
     └── qos/
         ├── uptime_ms: int     // Uptime ESP32 dalam milidetik
         ├── wifi_strength: int // Kekuatan sinyal WiFi (%)
@@ -576,7 +574,7 @@
   - [x] Runtime crash manage admins (BUG-10)
   - [x] Keunikan ID push notification (BUG-11)
   - [x] Manajemen notifikasi (filter, hapus, baca semua) (BUG-12)
-  - [x] Target stream notifikasi SuperAdmin (BUG-13)
+  - [x] Target stream notifikasi Admin (BUG-13)
   - [x] Ganti `print()` → `debugPrint()` (BUG-14)
   - [x] Ganti `withOpacity()` → `.withValues(alpha:)` massal (BUG-15)
 

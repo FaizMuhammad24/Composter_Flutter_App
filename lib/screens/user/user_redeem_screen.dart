@@ -98,7 +98,7 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
         pointsToDeduct: totalRequired,
       );
 
-      // 2. Notifikasi User bahwa klaim sedang menunggu konfirmasi SA
+      // 2. Notifikasi User bahwa klaim sedang menunggu konfirmasi Admin
       await UserNotificationService.notifyRewardRedeemed(
         widget.userEmail, 
         '${_quantity}x ${widget.rewardName}',

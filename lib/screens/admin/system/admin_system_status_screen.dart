@@ -48,17 +48,16 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
     sensorStatus: {
       'Sensor Suhu': 'inactive',
       'Sensor Kelembaban': 'inactive',
-      'Sensor pH': 'inactive',
       'Sensor Gas': 'inactive',
     },
     actuatorStatus: {
       'Exhaust Fan': 'OFF',
       'Heater': 'OFF',
       'Motor Aduk': 'OFF',
-      'Pompa EM4': 'OFF',
-      'Pompa Air': 'OFF',
+      'Pompa P1': 'OFF',
+      'Pompa P2': 'OFF',
     },
-    qosMonitoring: {'Status': 'Menghubungkan...', 'Delay': '-', 'Packet Loss': '-', 'Throughput': '-', 'Last Update': '-'},
+    qosMonitoring: {'Delay (Tunda)': '-', 'Jitter (Variasi)': '-', 'Packet Loss': '-', 'Throughput': '-', 'Last Update': '-'},
   );
   bool _isLoading = true;
   StreamSubscription<DatabaseEvent>? _rtdbSubscription;
@@ -67,11 +66,6 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
   DateTime? _lastUpdate;
   Timer? _offlineCheckTimer;
   bool _isNotifiedOffline = false;
-  
-  // QoS Calculation
-  int? _lastPacketId;
-  int _packetsReceived = 0;
-  int _packetsMissed = 0;
 
   @override
   void initState() {
@@ -106,8 +100,8 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
             sensorStatus: _status.sensorStatus.map((k, v) => MapEntry(k, 'inactive')),
             actuatorStatus: _status.actuatorStatus.map((k, v) => MapEntry(k, 'OFF')),
             qosMonitoring: {
-              'Status': '🔴 Terputus',
-              'Delay': 'N/A',
+              'Delay (Tunda)': 'N/A',
+              'Jitter (Variasi)': 'N/A',
               'Packet Loss': '100 %',
               'Throughput': 'Disconnected',
               'Last Update': _status.qosMonitoring['Last Update'] ?? '-',
@@ -134,36 +128,15 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
           
           final qos = data['qos'] is Map ? Map<String, dynamic>.from(data['qos']) : {};
           
-          // Gunakan parsing yang aman untuk tipe data (antisipasi String/Double dari RTDB)
           final int uptimeMs = (qos['uptime_ms'] is num) ? (qos['uptime_ms'] as num).toInt() : (int.tryParse(qos['uptime_ms']?.toString() ?? '0') ?? 0);
           final int wifiStrength = (qos['wifi_strength'] is num) ? (qos['wifi_strength'] as num).toInt() : (int.tryParse(qos['wifi_strength']?.toString() ?? '0') ?? 0);
           final int freeHeap = (qos['free_heap'] is num) ? (qos['free_heap'] as num).toInt() : (int.tryParse(qos['free_heap']?.toString() ?? '0') ?? 0);
-          final int? packetId = qos['packet_id'] != null ? (qos['packet_id'] as num).toInt() : null;
-
-          // Packet Loss Calculation
-          if (packetId != null) {
-            if (_lastPacketId != null && packetId > _lastPacketId!) {
-              int gap = packetId - _lastPacketId! - 1;
-              if (gap > 0) _packetsMissed += gap;
-            }
-            _packetsReceived++;
-            _lastPacketId = packetId;
-          }
-
-          double packetLossPercent = 0.0;
-          if (_packetsReceived + _packetsMissed > 0) {
-            packetLossPercent = (_packetsMissed / (_packetsReceived + _packetsMissed)) * 100;
-          }
-
-          // Latency calculation (Hanya estimasi sederhana dari interval kedatangan)
-          int delayMs = 0;
-          if (_lastUpdate != null) {
-            delayMs = now.difference(_lastUpdate!).inMilliseconds;
-            // Batasi delay agar tidak melompat terlalu ekstrem saat pertama kali masuk
-            if (delayMs > 2000) delayMs = 150 + (delayMs % 100); 
-          } else {
-            delayMs = 120; // Default awal
-          }
+          
+          final double qosDelay = (qos['delay_ms'] is num) ? (qos['delay_ms'] as num).toDouble() : 0.0;
+          final double qosJitter = (qos['jitter_ms'] is num) ? (qos['jitter_ms'] as num).toDouble() : 0.0;
+          final double qosPacketLoss = (qos['packet_loss_pct'] is num) ? (qos['packet_loss_pct'] as num).toDouble() : 0.0;
+          final double qosThroughput = (qos['throughput_bps'] is num) ? (qos['throughput_bps'] as num).toDouble() : 0.0;
+          final double throughputKbps = qosThroughput / 1024.0;
 
           if (isStale) {
             if (mounted) {
@@ -178,8 +151,8 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                   sensorStatus: _status.sensorStatus.map((k, v) => MapEntry(k, 'inactive')),
                   actuatorStatus: _status.actuatorStatus.map((k, v) => MapEntry(k, 'OFF')),
                   qosMonitoring: {
-                    'Status': '🔴 Terputus',
-                    'Delay': '-',
+                    'Delay (Tunda)': '-',
+                    'Jitter (Variasi)': '-',
                     'Packet Loss': '-',
                     'Throughput': '-',
                     'Last Update': data['time']?.toString() ?? _status.qosMonitoring['Last Update'] ?? '-',
@@ -217,21 +190,20 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
                 sensorStatus: {
                   'Sensor Suhu': (data['temperature'] == -1.0 || data['temperature'] == -1) ? 'inactive' : 'active',
                   'Sensor Kelembaban': (data['soil'] == -1.0 || data['soil'] == -1) ? 'inactive' : 'active',
-                  'Sensor pH': (data['ph'] == -1.0 || data['ph'] == -1) ? 'inactive' : 'active',
                   'Sensor Gas': (data['gas'] == -1.0 || data['gas'] == -1) ? 'inactive' : 'active'
                 },
                 actuatorStatus: {
                   'Exhaust Fan': (actuators['fan'] == true) ? 'ON' : 'OFF',
                   'Heater': (actuators['heater'] == true) ? 'ON' : 'OFF',
                   'Motor Aduk': (actuators['motor'] == true) ? 'ON' : 'OFF',
-                  'Pompa EM4': (actuators['em4_pump'] == true) ? 'ON' : 'OFF',
-                  'Pompa Air': (actuators['water_pump'] == true) ? 'ON' : 'OFF'
+                  'Pompa P1': (actuators['p1'] == true) ? 'ON' : 'OFF',
+                  'Pompa P2': (actuators['p2'] == true) ? 'ON' : 'OFF'
                 },
                 qosMonitoring: {
-                  'Status': wifiStrength > 40 ? 'Stabil' : 'Lemah',
-                  'Delay': '$delayMs ms',
-                  'Packet Loss': '${packetLossPercent.toStringAsFixed(1)} %',
-                  'Throughput': '${(Map.from(data).toString().length / 1024).toStringAsFixed(2)} KB/s',
+                  'Delay (Tunda)': '${qosDelay.toStringAsFixed(0)} ms',
+                  'Jitter (Variasi)': '${qosJitter.toStringAsFixed(0)} ms',
+                  'Packet Loss': '${qosPacketLoss.toStringAsFixed(1)} %',
+                  'Throughput': '${throughputKbps.toStringAsFixed(2)} KB/s',
                   'Last Update': data['time']?.toString() ?? '-',
                 },
               );
@@ -306,7 +278,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
               icon: Icons.developer_board,
               color: Colors.orange,
               title: 'Rekap ESP32 (Sensor)',
-              subtitle: 'Suhu, Gas, Kelembaban, pH, WiFi, Heap, Uptime',
+              subtitle: 'Suhu, Gas, Kelembaban, WiFi, Heap, Uptime',
               onTap: () {
                 Navigator.pop(ctx);
                 CsvExportHelper.exportKomposterLogs(context);

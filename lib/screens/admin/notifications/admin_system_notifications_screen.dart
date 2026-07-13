@@ -14,6 +14,13 @@ class AdminSystemNotificationsScreen extends StatefulWidget {
   State<AdminSystemNotificationsScreen> createState() => _AdminSystemNotificationsScreenState();
 }
 
+class UnifiedNotification {
+  final DateTime time;
+  final Widget widget;
+  final bool isRead;
+  UnifiedNotification(this.time, this.widget, this.isRead);
+}
+
 class _AdminSystemNotificationsScreenState extends State<AdminSystemNotificationsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   
@@ -31,7 +38,7 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _initStreams();
   }
 
@@ -139,8 +146,7 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
           labelStyle: const TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 13),
           tabs: const [
             Tab(text: 'Sistem'),
-            Tab(text: 'Manajemen'),
-            Tab(text: 'Aktiv. User'),
+            Tab(text: 'Manajemen & Aktivitas'),
           ],
         ),
       ),
@@ -149,7 +155,6 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
         children: [
           _buildSystemTab(),
           _buildManagementTab(),
-          _buildUserActivityTab(),
         ],
       ),
     );
@@ -192,20 +197,48 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
     );
   }
 
+
+
   Widget _buildManagementTab() {
     return StreamBuilder<List<AppNotificationModel>>(
       stream: ManagementNotificationService.getNotifications(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting && _activities.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
 
         final firestoreNotifications = snapshot.data ?? [];
-        firestoreNotifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        
+        List<UnifiedNotification> allItems = [];
+        
+        for (var notif in firestoreNotifications) {
+          allItems.add(UnifiedNotification(
+            notif.createdAt, 
+            _buildAdminNotificationCard(notif), 
+            notif.isRead
+          ));
+        }
+        
+        for (var act in _activities) {
+          final type = act['activity_type'];
+          Widget w = type == 'deposit' ? _buildDepositActivity(act) : _buildRewardActivity(act);
+          
+          final rawTime = act['createdAt'];
+          DateTime time = DateTime.now();
+          if (rawTime is Timestamp) {
+            time = rawTime.toDate();
+          } else if (rawTime is String) {
+            time = DateTime.tryParse(rawTime) ?? time;
+          }
+          
+          allItems.add(UnifiedNotification(time, w, true)); // Aktivitas dianggap sudah dibaca
+        }
 
-        final filtered = firestoreNotifications.where((alert) {
-          if (_mgtFilter == 'Belum Dibaca') return !alert.isRead;
-          if (_mgtFilter == 'Sudah Dibaca') return alert.isRead;
+        allItems.sort((a, b) => b.time.compareTo(a.time));
+
+        final filtered = allItems.where((item) {
+          if (_mgtFilter == 'Belum Dibaca') return !item.isRead;
+          if (_mgtFilter == 'Sudah Dibaca') return item.isRead;
           return true;
         }).toList();
 
@@ -217,38 +250,17 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
             ),
             Expanded(
               child: filtered.isEmpty
-                ? _buildEmptyState('Tidak ada notifikasi baru', Icons.done_all, Colors.grey)
+                ? _buildEmptyState('Tidak ada notifikasi atau aktivitas baru', Icons.done_all, Colors.grey)
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     itemCount: filtered.length,
                     itemBuilder: (context, index) {
-                      return _buildAdminNotificationCard(filtered[index]);
+                      return filtered[index].widget;
                     },
                   ),
             ),
           ],
         );
-      },
-    );
-  }
-
-  Widget _buildUserActivityTab() {
-    if (_activities.isEmpty) {
-      return _buildEmptyState('Belum ada aktivitas user terbaru', Icons.history_toggle_off, Colors.grey);
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      itemCount: _activities.length,
-      itemBuilder: (context, index) {
-        final act = _activities[index];
-        final type = act['activity_type'];
-
-        if (type == 'deposit') {
-          return _buildDepositActivity(act);
-        } else {
-          return _buildRewardActivity(act);
-        }
       },
     );
   }

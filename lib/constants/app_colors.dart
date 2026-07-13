@@ -11,7 +11,6 @@ class AppColors {
   // Sensor
   static const Color temperature = Color(0xFFFF6B35);
   static const Color humidity = Color(0xFF2196F3);
-  static const Color ph = Color(0xFF9C27B0);
   static const Color gas = Color(0xFFE53935);
 
   // Status

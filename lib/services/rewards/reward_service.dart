@@ -43,7 +43,7 @@ class RewardService {
     }
   }
 
-  /// Buat klaim reward baru (tanpa potong poin — SA yang approve)
+  /// Buat klaim reward baru (tanpa potong poin — Admin yang approve)
   static Future<String> createClaim({
     required String userEmail,
     required String userName,

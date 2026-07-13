@@ -111,7 +111,7 @@ class UserNotificationService {
     _sendPushByEmail(email, title: title, message: message);
   }
 
-  /// Peringatan: Klaim hadiah diajukan (menunggu konfirmasi SA)
+  /// Peringatan: Klaim hadiah diajukan (menunggu konfirmasi Admin)
   static Future<void> notifyRewardRedeemed(String email, String rewardName) async {
     await createNotification(
       userEmail: email,

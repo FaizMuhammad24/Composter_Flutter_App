@@ -12,7 +12,6 @@ import '../../../widgets/cards/sensor_card.dart';
 import '../../../widgets/common/loading_shimmer.dart';
 import '../system/admin_category_temperature_screen.dart';
 import '../system/admin_category_humidity_screen.dart';
-import '../system/admin_category_ph_screen.dart';
 import '../system/admin_category_gas_screen.dart';
 import '../../../services/notifications/admin_notification_service.dart';
 import '../../../services/notifications/management_notification_service.dart';
@@ -137,15 +136,13 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
 
         for (var key in recentKeys.reversed) {
           final logs = grouped[key]!;
-          double avgTemp = 0, avgPh = 0, avgHum = 0;
+          double avgTemp = 0, avgHum = 0;
           for (var log in logs) {
             double t = (log['temperature'] as num?)?.toDouble() ?? 0;
-            double p = (log['ph'] as num?)?.toDouble() ?? 0;
             double h = (log['soil'] as num?)?.toDouble() ?? 0;
             
             // Abaikan nilai error (-127 dari DHT22, atau 100/0 untuk pH error)
             if (t > -50 && t < 100) avgTemp += t;
-            if (p > 0 && p < 14) avgPh += p;
             if (h >= 0 && h <= 100) avgHum += h;
           }
 
@@ -179,7 +176,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
             'dateStr': dateStr,
             'hourStr': hourStr,
             'temp': avgTemp / logs.length,
-            'ph': avgPh / logs.length,
             'hum': avgHum / logs.length,
             'samples': logs.length,
           });
@@ -667,14 +663,12 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                 columns: const [
                   DataColumn(label: Text('Waktu', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 12))),
                   DataColumn(label: Text('Suhu', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 12))),
-                  DataColumn(label: Text('pH', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 12))),
                   DataColumn(label: Text('Lembab', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 12))),
                   DataColumn(label: Text('N', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 12))),
                 ],
                 rows: _recapData.map((d) => DataRow(cells: [
                   DataCell(Text('${d['dayName'] ?? '-'}, ${d['dateStr'] ?? '-'}', style: const TextStyle(fontSize: 12, fontFamily: 'Poppins', fontWeight: FontWeight.w600))),
                   DataCell(Text('${(d['temp'] as double).toStringAsFixed(1)}°', style: const TextStyle(fontSize: 12, fontFamily: 'Poppins'))),
-                  DataCell(Text((d['ph'] as double).toStringAsFixed(1), style: const TextStyle(fontSize: 12, fontFamily: 'Poppins'))),
                   DataCell(Text('${(d['hum'] as double).toStringAsFixed(0)}%', style: const TextStyle(fontSize: 12, fontFamily: 'Poppins'))),
                   DataCell(Text('${d['samples']}', style: const TextStyle(fontSize: 12, fontFamily: 'Poppins'))),
                 ])).toList(),
@@ -807,27 +801,14 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
     double screenWidth = MediaQuery.of(context).size.width;
     double spacing = screenWidth * 0.04;
 
-    return Opacity(
-      opacity: isOffline ? 0.6 : 1.0,
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(child: _buildSuhuCard(isOffline)),
-              SizedBox(width: spacing),
-              Expanded(child: _buildKelembabanCard(isOffline)),
-            ],
-          ),
-          SizedBox(height: spacing),
-          Row(
-            children: [
-              Expanded(child: _buildPhCard(isOffline)),
-              SizedBox(width: spacing),
-              Expanded(child: _buildGasCard(isOffline)),
-            ],
-          ),
-        ],
-      ),
+    return Column(
+      children: [
+        _buildSuhuCard(isOffline),
+        SizedBox(height: spacing),
+        _buildKelembabanCard(isOffline),
+        SizedBox(height: spacing),
+        _buildGasCard(isOffline),
+      ],
     );
   }
 
@@ -852,6 +833,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       icon: Icons.thermostat,
       color: AppColors.temperature,
       isActive: !isOffline,
+      isHorizontal: true,
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminCategoryTemperatureScreen())),
     );
   }
@@ -867,22 +849,8 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       icon: Icons.water_drop,
       color: AppColors.humidity,
       isActive: !isOffline,
+      isHorizontal: true,
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminCategoryHumidityScreen())),
-    );
-  }
-
-  Widget _buildPhCard(bool isOffline) {
-    return SensorCard(
-      title: 'pH',
-      value: _sensorData!.isPhHealthy ? _sensorData!.ph.toStringAsFixed(1) : 'Gagal',
-      unit: '',
-      status: isOffline ? 'Terputus' : _sensorData!.phStatus,
-      valuePercent: _sensorData!.ph / 14,
-      targetNote: 'Target SNI: 6.8-7.5',
-      icon: Icons.science,
-      color: AppColors.ph,
-      isActive: !isOffline,
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminCategoryPhScreen())),
     );
   }
 
@@ -897,6 +865,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       icon: Icons.air,
       color: AppColors.gas,
       isActive: !isOffline,
+      isHorizontal: true,
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AdminCategoryGasScreen())),
     );
   }
