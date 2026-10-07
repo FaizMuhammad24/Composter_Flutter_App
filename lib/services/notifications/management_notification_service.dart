@@ -7,25 +7,33 @@ import './push_notification_service.dart';
 class ManagementNotificationService {
   static final _notificationsCol = FirebaseFirestore.instance.collection('notifications');
 
-  /// Stream notifikasi untuk admin
+  /// Stream notifikasi untuk admin (dengan deduplikasi)
   static Stream<List<AppNotificationModel>> getNotifications() {
     return _notificationsCol
         .where('type', whereIn: ['deposit_pending', 'reward_request', 'system_alert'])
         .snapshots()
         .map((snap) {
           final list = snap.docs.map((doc) => AppNotificationModel.fromJson(doc.data())).toList();
-          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return list;
+          
+          // Deduplikasi notifikasi identical
+          final Map<String, AppNotificationModel> uniqueMap = {};
+          for (var item in list) {
+            final minuteKey = '${item.createdAt.year}-${item.createdAt.month}-${item.createdAt.day} ${item.createdAt.hour}:${item.createdAt.minute}';
+            final key = '${item.title}_${item.message}_$minuteKey';
+            if (!uniqueMap.containsKey(key)) {
+              uniqueMap[key] = item;
+            }
+          }
+
+          final result = uniqueMap.values.toList();
+          result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return result;
         });
   }
 
-  /// Stream jumlah notifikasi Admin yang belum dibaca (untuk badge header)
+  /// Stream jumlah notifikasi Admin yang belum dibaca (dengan deduplikasi)
   static Stream<int> getUnreadCountStream() {
-    return _notificationsCol
-        .where('type', whereIn: ['deposit_pending', 'reward_request', 'system_alert'])
-        .where('isRead', isEqualTo: false)
-        .snapshots()
-        .map((snap) => snap.docs.length);
+    return getNotifications().map((list) => list.where((n) => !n.isRead).length);
   }
 
   // ✅ HELPER: Kirim notifikasi ke semua Admin

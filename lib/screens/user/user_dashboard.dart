@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../models/user_model.dart';
 import '../../services/history/history_service.dart';
@@ -10,6 +11,7 @@ import '../../widgets/common/loading_shimmer.dart';
 import '../../services/rewards/reward_service.dart';
 import '../../models/reward_model.dart';
 import 'user_redeem_screen.dart';
+import '../../widgets/common/reward_image.dart';
 
 class UserDashboard extends StatefulWidget {
   final UserModel user;
@@ -32,6 +34,10 @@ class _UserDashboardState extends State<UserDashboard>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
 
+  StreamSubscription? _userSub;
+  StreamSubscription? _historySub;
+  StreamSubscription? _claimsSub;
+
   @override
   void initState() {
     super.initState();
@@ -47,7 +53,42 @@ class _UserDashboardState extends State<UserDashboard>
         Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeOutQuad),
     );
+    _subscribeStreams();
     _loadData();
+  }
+
+  void _subscribeStreams() {
+    _userSub?.cancel();
+    _historySub?.cancel();
+    _claimsSub?.cancel();
+
+    _userSub = UserService.getUserByEmailStream(_currentUser.email).listen((freshUser) {
+      if (freshUser != null && mounted) {
+        setState(() => _currentUser = freshUser);
+      }
+    });
+
+    _historySub = HistoryService.getUserHistoryStream(_currentUser.email).listen((history) {
+      if (!mounted) return;
+      double weightSum = 0;
+      for (var item in history) {
+        if (item.status == 'approved') {
+          weightSum += item.weight;
+        }
+      }
+      setState(() => _totalWeight = weightSum);
+    });
+
+    _claimsSub = RewardService.getUserClaimsStream(_currentUser.email).listen((claims) {
+      if (!mounted) return;
+      int exchangedCount = 0;
+      for (var claim in claims) {
+        if (claim['status'] != 'rejected') {
+          exchangedCount += (claim['quantity'] as int?) ?? 1;
+        }
+      }
+      setState(() => _totalExchanged = exchangedCount);
+    });
   }
 
   Future<void> _loadData() async {
@@ -55,43 +96,13 @@ class _UserDashboardState extends State<UserDashboard>
     _animationController.reset();
 
     try {
-
-      // 1. Reload user data for points
-      final freshUser = await UserService.getUserByEmail(_currentUser.email);
-      if (freshUser != null && mounted) {
-        setState(() => _currentUser = freshUser);
-      }
-
-      // 2. Reload history for total weight
-      final history = await HistoryService.getUserHistory(_currentUser.email);
-      double weightSum = 0;
-      for (var item in history) {
-        if (item.status == 'approved') {
-          weightSum += item.weight;
-        }
-      }
-
-      // 3. Load Popular Rewards
       final rewards = await RewardService.getPopularRewards();
-
-      // 4. Fetch Claims to get _totalExchanged
-      final claims = await RewardService.getUserClaims(_currentUser.email);
-      int exchangedCount = 0;
-      for (var claim in claims) {
-        if (claim['status'] != 'rejected') {
-          exchangedCount += (claim['quantity'] as int?) ?? 1;
-        }
-      }
-
       if (mounted) {
         setState(() {
-          _totalWeight = weightSum;
-          _totalExchanged = exchangedCount;
           _popularRewards = rewards;
         });
       }
     } catch (e) {
-      // Ignore errors for now
       debugPrint('Dashboard load error: $e');
     }
 
@@ -103,6 +114,9 @@ class _UserDashboardState extends State<UserDashboard>
 
   @override
   void dispose() {
+    _userSub?.cancel();
+    _historySub?.cancel();
+    _claimsSub?.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -582,11 +596,10 @@ class _UserDashboardState extends State<UserDashboard>
                 child: ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
                   child: reward.imageUrl.isNotEmpty
-                      ? Image.network(
-                          reward.imageUrl,
+                      ? RewardImage(
+                          imageUrl: reward.imageUrl,
                           fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Icon(icon, size: 50, color: color),
+                          placeholder: Icon(icon, size: 50, color: color),
                         )
                       : Icon(icon, size: 50, color: color),
                 ),

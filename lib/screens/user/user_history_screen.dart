@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
@@ -23,49 +24,70 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
   int _rewardExchangeCount = 0;
   int _currentPoints = 0;
 
+  StreamSubscription? _userSub;
+  StreamSubscription? _historySub;
+  StreamSubscription? _claimsSub;
+
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _subscribeStreams();
   }
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
-    try {
-      // 1. Fetch fresh user data from Firestore (same as dashboard)
-      final freshUser = await UserService.getUserByEmail(widget.user.email);
+  @override
+  void dispose() {
+    _userSub?.cancel();
+    _historySub?.cancel();
+    _claimsSub?.cancel();
+    super.dispose();
+  }
 
-      // 2. Fetch transaction history
-      final history = await HistoryService.getUserHistory(widget.user.email);
+  void _subscribeStreams() {
+    _userSub?.cancel();
+    _historySub?.cancel();
+    _claimsSub?.cancel();
+
+    _userSub = UserService.getUserByEmailStream(widget.user.email).listen((freshUser) {
+      if (freshUser != null && mounted) {
+        setState(() {
+          _currentPoints = freshUser.points ?? 0;
+        });
+      }
+    });
+
+    _historySub = HistoryService.getUserHistoryStream(widget.user.email).listen((history) {
+      if (!mounted) return;
       double weightSum = 0;
       for (var item in history) {
         if (item.status == 'approved') {
           weightSum += item.weight;
         }
       }
+      setState(() {
+        _recentTransactions = history;
+        _totalWeight = weightSum;
+        _isLoading = false;
+      });
+    });
 
-      // 3. Fetch reward claims
-      final claims = await RewardService.getUserClaims(widget.user.email);
+    _claimsSub = RewardService.getUserClaimsStream(widget.user.email).listen((claims) {
+      if (!mounted) return;
       int approvedCount = 0;
       for (var claim in claims) {
         if (claim['status'] != 'rejected') {
           approvedCount += (claim['quantity'] as int?) ?? 1;
         }
       }
+      setState(() {
+        _recentClaims = claims;
+        _rewardExchangeCount = approvedCount;
+        _isLoading = false;
+      });
+    });
+  }
 
-      if (mounted) {
-        setState(() {
-          _currentPoints = freshUser?.points ?? widget.user.points ?? 0;
-          _recentTransactions = history.take(20).toList();
-          _recentClaims = claims.take(20).toList();
-          _totalWeight = weightSum;
-          _rewardExchangeCount = approvedCount;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isLoading = false);
-    }
+  Future<void> _loadData() async {
+    _subscribeStreams();
   }
 
   @override
@@ -200,9 +222,9 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
           title: 'Setor Sampah',
           subtitle: DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(tx.createdAt)),
           mainValueText: '${tx.weight.toStringAsFixed(1)} Kg',
-          pointsText: isApproved ? '+${tx.points} Pts' : null,
+          pointsText: '+${tx.points} Pts',
           status: tx.status,
-          pointsLabel: 'poin ditambahkan',
+          pointsLabel: isApproved ? 'poin ditambahkan' : 'estimasi poin',
         );
       },
     );
@@ -217,15 +239,14 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
       itemCount: _recentClaims.length,
       itemBuilder: (context, index) {
         final claim = _recentClaims[index];
-        final isApproved = claim['status'] == 'approved';
         return _buildTransactionItem(
           icon: Icons.card_giftcard,
           iconColor: Colors.orange,
           title: 'Klaim: ${claim['rewardName']}',
           subtitle: DateFormat('dd MMM yyyy, HH:mm').format(DateTime.parse(claim['createdAt'])),
           mainValueText: '${claim['totalPoints']} Pts',
-          pointsText: isApproved ? null : 'Menunggu Admin',
-          status: claim['status'],
+          pointsText: null,
+          status: claim['status'] ?? 'pending',
           pointsLabel: '',
         );
       },
@@ -283,7 +304,7 @@ class _UserHistoryScreenState extends State<UserHistoryScreen> {
         break;
       default:
         statusColor = Colors.orange;
-        statusLabel = 'Menunggu';
+        statusLabel = 'PENDING';
     }
 
     return Padding(

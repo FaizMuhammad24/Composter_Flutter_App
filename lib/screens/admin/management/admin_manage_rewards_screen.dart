@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../constants/app_colors.dart';
 import '../../../models/reward_model.dart';
 import '../../../services/rewards/reward_service.dart';
+import '../../../widgets/common/reward_image.dart';
 import 'admin_create_reward_screen.dart';
 import 'admin_reward_claims_screen.dart';
 
@@ -254,8 +255,8 @@ class _RewardCatalogTabState extends State<_RewardCatalogTab> {
             height: 56,
             color: catColor.withValues(alpha: 0.1),
             child: reward.imageUrl.isNotEmpty
-                ? Image.network(reward.imageUrl, fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Icon(Icons.card_giftcard, color: catColor, size: 28))
+                ? RewardImage(imageUrl: reward.imageUrl, fit: BoxFit.cover,
+                    placeholder: Icon(Icons.card_giftcard, color: catColor, size: 28))
                 : Icon(Icons.card_giftcard, color: catColor, size: 28),
           ),
         ),

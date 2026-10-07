@@ -25,10 +25,96 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
   int _poinDidapat = 0;
   bool _isSubmitting = false;
 
+  // Tanggal & Waktu Setor (Default: Real-time Sekarang)
+  DateTime _selectedDateTime = DateTime.now();
+  bool _isCustomDate = false;
+
   @override
   void dispose() {
     _weightController.dispose();
     super.dispose();
+  }
+
+  String _formatDateTimeDisplay(DateTime dt) {
+    const days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+    final dayName = days[dt.weekday - 1];
+    final monthName = months[dt.month - 1];
+    final timeStr = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    return '$dayName, ${dt.day} $monthName ${dt.year} • $timeStr WIB';
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDateTime,
+      firstDate: DateTime(2024),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDateTime = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          _selectedDateTime.hour,
+          _selectedDateTime.minute,
+        );
+        _isCustomDate = true;
+      });
+    }
+  }
+
+  Future<void> _selectTime(BuildContext context) async {
+    final TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_selectedDateTime),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: AppColors.primary,
+              onPrimary: Colors.white,
+              onSurface: Colors.black87,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null) {
+      setState(() {
+        _selectedDateTime = DateTime(
+          _selectedDateTime.year,
+          _selectedDateTime.month,
+          _selectedDateTime.day,
+          picked.hour,
+          picked.minute,
+        );
+        _isCustomDate = true;
+      });
+    }
+  }
+
+  void _resetToCurrentTime() {
+    setState(() {
+      _selectedDateTime = DateTime.now();
+      _isCustomDate = false;
+    });
   }
 
   void _calculatePoints(String value) {
@@ -128,6 +214,8 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
           children: [
             Text('Berat: ${_weightController.text} kg', style: const TextStyle(fontFamily: 'Poppins')),
             Text('Estimasi Poin: $_poinDidapat Pts', style: const TextStyle(fontFamily: 'Poppins')),
+            const SizedBox(height: 6),
+            Text('Waktu Setor: ${_formatDateTimeDisplay(_selectedDateTime)}', style: const TextStyle(fontFamily: 'Poppins', fontSize: 12, color: Colors.black87)),
             const SizedBox(height: 12),
             const Text(
               'Catatan: Setoran akan diproses dengan status "Pending" dan poin akan ditambahkan setelah disetujui Admin.',
@@ -174,6 +262,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
         userEmail: widget.userEmail,
         weight: double.parse(_weightController.text),
         imageUrl: imageUrlsJoined,
+        customDate: _selectedDateTime,
       );
 
       if (result['success']) {
@@ -219,7 +308,7 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
             const Text('Berhasil!', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
             const SizedBox(height: 8),
             const Text(
-              'Sampah berhasil diajukan. Status setoran saat ini "PENDING". Poin akan ditambahkan ke saldo Anda setelah disetujui oleh Admin.',
+              'Sampah berhasil diajukan. Status setoran saat ini "PENDING". Poin akan ditambahkan ke poin Anda setelah disetujui oleh Admin.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey, fontFamily: 'Poppins', fontSize: 13),
             ),
@@ -362,7 +451,114 @@ class _UserDepositScreenState extends State<UserDepositScreen> {
                     const SizedBox(height: 8),
                     Text('1 kg = 10 Pts', style: TextStyle(color: Colors.grey[600], fontSize: 12, fontFamily: 'Poppins')),
 
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+
+                    // WAKTU SETOR SECTION
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Waktu Setor Sampah', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _isCustomDate ? Colors.orange.withValues(alpha: 0.1) : Colors.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _isCustomDate ? Colors.orange : Colors.green, width: 0.8),
+                          ),
+                          child: Text(
+                            _isCustomDate ? 'Manual' : 'Otomatis (Sekarang)',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: _isCustomDate ? Colors.orange[800] : Colors.green[800],
+                              fontFamily: 'Poppins',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[50],
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: Colors.grey[200]!),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.event_note_rounded, color: AppColors.primary, size: 24),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _formatDateTimeDisplay(_selectedDateTime),
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, fontFamily: 'Poppins'),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _isCustomDate ? 'Tanggal disesuaikan manual' : 'Menggunakan waktu saat ini secara otomatis',
+                                      style: TextStyle(fontSize: 11, color: Colors.grey[600], fontFamily: 'Poppins'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _isSubmitting ? null : () => _selectDate(context),
+                                  icon: const Icon(Icons.calendar_month, size: 16, color: AppColors.primary),
+                                  label: const Text('Ubah Tanggal', style: TextStyle(fontSize: 12, fontFamily: 'Poppins', color: AppColors.primary)),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: AppColors.primary),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: _isSubmitting ? null : () => _selectTime(context),
+                                  icon: const Icon(Icons.access_time_rounded, size: 16, color: AppColors.primary),
+                                  label: const Text('Ubah Jam', style: TextStyle(fontSize: 12, fontFamily: 'Poppins', color: AppColors.primary)),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: AppColors.primary),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                  ),
+                                ),
+                              ),
+                              if (_isCustomDate) ...[
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  onPressed: _isSubmitting ? null : _resetToCurrentTime,
+                                  icon: const Icon(Icons.refresh_rounded, color: Colors.grey),
+                                  tooltip: 'Reset ke Waktu Sekarang',
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
 
                     // PHOTO SECTION
                     const Text('Foto Bukti', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),

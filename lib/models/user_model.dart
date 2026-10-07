@@ -21,6 +21,10 @@ class UserModel {
   bool get isAdmin => role == 'admin';
   bool get isUser => role == 'user';
 
+  // Ambil username dari pseudo-email (mis. "budi@icompost.app" → "budi")
+  String get username => email.contains('@') ? email.split('@').first : email;
+
+
   // Convert dari Map/JSON
   factory UserModel.fromJson(Map<String, dynamic> json) {
     return UserModel(

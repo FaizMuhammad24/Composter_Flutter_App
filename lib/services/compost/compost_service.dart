@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../models/compost_model.dart';
-import '../notifications/user_notification_service.dart';
 
 class CompostService {
 
@@ -14,6 +13,7 @@ class CompostService {
     required String userEmail,
     required double weight,
     required String imageUrl,
+    DateTime? customDate,
   }) async {
 
     try {
@@ -22,27 +22,26 @@ class CompostService {
         return {'success': false, 'message': 'User tidak ditemukan'};
       }
       
+      final userData = users.docs.first.data();
+      final String userName = userData['name']?.toString() ?? (userEmail.contains('@') ? userEmail.split('@').first : userEmail);
+
       int points = calculatePoints(weight);
 
       var compostRef = FirebaseFirestore.instance.collection('composts').doc();
+      final String createdAtStr = (customDate ?? DateTime.now()).toIso8601String();
+      
       var compost = {
         'id': compostRef.id,
         'userEmail': userEmail,
+        'userName': userName,
         'weight': weight,
         'points': points,
         'imageUrl': imageUrl,
-        'createdAt': DateTime.now().toIso8601String(),
+        'createdAt': createdAtStr,
         'status': 'pending',
       };
       
       await compostRef.set(compost);
-
-      // Notify user via UserNotificationService (which translates to firestore doc and local push)
-      try {
-        await UserNotificationService.notifyDepositPending(userEmail, weight);
-      } catch (e) {
-        // ignore errors
-      }
 
       // Poin HANYA ditambahkan setelah Admin menyetujui (ACC)
       // PointsService.addUserPoints dipanggil di Admin approval logic

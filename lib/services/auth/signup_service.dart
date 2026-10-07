@@ -1,24 +1,21 @@
-import 'dart:math';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
-import 'emailjs_service.dart';
 
 class SignupService {
   static Future<Map<String, dynamic>> signUpUser({
     required String name,
-    required String email,
+    required String username,
     required String password,
     required String confirmPassword,
   }) async {
-    email = email.toLowerCase().trim();
+    username = username.toLowerCase().replaceAll(RegExp(r'[\s@]+'), '').trim();
+    String email = '$username@icompost.app';
 
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+    if (name.isEmpty || username.isEmpty || password.isEmpty) {
       return {'success': false, 'message': 'Semua field harus diisi'};
     }
-    if (!email.contains('@')) {
-      return {'success': false, 'message': 'Format email tidak valid'};
-    }
+    // Hapus validasi email (tidak perlu mengandung '@')
     if (password.length < 6) {
       return {'success': false, 'message': 'Password minimal 6 karakter'};
     }
@@ -27,26 +24,11 @@ class SignupService {
     }
 
     try {
-      // Buat OTP 6 digit
-      String otpCode = (100000 + Random().nextInt(900000)).toString();
-
-      // Kirim email via EmailJS
-      bool emailSent = await EmailJSService.sendOtpEmail(email, otpCode);
-
-      if (emailSent) {
-        return {
-          'success': true,
-          'message': 'OTP berhasil dikirim',
-          'otp': otpCode,
-          'userData': {
-            'name': name,
-            'email': email,
-            'password': password,
-          }
-        };
-      } else {
-        return {'success': false, 'message': 'Gagal mengirim email OTP. Silakan coba lagi.'};
-      }
+      return await finalizeSignup({
+        'name': name,
+        'email': email,
+        'password': password,
+      });
     } catch (e) {
       return {'success': false, 'message': 'Terjadi kesalahan sistem: $e'};
     }
@@ -99,7 +81,10 @@ class SignupService {
       }
     } on FirebaseAuthException catch (e) {
       if (e.code == 'email-already-in-use') {
-        return {'success': false, 'message': 'Email sudah terdaftar'};
+        return {'success': false, 'message': 'Username sudah digunakan'};
+      }
+      if (e.code == 'invalid-email') {
+        return {'success': false, 'message': 'Format username tidak valid (jangan gunakan karakter aneh)'};
       }
       return {'success': false, 'message': e.message ?? 'Gagal mendaftar'};
     } catch (e) {

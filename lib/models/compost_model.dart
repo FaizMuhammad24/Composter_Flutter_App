@@ -1,6 +1,7 @@
 class CompostModel {
   final String id;
   final String userEmail;
+  final String userName;
   final double weight;
   final int points;
   final String imageUrl;
@@ -10,6 +11,7 @@ class CompostModel {
   CompostModel({
     required this.id,
     required this.userEmail,
+    this.userName = '',
     required this.weight,
     required this.points,
     required this.imageUrl,
@@ -21,6 +23,7 @@ class CompostModel {
     return CompostModel(
       id: json['id'] ?? '',
       userEmail: json['userEmail'] ?? '',
+      userName: json['userName'] ?? '',
       weight: (json['weight'] as num?)?.toDouble() ?? 0.0,
       points: json['points'] ?? 0,
       imageUrl: json['imageUrl'] ?? '',
@@ -33,6 +36,7 @@ class CompostModel {
     return {
       'id': id,
       'userEmail': userEmail,
+      'userName': userName,
       'weight': weight,
       'points': points,
       'imageUrl': imageUrl,

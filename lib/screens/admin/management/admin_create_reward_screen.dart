@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../constants/app_colors.dart';
 import '../../../models/reward_model.dart';
 import '../../../services/rewards/reward_service.dart';
@@ -17,9 +21,15 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
   final _descCtrl = TextEditingController();
   final _categoryCtrl = TextEditingController();
   final _pointsCtrl = TextEditingController();
-  final _imageCtrl = TextEditingController();
   bool _isLoading = false;
   bool get _isEditMode => widget.existingReward != null;
+
+  // Image state
+  File? _pickedFile;
+  Uint8List? _pickedBytes;
+  String _existingImageUrl = ''; // Untuk edit mode (base64 atau URL lama)
+
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -30,7 +40,7 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
       _descCtrl.text = r.description;
       _categoryCtrl.text = r.category;
       _pointsCtrl.text = r.points.toString();
-      _imageCtrl.text = r.imageUrl;
+      _existingImageUrl = r.imageUrl;
     }
   }
 
@@ -40,14 +50,142 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
     _descCtrl.dispose();
     _categoryCtrl.dispose();
     _pointsCtrl.dispose();
-    _imageCtrl.dispose();
     super.dispose();
   }
 
+  // ============================================================
+  //  Pilih gambar dari Galeri atau Kamera
+  // ============================================================
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 600,
+        maxHeight: 600,
+        imageQuality: 70,
+      );
+      if (picked != null) {
+        final bytes = await picked.readAsBytes();
+        setState(() {
+          _pickedFile = File(picked.path);
+          _pickedBytes = bytes;
+          _existingImageUrl = ''; // Clear old image
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memilih gambar: $e'), backgroundColor: Colors.red[700]),
+        );
+      }
+    }
+  }
+
+  void _showImagePickerSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Pilih Sumber Gambar',
+                style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.photo_library, color: Colors.blue[700]),
+                ),
+                title: const Text('Galeri', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+                subtitle: const Text('Pilih dari galeri foto', style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.green[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.camera_alt, color: Colors.green[700]),
+                ),
+                title: const Text('Kamera', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+                subtitle: const Text('Ambil foto langsung', style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              if (_pickedFile != null || _existingImageUrl.isNotEmpty)
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.delete_outline, color: Colors.red[700]),
+                  ),
+                  title: const Text('Hapus Gambar', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.w600)),
+                  subtitle: const Text('Hapus gambar yang dipilih', style: TextStyle(fontFamily: 'Poppins', fontSize: 12)),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    setState(() {
+                      _pickedFile = null;
+                      _pickedBytes = null;
+                      _existingImageUrl = '';
+                    });
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ============================================================
+  //  Konversi gambar ke base64 data URI
+  // ============================================================
+  String _getImageDataUri() {
+    if (_pickedBytes != null) {
+      final base64Str = base64Encode(_pickedBytes!);
+      return 'data:image/jpeg;base64,$base64Str';
+    }
+    return _existingImageUrl;
+  }
+
+  // ============================================================
+  //  Simpan
+  // ============================================================
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     await Future.delayed(const Duration(milliseconds: 800));
+
+    final imageUrl = _getImageDataUri();
 
     if (_isEditMode) {
       final updated = widget.existingReward!.copyWith(
@@ -55,7 +193,7 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
         description: _descCtrl.text.trim(),
         category: _categoryCtrl.text.trim(),
         points: int.parse(_pointsCtrl.text.trim()),
-        imageUrl: _imageCtrl.text.trim(),
+        imageUrl: imageUrl,
       );
       RewardService.updateReward(updated);
     } else {
@@ -64,7 +202,7 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
         description: _descCtrl.text.trim(),
         category: _categoryCtrl.text.trim(),
         points: int.parse(_pointsCtrl.text.trim()),
-        imageUrl: _imageCtrl.text.trim(),
+        imageUrl: imageUrl,
       );
     }
 
@@ -145,8 +283,8 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image Preview
-              _buildImagePreview(),
+              // Image Upload Area
+              _buildImageUploadArea(),
               const SizedBox(height: 20),
               _buildCard([
                 _buildLabel('Nama Reward'),
@@ -190,16 +328,6 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
                   },
                 ),
               ]),
-              const SizedBox(height: 16),
-              _buildCard([
-                _buildLabel('URL Gambar'),
-                _buildField(
-                  controller: _imageCtrl,
-                  hint: 'https://example.com/image.jpg',
-                  icon: Icons.image_outlined,
-                  onChanged: (_) => setState(() {}),
-                ),
-              ]),
               const SizedBox(height: 28),
               SizedBox(
                 width: double.infinity,
@@ -231,36 +359,111 @@ class _CreateRewardScreenState extends State<CreateRewardScreen> {
     );
   }
 
-  Widget _buildImagePreview() {
-    final url = _imageCtrl.text.trim();
+  // ============================================================
+  //  Widget: Area Upload Gambar (menggantikan kolom URL)
+  // ============================================================
+  Widget _buildImageUploadArea() {
+    final bool hasPickedImage = _pickedBytes != null;
+    final bool hasExistingImage = _existingImageUrl.isNotEmpty;
+    final bool hasImage = hasPickedImage || hasExistingImage;
+
     return Center(
-      child: Container(
-        width: 120,
-        height: 120,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.adminPrimary.withValues(alpha: 0.3), width: 2),
-          boxShadow: [BoxShadow(color: AppColors.adminPrimary.withValues(alpha: 0.1), blurRadius: 12)],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: url.isNotEmpty
-              ? Image.network(
-                  url,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, size: 40, color: Colors.grey),
-                )
-              : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.image_outlined, size: 36, color: Colors.grey[400]),
-                    const SizedBox(height: 4),
-                    Text('Preview', style: TextStyle(fontSize: 11, color: Colors.grey[400], fontFamily: 'Poppins')),
-                  ],
+      child: GestureDetector(
+        onTap: _showImagePickerSheet,
+        child: Container(
+          width: 150,
+          height: 150,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: hasImage
+                  ? AppColors.adminPrimary.withValues(alpha: 0.5)
+                  : Colors.grey.withValues(alpha: 0.3),
+              width: 2,
+              strokeAlign: BorderSide.strokeAlignInside,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.adminPrimary.withValues(alpha: 0.1),
+                blurRadius: 12,
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Gambar
+                if (hasPickedImage)
+                  Image.memory(_pickedBytes!, fit: BoxFit.cover)
+                else if (hasExistingImage && _existingImageUrl.startsWith('data:'))
+                  Image.memory(
+                    base64Decode(_existingImageUrl.split(',').last),
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                  )
+                else if (hasExistingImage)
+                  Image.network(
+                    _existingImageUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildPlaceholder(),
+                  )
+                else
+                  _buildPlaceholder(),
+
+                // Overlay edit icon
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          Colors.black.withValues(alpha: 0.6),
+                          Colors.transparent,
+                        ],
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.camera_alt, size: 14, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text(
+                          hasImage ? 'Ganti Foto' : 'Upload Foto',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontFamily: 'Poppins',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
+              ],
+            ),
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPlaceholder() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.add_photo_alternate_outlined, size: 40, color: Colors.grey[400]),
+        const SizedBox(height: 4),
+        Text('Tambah Foto', style: TextStyle(fontSize: 11, color: Colors.grey[400], fontFamily: 'Poppins')),
+      ],
     );
   }
 

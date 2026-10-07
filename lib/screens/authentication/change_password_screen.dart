@@ -2,23 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../constants/app_colors.dart';
 
-class ResetPasswordScreen extends StatefulWidget {
+class ChangePasswordScreen extends StatefulWidget {
   final String? username;
-  const ResetPasswordScreen({Key? key, this.username}) : super(key: key);
+  const ChangePasswordScreen({Key? key, this.username}) : super(key: key);
 
   @override
-  State<ResetPasswordScreen> createState() => _ResetPasswordScreenState();
+  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
 }
 
-class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
+class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _usernameController;
-  final _currentPasswordController = TextEditingController();
+  final _oldPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   
   bool _isLoading = false;
-  bool _obscureCurrent = true;
+  bool _obscureOld = true;
   bool _obscureNew = true;
   bool _obscureConfirm = true;
 
@@ -31,34 +31,32 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   void dispose() {
     _usernameController.dispose();
-    _currentPasswordController.dispose();
+    _oldPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  void _handleReset() async {
+  void _handleChangePassword() async {
     if (!_formKey.currentState!.validate()) return;
     
     setState(() => _isLoading = true);
     
     try {
-      final email = '${_usernameController.text.trim()}@icompost.app';
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) throw Exception("Tidak ada pengguna yang sedang login.");
       
-      // 1. Sign in with current credentials to verify and get the user
-      UserCredential userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      // Re-authenticate user first using their pseudo-email
+      final email = '${_usernameController.text.trim()}@icompost.app';
+      AuthCredential credential = EmailAuthProvider.credential(
         email: email,
-        password: _currentPasswordController.text,
+        password: _oldPasswordController.text,
       );
       
-      User? user = userCredential.user;
-      if (user == null) throw Exception("Gagal mengautentikasi pengguna.");
+      await user.reauthenticateWithCredential(credential);
       
-      // 2. Update password
+      // Update password
       await user.updatePassword(_newPasswordController.text);
-      
-      // 3. Sign out again since this is from the outside screen
-      await FirebaseAuth.instance.signOut();
       
       if (!mounted) return;
       
@@ -81,7 +79,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               const Text('Berhasil!', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
               const SizedBox(height: 8),
               const Text(
-                'Kata sandi Anda telah berhasil diubah. Silakan masuk kembali menggunakan kata sandi baru.',
+                'Kata sandi Anda telah berhasil diubah.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey, fontFamily: 'Poppins', fontSize: 13, height: 1.5),
               ),
@@ -91,7 +89,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 child: ElevatedButton(
                   onPressed: () {
                     Navigator.pop(context); // Tutup Dialog
-                    Navigator.pop(context); // Kembali ke Login
+                    Navigator.pop(context); // Kembali ke Profile
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -108,8 +106,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       
     } on FirebaseAuthException catch (e) {
       String message = 'Terjadi kesalahan saat mengubah kata sandi.';
-      if (e.code == 'user-not-found' || e.code == 'wrong-password' || e.code == 'invalid-credential') {
-        message = 'Username atau Password Sekarang yang Anda masukkan salah.';
+      if (e.code == 'wrong-password' || e.code == 'invalid-credential') {
+        message = 'Kata sandi sekarang yang Anda masukkan salah.';
       } else if (e.code == 'weak-password') {
         message = 'Kata sandi baru terlalu lemah (minimal 6 karakter).';
       }
@@ -161,13 +159,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         const Text(
-                          'Perbarui Kata Sandi',
+                          'Amankan Akun Anda',
                           style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Masukkan Username, Password saat ini, lalu buat Password Baru.',
+                          'Silakan masukkan kata sandi lama Anda untuk memverifikasi, lalu buat kata sandi yang baru.',
                           style: TextStyle(fontSize: 14, color: Colors.grey[600], fontFamily: 'Poppins', height: 1.5),
                           textAlign: TextAlign.center,
                         ),
@@ -178,16 +176,17 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                           hint: 'Username',
                           icon: Icons.person_outline,
                           obscureText: false,
+                          enabled: false, // Read only di profile
                           validator: (value) => (value == null || value.isEmpty) ? 'Username tidak boleh kosong' : null,
                         ),
                         const SizedBox(height: 16),
 
                         _buildTextField(
-                          controller: _currentPasswordController,
+                          controller: _oldPasswordController,
                           hint: 'Password Sekarang',
                           icon: Icons.lock_outline,
-                          obscureText: _obscureCurrent,
-                          onVisibilityToggle: () => setState(() => _obscureCurrent = !_obscureCurrent),
+                          obscureText: _obscureOld,
+                          onVisibilityToggle: () => setState(() => _obscureOld = !_obscureOld),
                           validator: (value) => (value == null || value.isEmpty) ? 'Password sekarang tidak boleh kosong' : null,
                         ),
                         const SizedBox(height: 16),
@@ -224,7 +223,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                         SizedBox(
                           height: 56,
                           child: ElevatedButton(
-                            onPressed: _isLoading ? null : _handleReset,
+                            onPressed: _isLoading ? null : _handleChangePassword,
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppColors.primary,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
@@ -257,6 +256,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     required String hint,
     required IconData icon,
     required bool obscureText,
+    bool enabled = true,
     VoidCallback? onVisibilityToggle,
     String? Function(String?)? validator,
   }) {
@@ -275,7 +275,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         controller: controller,
         obscureText: obscureText,
         validator: validator,
-        style: const TextStyle(fontSize: 15, fontFamily: 'Poppins'),
+        enabled: enabled,
+        style: TextStyle(fontSize: 15, fontFamily: 'Poppins', color: enabled ? Colors.black : Colors.grey[600]),
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(color: Colors.grey[400], fontSize: 14, fontFamily: 'Poppins'),
@@ -291,10 +292,11 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               )
             : null,
           filled: true,
-          fillColor: Colors.white,
+          fillColor: enabled ? Colors.white : Colors.grey[100],
           contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: BorderSide.none),
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: BorderSide.none),
+          disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(28), borderSide: BorderSide.none),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(28),
             borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.5), width: 1.5),

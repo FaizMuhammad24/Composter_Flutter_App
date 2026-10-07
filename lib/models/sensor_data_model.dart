@@ -19,11 +19,11 @@ class SensorDataModel {
     required this.humidity,
     required this.mq4,
     required this.timestamp,
-    this.tempMin = 25.0,
-    this.tempMax = 35.0,
-    this.soilMin = 40.0,
-    this.soilMax = 50.0,
-    this.gasMax = 50.0,
+    this.tempMin = 28.0,
+    this.tempMax = 33.0,
+    this.soilMin = 25.0,
+    this.soilMax = 85.0,
+    this.gasMax = 100.0,
   });
 
   // ==================== FROM JSON ====================
@@ -38,11 +38,11 @@ class SensorDataModel {
       humidity:    (json['soil'] as num?)?.toDouble() ?? 0.0,
       mq4:         (json['gas'] as num?)?.toInt() ?? 0,
       timestamp:   DateTime.now(),
-      tempMin: (tempTh?['min'] as num?)?.toDouble() ?? 25.0,
-      tempMax: (tempTh?['max'] as num?)?.toDouble() ?? 35.0,
-      soilMin: (soilTh?['min'] as num?)?.toDouble() ?? 40.0,
-      soilMax: (soilTh?['max'] as num?)?.toDouble() ?? 50.0,
-      gasMax:  (gasTh?['max'] as num?)?.toDouble() ?? 50.0,
+      tempMin: (tempTh?['min'] as num?)?.toDouble() ?? 28.0,
+      tempMax: (tempTh?['max'] as num?)?.toDouble() ?? 33.0,
+      soilMin: (soilTh?['min'] as num?)?.toDouble() ?? 25.0,
+      soilMax: (soilTh?['max'] as num?)?.toDouble() ?? 85.0,
+      gasMax:  (gasTh?['max'] as num?)?.toDouble() ?? 100.0,
     );
   }
 

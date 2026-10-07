@@ -6,6 +6,7 @@ import '../../services/notifications/user_notification_service.dart';
 import '../../services/notifications/management_notification_service.dart';
 import '../../services/user/points_service.dart';
 import '../../models/user_model.dart';
+import '../../widgets/common/reward_image.dart';
 
 class UserRedeemScreen extends StatefulWidget {
   final String userEmail;
@@ -244,15 +245,17 @@ class _UserRedeemScreenState extends State<UserRedeemScreen> {
                         if (widget.imageUrl.isNotEmpty)
                           ClipRRect(
                             borderRadius: BorderRadius.circular(20),
-                            child: Image.network(
-                              widget.imageUrl,
+                            child: SizedBox(
                               height: 120,
                               width: 120,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(color: widget.color.withValues(alpha: 0.15), shape: BoxShape.circle),
-                                child: Icon(widget.icon, size: 80, color: widget.color),
+                              child: RewardImage(
+                                imageUrl: widget.imageUrl,
+                                fit: BoxFit.cover,
+                                placeholder: Container(
+                                  padding: const EdgeInsets.all(24),
+                                  decoration: BoxDecoration(color: widget.color.withValues(alpha: 0.1), shape: BoxShape.circle),
+                                  child: Icon(widget.icon, size: 60, color: widget.color),
+                                ),
                               ),
                             ),
                           )

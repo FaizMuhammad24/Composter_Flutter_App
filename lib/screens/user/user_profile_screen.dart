@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../authentication/login_screen.dart';
-import '../authentication/reset_password_screen.dart';
+import '../authentication/change_password_screen.dart';
 import '../../services/auth/session_service.dart';
 import '../../services/history/history_service.dart';
 import '../../services/rewards/reward_service.dart';
 import '../../services/user/user_service.dart';
+import '../credits_screen.dart';
 
 class UserProfileScreen extends StatefulWidget {
   final UserModel user;
@@ -92,7 +93,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
               ),
               child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
+                physics: const ClampingScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(24, 28, 24, 120),
                 child: Column(
                   children: [
@@ -109,7 +110,22 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       onTap: () => Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (_) => ResetPasswordScreen(email: user.email),
+                          builder: (_) => ChangePasswordScreen(username: user.username),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Menu: Kredit Aplikasi
+                    _buildMenuTile(
+                      icon: Icons.info_outline_rounded,
+                      title: 'Kredit Aplikasi',
+                      subtitle: 'Tim Pengembang & Apresiasi Dosen PNJ',
+                      color: AppColors.primary,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const CreditsScreen(isAdmin: false),
                         ),
                       ),
                     ),

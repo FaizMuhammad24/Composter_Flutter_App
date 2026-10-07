@@ -3,6 +3,17 @@ import '../../models/compost_model.dart';
 
 class HistoryService {
 
+  static Stream<List<CompostModel>> getUserHistoryStream(String userEmail) {
+    return FirebaseFirestore.instance.collection('composts')
+      .where('userEmail', isEqualTo: userEmail)
+      .snapshots()
+      .map((snap) {
+        var list = snap.docs.map((c) => CompostModel.fromJson(c.data())).toList();
+        list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        return list;
+      });
+  }
+
   static Future<List<CompostModel>> getUserHistory(String userEmail) async {
     var snap = await FirebaseFirestore.instance.collection('composts')
       .where('userEmail', isEqualTo: userEmail)

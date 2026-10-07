@@ -60,15 +60,26 @@ class UserNotificationService {
     await _plugin.show(id: DateTime.now().microsecondsSinceEpoch.remainder(2147483647), title: title, body: body, notificationDetails: const NotificationDetails(android: androidDetails));
   }
 
-  /// Stream notifikasi untuk user tertentu
+  /// Stream notifikasi untuk user tertentu (dengan deduplikasi)
   static Stream<List<AppNotificationModel>> getNotifications(String email) {
     return _notificationsCol
         .where('userEmail', isEqualTo: email)
         .snapshots()
         .map((snap) {
           final list = snap.docs.map((doc) => AppNotificationModel.fromJson(doc.data())).toList();
-          list.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-          return list;
+          
+          final Map<String, AppNotificationModel> uniqueMap = {};
+          for (var item in list) {
+            final minuteKey = '${item.createdAt.year}-${item.createdAt.month}-${item.createdAt.day} ${item.createdAt.hour}:${item.createdAt.minute}';
+            final key = '${item.title}_${item.message}_$minuteKey';
+            if (!uniqueMap.containsKey(key)) {
+              uniqueMap[key] = item;
+            }
+          }
+
+          final result = uniqueMap.values.toList();
+          result.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          return result;
         });
   }
 

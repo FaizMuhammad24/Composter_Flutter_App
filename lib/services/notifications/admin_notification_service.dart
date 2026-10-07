@@ -244,11 +244,11 @@ class AdminNotificationService {
       final soilTh = thresholds?['soil'] as Map?;
       final gasTh = thresholds?['gas'] as Map?;
 
-      final tempMin = (tempTh?['min'] as num?)?.toDouble() ?? 25.0;
-      final tempMax = (tempTh?['max'] as num?)?.toDouble() ?? 35.0;
-      final soilMin = (soilTh?['min'] as num?)?.toDouble() ?? 40.0;
-      final soilMax = (soilTh?['max'] as num?)?.toDouble() ?? 50.0;
-      final gasMax  = (gasTh?['max'] as num?)?.toDouble() ?? 50.0;
+      final tempMin = (tempTh?['min'] as num?)?.toDouble() ?? 28.0;
+      final tempMax = (tempTh?['max'] as num?)?.toDouble() ?? 33.0;
+      final soilMin = (soilTh?['min'] as num?)?.toDouble() ?? 25.0;
+      final soilMax = (soilTh?['max'] as num?)?.toDouble() ?? 85.0;
+      final gasMax  = (gasTh?['max'] as num?)?.toDouble() ?? 100.0;
 
       _check('temp_failed', temp < 0, 'SENSOR SUHU TIDAK TERBACA', 'Data suhu tidak valid. Cek koneksi sensor.', 'danger');
       _check('soil_failed', soil < 0, 'SENSOR KELEMBABAN TIDAK TERBACA', 'Data kelembaban tidak valid. Cek koneksi sensor.', 'danger');

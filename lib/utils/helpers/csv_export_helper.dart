@@ -3,7 +3,9 @@ import 'dart:typed_data';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:file_saver/file_saver.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 
 class CsvExportHelper {
@@ -16,51 +18,60 @@ class CsvExportHelper {
     List<int> bytes,
   ) async {
     try {
-      // Minta izin storage (diperlukan untuk Android < 10)
-      if (Platform.isAndroid) {
-        // Coba cek versi Android
-        final sdkInt = await _getAndroidSdkInt();
-
-        if (sdkInt != null && sdkInt >= 30) {
-          // Android 11+ : gunakan manageExternalStorage
-          var status = await Permission.manageExternalStorage.status;
-          if (!status.isGranted) {
-            status = await Permission.manageExternalStorage.request();
-          }
-          if (!status.isGranted) {
-            // Fallback: coba langsung tanpa izin khusus (MediaStore)
-          }
-        } else {
-          // Android < 11 : minta storage biasa
-          var status = await Permission.storage.status;
-          if (!status.isGranted) {
-            status = await Permission.storage.request();
-          }
-        }
+      String cleanName = fileName;
+      if (cleanName.endsWith('.csv')) {
+        cleanName = cleanName.substring(0, cleanName.length - 4);
       }
 
-      // Tulis langsung ke folder Download
-      const downloadsPath = '/storage/emulated/0/Download';
-      final downloadsDir = Directory(downloadsPath);
+      // 1. Simpan ke folder temp agar bisa dibuka langsung
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$cleanName.csv');
+      await tempFile.writeAsBytes(bytes);
 
-      if (!await downloadsDir.exists()) {
-        await downloadsDir.create(recursive: true);
-      }
+      // 2. Simpan ke folder Download
+      final String savedPath = await FileSaver.instance.saveFile(
+        name: cleanName,
+        bytes: Uint8List.fromList(bytes),
+        fileExtension: 'csv',
+        mimeType: MimeType.csv,
+      );
 
-      final filePath = '$downloadsPath/$fileName';
-      final file = File(filePath);
-      await file.writeAsBytes(bytes);
+      if (!context.mounted) return false;
 
-      if (context.mounted) {
+      if (savedPath.isNotEmpty) {
+        // Tampilkan SnackBar dengan tombol "Buka"
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Tersimpan di folder Download: $fileName'),
-            duration: const Duration(seconds: 4),
+            content: const Text('✅ CSV berhasil disimpan ke Downloads'),
+            duration: const Duration(seconds: 5),
             backgroundColor: Colors.green[700],
+            action: SnackBarAction(
+              label: 'BUKA',
+              textColor: Colors.white,
+              onPressed: () async {
+                final result = await OpenFile.open(tempFile.path);
+                if (result.type != ResultType.done && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Tidak ada aplikasi untuk membuka CSV. Install Google Sheets atau WPS Office.'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                }
+              },
+            ),
           ),
         );
+        return true;
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('❌ Penyimpanan dibatalkan atau gagal'),
+            backgroundColor: Colors.red[700],
+          ),
+        );
+        return false;
       }
-      return true;
     } catch (e) {
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -71,16 +82,6 @@ class CsvExportHelper {
         );
       }
       return false;
-    }
-  }
-
-  static Future<int?> _getAndroidSdkInt() async {
-    try {
-      // Baca dari system property
-      final result = await Process.run('getprop', ['ro.build.version.sdk']);
-      return int.tryParse(result.stdout.toString().trim());
-    } catch (_) {
-      return null;
     }
   }
 

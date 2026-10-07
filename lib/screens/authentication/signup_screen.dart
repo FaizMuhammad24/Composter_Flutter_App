@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../services/auth/signup_service.dart';
-import 'otp_verification_screen.dart';
+import 'splash_screen.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({Key? key}) : super(key: key);
@@ -13,7 +13,7 @@ class SignUpScreen extends StatefulWidget {
 class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _retypePasswordController = TextEditingController();
   bool _isLoading = false;
@@ -57,7 +57,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
   void dispose() {
     _animationController.dispose();
     _nameController.dispose();
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     _retypePasswordController.dispose();
     super.dispose();
@@ -69,7 +69,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     if (!_agreeTerms) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please agree to Terms & Privacy'),
+          content: Text('Harap setujui Syarat & Privasi terlebih dahulu'),
           backgroundColor: Colors.red,
         ),
       );
@@ -81,7 +81,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     try {
       final result = await SignupService.signUpUser(
         name: _nameController.text,
-        email: _emailController.text,
+        username: _usernameController.text,
         password: _passwordController.text,
         confirmPassword: _retypePasswordController.text,
       );
@@ -90,17 +90,12 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
 
       if (result['success']) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('OTP telah dikirim ke email Anda.'), backgroundColor: Colors.green),
+          const SnackBar(content: Text('Registrasi berhasil!'), backgroundColor: Colors.green),
         );
-        Navigator.push(
+        Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(
-            builder: (_) => OtpVerificationScreen(
-              email: _emailController.text,
-              otpCode: result['otp'],
-              userData: result['userData'],
-            ),
-          ),
+          MaterialPageRoute(builder: (_) => const SplashScreen()),
+          (route) => false,
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -154,7 +149,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                     SizedBox(height: isSmallScreen ? 8 : 16),
                     
                     Text(
-                      "Let's Create\nYour Account",
+                      "Mari Buat\nAkun Anda",
                       style: TextStyle(
                         fontSize: titleSize,
                         fontWeight: FontWeight.bold,
@@ -190,7 +185,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                         children: [
                           _buildTextField(
                             controller: _nameController,
-                            hint: 'Full Name',
+                            hint: 'Nama Lengkap',
                             icon: Icons.person_outline,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
@@ -202,21 +197,23 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
 
                           const SizedBox(height: 18),
 
-                          _buildTextField(
-                            controller: _emailController,
-                            hint: 'Email Address',
-                            icon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Email tidak boleh kosong';
-                              }
-                              if (!value.contains('@')) {
-                                return 'Format email tidak valid';
-                              }
-                              return null;
-                            },
-                          ),
+                            _buildTextField(
+                              controller: _usernameController,
+                              hint: 'Username',
+                              icon: Icons.person_outline,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Username tidak boleh kosong';
+                                }
+                                if (value.contains(' ')) {
+                                  return 'Username tidak boleh mengandung spasi';
+                                }
+                                if (!RegExp(r'^[a-zA-Z0-9._-]+$').hasMatch(value)) {
+                                  return 'Username hanya boleh huruf, angka, titik, strip, atau garis bawah';
+                                }
+                                return null;
+                              },
+                            ),
 
                           const SizedBox(height: 18),
 
@@ -247,7 +244,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
 
                           _buildTextField(
                             controller: _retypePasswordController,
-                            hint: 'Retype Password',
+                            hint: 'Konfirmasi Password',
                             icon: Icons.lock_outline,
                             obscureText: _obscureRetypePassword,
                             suffixIcon: IconButton(
@@ -294,9 +291,9 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                                         fontFamily: 'Poppins',
                                       ),
                                       children: const [
-                                        TextSpan(text: 'I agree to the '),
+                                        TextSpan(text: 'Saya setuju dengan '),
                                         TextSpan(
-                                          text: 'Terms & Privacy',
+                                          text: 'Syarat & Privasi',
                                           style: TextStyle(
                                             color: AppColors.primary,
                                             fontWeight: FontWeight.w600,
@@ -333,7 +330,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                                       ),
                                     )
                                   : const Text(
-                                      'Sign Up',
+                                      'Daftar',
                                       style: TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w600,
@@ -350,7 +347,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                'Have an account? ',
+                                'Sudah punya akun? ',
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 14,
@@ -360,7 +357,7 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
                               GestureDetector(
                                 onTap: () => Navigator.pop(context),
                                 child: const Text(
-                                  'Sign In',
+                                  'Masuk',
                                   style: TextStyle(
                                     color: AppColors.primary,
                                     fontSize: 14,
@@ -421,43 +418,55 @@ class _SignUpScreenState extends State<SignUpScreen> with SingleTickerProviderSt
     TextInputType? keyboardType,
     String? Function(String?)? validator,
   }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      validator: validator,
-      style: const TextStyle(fontSize: 15, fontFamily: 'Poppins'),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: Colors.grey[400],
-          fontSize: 15,
-          fontFamily: 'Poppins',
-        ),
-        prefixIcon: Icon(icon, color: Colors.grey[600], size: 22),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: Colors.grey[50],
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide(color: Colors.grey[200]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide(color: Colors.grey[200]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.5), width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        validator: validator,
+        style: const TextStyle(fontSize: 15, fontFamily: 'Poppins'),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 14,
+            fontFamily: 'Poppins',
+          ),
+          prefixIcon: Icon(icon, color: Colors.grey[500], size: 21),
+          suffixIcon: suffixIcon,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.5), width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: const BorderSide(color: Colors.red),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          ),
         ),
       ),
     );

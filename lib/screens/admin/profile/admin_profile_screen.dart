@@ -3,9 +3,10 @@ import 'package:firebase_database/firebase_database.dart';
 import 'dart:async';
 import '../../../constants/app_colors.dart';
 import '../../authentication/login_screen.dart';
-import '../../authentication/reset_password_screen.dart';
+import '../../authentication/change_password_screen.dart';
 import '../../../services/auth/session_service.dart';
 import '../../../services/notifications/admin_notification_service.dart';
+import '../../credits_screen.dart';
 
 class AdminProfileScreen extends StatefulWidget {
   const AdminProfileScreen({Key? key}) : super(key: key);
@@ -94,7 +95,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                     ),
                   ),
                   child: SingleChildScrollView(
-                    physics: const BouncingScrollPhysics(),
+                    physics: const ClampingScrollPhysics(),
                     padding: const EdgeInsets.fromLTRB(24, 28, 24, 120),
                     child: Column(
                       children: [
@@ -111,7 +112,20 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                           onTap: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => ResetPasswordScreen(email: user?.email),
+                              builder: (_) => ChangePasswordScreen(username: user?.username),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildMenuTile(
+                          icon: Icons.info_outline_rounded,
+                          title: 'Kredit Aplikasi',
+                          subtitle: 'Tim Pengembang & Apresiasi Dosen PNJ',
+                          color: Colors.indigo,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CreditsScreen(isAdmin: true),
                             ),
                           ),
                         ),

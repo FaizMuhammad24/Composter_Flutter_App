@@ -220,6 +220,10 @@ class _AdminSystemNotificationsScreenState extends State<AdminSystemNotification
         }
         
         for (var act in _activities) {
+          final status = act['status'] ?? 'pending';
+          // Jangan tampilkan aktivitas berstatus PENDING di sini karena sudah tampil sebagai notifikasi aksi di atas
+          if (status == 'pending') continue;
+
           final type = act['activity_type'];
           Widget w = type == 'deposit' ? _buildDepositActivity(act) : _buildRewardActivity(act);
           

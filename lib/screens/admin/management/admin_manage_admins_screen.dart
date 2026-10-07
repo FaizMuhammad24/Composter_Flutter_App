@@ -12,7 +12,7 @@ class ManageAdminsScreen extends StatefulWidget {
 class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
-  final _emailCtrl = TextEditingController();
+  final _usernameCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
   bool _isLoading = false;
@@ -50,7 +50,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
           ? _admins
           : _admins.where((a) =>
               a.name.toLowerCase().contains(q.toLowerCase()) ||
-              a.email.toLowerCase().contains(q.toLowerCase())).toList();
+              a.username.toLowerCase().contains(q.toLowerCase())).toList();
     });
   }
 
@@ -60,7 +60,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
 
     final result = await AdminService.createAdmin(
       name: _nameCtrl.text.trim(),
-      email: _emailCtrl.text.trim(),
+      username: _usernameCtrl.text.trim(),
       password: _passwordCtrl.text,
     );
 
@@ -69,7 +69,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
 
     if (result['success']) {
       _nameCtrl.clear();
-      _emailCtrl.clear();
+      _usernameCtrl.clear();
       _passwordCtrl.clear();
       setState(() => _showForm = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -220,9 +220,14 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
             ),
             const SizedBox(height: 10),
             TextFormField(
-              controller: _emailCtrl,
-              decoration: _inputDeco('Email Admin', Icons.email_outlined),
-              validator: (v) => v == null || !v.contains('@') ? 'Email tidak valid' : null,
+              controller: _usernameCtrl,
+              decoration: _inputDeco('Username Admin', Icons.person_outline),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Username tidak boleh kosong';
+                if (v.contains(' ')) return 'Username tidak boleh mengandung spasi';
+                if (!RegExp(r'^[a-zA-Z0-9._-]+$').hasMatch(v)) return 'Hanya huruf, angka, titik, strip, garis bawah';
+                return null;
+              },
             ),
             const SizedBox(height: 10),
             TextFormField(
@@ -284,7 +289,7 @@ class _ManageAdminsScreenState extends State<ManageAdminsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(admin.name, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 14)),
-                Text(admin.email, style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'Poppins')),
+                Text(admin.username, style: const TextStyle(fontSize: 12, color: Colors.grey, fontFamily: 'Poppins')),
                 const SizedBox(height: 4),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),

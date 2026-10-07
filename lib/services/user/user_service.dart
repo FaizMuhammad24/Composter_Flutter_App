@@ -10,6 +10,21 @@ class UserService {
     return snap.docs.map((doc) => UserModel.fromJson(doc.data())).toList();
   }
 
+  static Stream<UserModel?> getUserByEmailStream(String email) {
+    email = email.toLowerCase().trim();
+    return FirebaseFirestore.instance
+        .collection('users')
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .snapshots()
+        .map((snap) {
+      if (snap.docs.isNotEmpty) {
+        return UserModel.fromJson(snap.docs.first.data());
+      }
+      return null;
+    });
+  }
+
   static Future<UserModel?> getUserByEmail(String email) async {
     email = email.toLowerCase().trim();
     var snap = await FirebaseFirestore.instance

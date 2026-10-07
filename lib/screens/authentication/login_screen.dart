@@ -8,7 +8,6 @@ import 'reset_password_screen.dart';
 import '../../constants/app_colors.dart';
 import '../../models/user_model.dart';
 import '../../services/auth/login_service.dart';
-import '../../services/auth/google_sign_in_service.dart';
 import '../../services/notifications/admin_notification_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -20,12 +19,11 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
+  final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   final _scrollController = ScrollController();
-  final _emailFocusNode = FocusNode();
+  final _usernameFocusNode = FocusNode();
   bool _isLoading = false;
-  bool _isGoogleLoading = false;
   bool _obscurePassword = true;
 
   late AnimationController _animationController;
@@ -64,10 +62,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   @override
   void dispose() {
     _animationController.dispose();
-    _emailController.dispose();
+    _usernameController.dispose();
     _passwordController.dispose();
     _scrollController.dispose();
-    _emailFocusNode.dispose();
+    _usernameFocusNode.dispose();
     super.dispose();
   }
 
@@ -79,7 +77,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
 
     try {
       final result = await LoginService.login(
-        _emailController.text.trim(),
+        _usernameController.text.trim(),
         _passwordController.text,
       );
 
@@ -90,7 +88,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         _navigateToHome(user);
       } else if (result['needsVerification'] == true) {
         // Email belum diverifikasi — tampilkan dialog dengan opsi kirim ulang
-        _showVerificationDialog(result['email'] ?? _emailController.text.trim());
+        _showVerificationDialog(result['username'] ?? _usernameController.text.trim());
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -133,28 +131,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     );
   }
 
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isGoogleLoading = true);
-    try {
-      final result = await GoogleSignInService.signInWithGoogle();
-      if (!mounted) return;
-      if (result['success']) {
-        final user = result['user'] as UserModel;
-        _navigateToHome(user);
-      } else if (result['message'] != 'Login dibatalkan') {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result['message']),
-            backgroundColor: Colors.red,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
-    }
-  }
 
   void _showVerificationDialog(String email) {
     showDialog(
@@ -170,7 +146,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           ],
         ),
         content: Text(
-          'Email Anda ($email) belum diverifikasi.\n\nSilakan cek kotak masuk atau folder spam, lalu klik link verifikasi yang telah dikirimkan.',
+          'Akun Anda ($email) belum diverifikasi.\n\nSilakan hubungi Admin.',
           style: const TextStyle(fontFamily: 'Poppins', fontSize: 13),
         ),
         actions: [
@@ -222,7 +198,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       child: Scaffold(
         // Let the Scaffold resize body when keyboard opens
         resizeToAvoidBottomInset: true,
-        backgroundColor: AppColors.primary,
+        backgroundColor: Colors.white,
         body: SafeArea(
           bottom: false,
           child: Container(
@@ -301,18 +277,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                             const SizedBox(height: 4),
                           ],
 
-                          // Email field
+                          // Username field
                           _buildTextField(
-                            controller: _emailController,
-                            focusNode: _emailFocusNode,
-                            hint: 'Email',
-                            icon: Icons.person_outline_rounded,
-                            keyboardType: TextInputType.emailAddress,
-                            textInputAction: TextInputAction.next,
+                            controller: _usernameController,
+                            focusNode: _usernameFocusNode,
+                            hint: 'Username',
+                            icon: Icons.person_outline,
                             validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Email tidak boleh kosong';
-                              }
+                              if (value == null || value.isEmpty) return 'Username tidak boleh kosong';
                               return null;
                             },
                           ),
@@ -406,76 +378,6 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                         fontFamily: 'Poppins',
                                         color: Colors.white,
                                       ),
-                                    ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Divider
-                          Row(
-                            children: [
-                              Expanded(
-                                  child: Divider(
-                                      color: Colors.grey[300], thickness: 1)),
-                              Padding(
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 16),
-                                child: Text(
-                                  'atau',
-                                  style: TextStyle(
-                                    color: Colors.grey[500],
-                                    fontSize: 13,
-                                    fontFamily: 'Poppins',
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                  child: Divider(
-                                      color: Colors.grey[300], thickness: 1)),
-                            ],
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Tombol Google Sign-In
-                          SizedBox(
-                            height: 54,
-                            child: OutlinedButton(
-                              onPressed: (_isLoading || _isGoogleLoading) ? null : _handleGoogleSignIn,
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(color: Colors.grey[300]!, width: 1.5),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(28),
-                                ),
-                                backgroundColor: Colors.white,
-                              ),
-                              child: _isGoogleLoading
-                                  ? const SizedBox(
-                                      width: 22,
-                                      height: 22,
-                                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                                    )
-                                  : Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Image.network(
-                                          'https://www.google.com/favicon.ico',
-                                          width: 20,
-                                          height: 20,
-                                          errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 22),
-                                        ),
-                                        const SizedBox(width: 10),
-                                        const Text(
-                                          'Masuk dengan Google',
-                                          style: TextStyle(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w500,
-                                            color: Colors.black87,
-                                            fontFamily: 'Poppins',
-                                          ),
-                                        ),
-                                      ],
                                     ),
                             ),
                           ),
@@ -599,9 +501,9 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   // ─────────────────────────── Text Field ────────────────────────────
   Widget _buildTextField({
     required TextEditingController controller,
+    FocusNode? focusNode,
     required String hint,
     required IconData icon,
-    FocusNode? focusNode,
     bool obscureText = false,
     Widget? suffixIcon,
     TextInputType? keyboardType,
@@ -609,48 +511,58 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     String? Function(String?)? validator,
     ValueChanged<String>? onFieldSubmitted,
   }) {
-    return TextFormField(
-      controller: controller,
-      focusNode: focusNode,
-      obscureText: obscureText,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      onFieldSubmitted: onFieldSubmitted,
-      validator: validator,
-      style: const TextStyle(fontSize: 15, fontFamily: 'Poppins'),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(
-          color: Colors.grey[400],
-          fontSize: 14,
-          fontFamily: 'Poppins',
-        ),
-        prefixIcon: Icon(icon, color: Colors.grey[500], size: 21),
-        suffixIcon: suffixIcon,
-        filled: true,
-        fillColor: Colors.grey[50],
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide(color: Colors.grey[200]!),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: BorderSide(color: Colors.grey[200]!),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide:
-              BorderSide(color: AppColors.primary.withValues(alpha: 0.5), width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: const BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(28),
-          borderSide: const BorderSide(color: Colors.red, width: 1.5),
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: TextFormField(
+        controller: controller,
+        focusNode: focusNode,
+        obscureText: obscureText,
+        keyboardType: keyboardType,
+        textInputAction: textInputAction,
+        onFieldSubmitted: onFieldSubmitted,
+        validator: validator,
+        style: const TextStyle(fontSize: 15, fontFamily: 'Poppins'),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: Colors.grey[400],
+            fontSize: 14,
+            fontFamily: 'Poppins',
+          ),
+          prefixIcon: Icon(icon, color: Colors.grey[500], size: 21),
+          suffixIcon: suffixIcon,
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide.none,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.5), width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: const BorderSide(color: Colors.red),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(28),
+            borderSide: const BorderSide(color: Colors.red, width: 1.5),
+          ),
         ),
       ),
     );

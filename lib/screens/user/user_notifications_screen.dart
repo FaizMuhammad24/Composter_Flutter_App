@@ -14,12 +14,12 @@ class UserNotificationsScreen extends StatefulWidget {
 
 class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
   String _filter = 'Semua';
+  late final Stream<List<AppNotificationModel>> _notifStream;
 
   @override
   void initState() {
     super.initState();
-    // Do not mark all as read automatically, let the user decide or do it on button press
-    // AppNotificationService.markAllAsRead(widget.userEmail);
+    _notifStream = AppNotificationService.getUserNotificationsStream(widget.userEmail);
   }
 
   @override
@@ -51,9 +51,9 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
         ],
       ),
       body: StreamBuilder<List<AppNotificationModel>>(
-        stream: AppNotificationService.getUserNotificationsStream(widget.userEmail),
+        stream: _notifStream,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator(color: AppColors.primary));
           }
 
@@ -97,15 +97,22 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
 
               // Notifications List
               Expanded(
-                child: filtered.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: filtered.length,
-                        itemBuilder: (context, index) {
-                          return _buildNotificationCard(filtered[index]);
-                        },
-                      ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 150),
+                  child: filtered.isEmpty
+                      ? Container(
+                          key: ValueKey('notif_empty_$_filter'),
+                          child: _buildEmptyState(),
+                        )
+                      : ListView.builder(
+                          key: ValueKey('notif_list_$_filter'),
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) {
+                            return _buildNotificationCard(filtered[index]);
+                          },
+                        ),
+                ),
               ),
             ],
           );
@@ -294,7 +301,10 @@ class _UserNotificationsScreenState extends State<UserNotificationsScreen> {
             onPressed: () async {
               final nav = Navigator.of(context);
               await AppNotificationService.deleteAllNotifications(widget.userEmail);
-              if (mounted) nav.pop();
+              if (mounted) {
+                setState(() {});
+                nav.pop();
+              }
             },
             child: const Text('Hapus', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),

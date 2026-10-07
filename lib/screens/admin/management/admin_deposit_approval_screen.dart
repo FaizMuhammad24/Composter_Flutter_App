@@ -16,6 +16,7 @@ class AdminDepositApprovalScreen extends StatefulWidget {
 class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _deposits = [];
+  Map<String, String> _userNames = {};
   String _filter = 'pending'; // pending, approved, rejected
 
   @override
@@ -27,6 +28,18 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
   Future<void> _loadDeposits() async {
     setState(() => _isLoading = true);
     try {
+      // Ambil data users untuk mapping email -> nama pengguna asli
+      final usersSnap = await FirebaseFirestore.instance.collection('users').get();
+      final Map<String, String> userMap = {};
+      for (var uDoc in usersSnap.docs) {
+        final uData = uDoc.data();
+        final uEmail = (uData['email']?.toString() ?? '').toLowerCase().trim();
+        final uName = uData['name']?.toString() ?? '';
+        if (uEmail.isNotEmpty && uName.isNotEmpty) {
+          userMap[uEmail] = uName;
+        }
+      }
+
       final snap = await FirebaseFirestore.instance
           .collection('composts')
           .where('status', isEqualTo: _filter)
@@ -45,7 +58,13 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
         return dateB.compareTo(dateA);
       });
 
-      if (mounted) setState(() { _deposits = deposits; _isLoading = false; });
+      if (mounted) {
+        setState(() {
+          _deposits = deposits;
+          _userNames = userMap;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
       debugPrint('Error loading deposits: $e');
       if (mounted) {
@@ -55,12 +74,27 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
     }
   }
 
+  String _getUserName(Map<String, dynamic> deposit) {
+    final rawName = deposit['userName']?.toString();
+    if (rawName != null && rawName.trim().isNotEmpty) {
+      return rawName.trim();
+    }
+    final email = (deposit['userEmail']?.toString() ?? '').toLowerCase().trim();
+    if (_userNames.containsKey(email) && _userNames[email]!.trim().isNotEmpty) {
+      return _userNames[email]!;
+    }
+    if (email.contains('@')) {
+      return email.split('@').first;
+    }
+    return email.isNotEmpty ? email : 'Pengguna';
+  }
+
   void _showDepositDetail(Map<String, dynamic> deposit) {
     final dateStr = _formatDate(deposit['createdAt']);
     final weight = (deposit['weight'] as num?)?.toDouble() ?? 0.0;
     final points = (deposit['points'] as num?)?.toInt() ?? 0;
     final imageUrl = deposit['imageUrl']?.toString() ?? '';
-    final email = deposit['userEmail']?.toString() ?? '-';
+    final userName = _getUserName(deposit);
     final status = deposit['status']?.toString() ?? 'pending';
 
     final urls = imageUrl.split(',').where((u) => u.trim().isNotEmpty).toList();
@@ -89,64 +123,9 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
               const Text('Detail Setoran Kompos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, fontFamily: 'Poppins')),
               const SizedBox(height: 16),
 
-              // Image(s)
+              // Tampilan Foto (Bisa di-scroll ke samping jika ada 2 atau lebih foto)
               if (urls.isNotEmpty)
-                Builder(
-                  builder: (context) {
-                    if (urls.length == 1) {
-                      return ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.network(
-                          urls.first,
-                          width: double.infinity,
-                          height: 220,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            height: 220,
-                            decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(16)),
-                            child: const Center(child: Icon(Icons.broken_image, size: 48, color: Colors.grey)),
-                          ),
-                          loadingBuilder: (_, child, loadingProgress) {
-                            if (loadingProgress == null) return child;
-                            return Container(
-                              height: 220,
-                              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(16)),
-                              child: const Center(child: CircularProgressIndicator(color: AppColors.adminPrimary, strokeWidth: 2)),
-                            );
-                          },
-                        ),
-                      );
-                    } else {
-                      return SizedBox(
-                        height: 220,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: urls.length,
-                          itemBuilder: (ctx, idx) => Container(
-                            width: MediaQuery.of(context).size.width - 72,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(15),
-                              child: Image.network(
-                                urls[idx],
-                                fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 48, color: Colors.grey)),
-                                loadingBuilder: (_, child, loadingProgress) {
-                                  if (loadingProgress == null) return child;
-                                  return const Center(child: CircularProgressIndicator(color: AppColors.adminPrimary, strokeWidth: 2));
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                  }
-                )
+                _DepositPhotoSlider(urls: urls)
               else
                 Container(
                   height: 160,
@@ -157,11 +136,11 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
 
               const SizedBox(height: 20),
 
-              // Info rows
-              _buildInfoRow(Icons.email_outlined, 'Email User', email),
-              _buildInfoRow(Icons.scale, 'Berat Sampah', '${weight.toStringAsFixed(1)} kg'),
+              // Info rows (Hanya Nama Pengguna, tanpa ID atau email)
+              _buildInfoRow(Icons.person_outline, 'Nama Pengguna', userName),
+              _buildInfoRow(Icons.scale, 'Berat Sampah', '${weight.toStringAsFixed(2)} kg'),
               _buildInfoRow(Icons.stars, 'Poin Dihitung', '$points pts'),
-              _buildInfoRow(Icons.calendar_today, 'Tanggal', dateStr),
+              _buildInfoRow(Icons.calendar_today, 'Tanggal Setor', dateStr),
               _buildInfoRow(Icons.flag, 'Status', status == 'pending' ? 'Menunggu' : status == 'approved' ? 'Disetujui' : 'Ditolak'),
 
               const SizedBox(height: 24),
@@ -237,13 +216,14 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
   }
 
   Future<void> _approveDeposit(Map<String, dynamic> deposit) async {
+    final userName = _getUserName(deposit);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Terima Setoran', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
         content: Text(
-          'Setujui setoran ${(deposit["weight"] as num).toStringAsFixed(1)} kg dari ${deposit["userEmail"]}?\n\nPoin: +${deposit["points"]} pts',
+          'Setujui setoran ${(deposit["weight"] as num).toStringAsFixed(2)} kg dari $userName?\n\nPoin: +${deposit["points"]} pts',
           style: const TextStyle(fontFamily: 'Poppins'),
         ),
         actions: [
@@ -296,12 +276,13 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
   }
 
   Future<void> _rejectDeposit(Map<String, dynamic> deposit) async {
+    final userName = _getUserName(deposit);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Tolak Setoran', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        content: Text('Tolak setoran ${(deposit["weight"] as num).toStringAsFixed(1)} kg dari ${deposit["userEmail"]}?', style: const TextStyle(fontFamily: 'Poppins')),
+        content: Text('Tolak setoran ${(deposit["weight"] as num).toStringAsFixed(2)} kg dari $userName?', style: const TextStyle(fontFamily: 'Poppins')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Batal')),
           ElevatedButton(
@@ -342,12 +323,22 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
     }
   }
 
-  String _formatDate(dynamic dateStr) {
+  String _formatDate(dynamic dateVal) {
+    if (dateVal == null) return '-';
     try {
-      final dt = DateTime.parse(dateStr.toString());
-      return DateFormat('dd MMM yyyy, HH:mm', 'id').format(dt);
+      DateTime dt;
+      if (dateVal is Timestamp) {
+        dt = dateVal.toDate();
+      } else if (dateVal is DateTime) {
+        dt = dateVal;
+      } else if (dateVal is num) {
+        dt = DateTime.fromMillisecondsSinceEpoch(dateVal.toInt());
+      } else {
+        dt = DateTime.parse(dateVal.toString().trim());
+      }
+      return DateFormat('dd MMM yyyy, HH:mm').format(dt);
     } catch (_) {
-      return dateStr?.toString() ?? '-';
+      return dateVal.toString();
     }
   }
 
@@ -447,11 +438,12 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
   Widget _buildDepositCard(Map<String, dynamic> deposit) {
     final weight = (deposit['weight'] as num?)?.toDouble() ?? 0;
     final points = (deposit['points'] as num?)?.toInt() ?? 0;
-    final email = deposit['userEmail']?.toString() ?? '-';
+    final displayName = _getUserName(deposit);
     final dateStr = _formatDate(deposit['createdAt']);
-    final imageUrl = deposit['imageUrl']?.toString() ?? '';
-    final firstImageUrl = imageUrl.split(',').firstWhere((u) => u.trim().isNotEmpty, orElse: () => '');
     final isPending = _filter == 'pending';
+
+    // Inisial nama untuk avatar elegan (foto tidak ditampilkan di kartu daftar sebelum ditekan)
+    final initial = displayName.trim().isNotEmpty ? displayName.trim()[0].toUpperCase() : 'U';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -470,33 +462,37 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
             ),
             child: Row(
               children: [
-                // Thumbnail image
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: firstImageUrl.isNotEmpty
-                      ? Image.network(
-                          firstImageUrl,
-                          width: 56, height: 56, fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 56, height: 56,
-                            color: Colors.grey[100],
-                            child: const Icon(Icons.compost, color: Colors.green, size: 28),
-                          ),
-                        )
-                      : Container(
-                          width: 56, height: 56,
-                          decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-                          child: const Icon(Icons.compost, color: Colors.green, size: 28),
-                        ),
+                // Avatar nama (Tanpa Foto di Kartu Daftar Sebelum Ditekan)
+                CircleAvatar(
+                  radius: 26,
+                  backgroundColor: AppColors.adminPrimary.withValues(alpha: 0.1),
+                  child: Text(
+                    initial,
+                    style: const TextStyle(
+                      color: AppColors.adminPrimary,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Poppins',
+                      fontSize: 18,
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(email, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      // Hanya Nama Pengguna Saja (Tanpa ID / Email)
+                      Text(
+                        displayName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       const SizedBox(height: 2),
-                      Text('${weight.toStringAsFixed(1)} kg  •  $dateStr', style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'Poppins')),
+                      Text(
+                        '${weight.toStringAsFixed(2)} kg  •  $dateStr',
+                        style: TextStyle(fontSize: 11, color: Colors.grey[600], fontFamily: 'Poppins'),
+                      ),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -533,6 +529,129 @@ class _AdminDepositApprovalScreenState extends State<AdminDepositApprovalScreen>
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Widget Slider Foto Bukti Setoran (Bisa di-scroll ke samping jika ada 2 atau lebih foto)
+class _DepositPhotoSlider extends StatefulWidget {
+  final List<String> urls;
+  const _DepositPhotoSlider({Key? key, required this.urls}) : super(key: key);
+
+  @override
+  State<_DepositPhotoSlider> createState() => _DepositPhotoSliderState();
+}
+
+class _DepositPhotoSliderState extends State<_DepositPhotoSlider> {
+  int _currentIndex = 0;
+  final PageController _pageController = PageController();
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.urls.length == 1) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Image.network(
+          widget.urls.first,
+          width: double.infinity,
+          height: 240,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            height: 240,
+            decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(16)),
+            child: const Center(child: Icon(Icons.broken_image, size: 48, color: Colors.grey)),
+          ),
+          loadingBuilder: (_, child, loadingProgress) {
+            if (loadingProgress == null) return child;
+            return Container(
+              height: 240,
+              decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(16)),
+              child: const Center(child: CircularProgressIndicator(color: AppColors.adminPrimary, strokeWidth: 2)),
+            );
+          },
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Stack(
+          children: [
+            SizedBox(
+              height: 240,
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: widget.urls.length,
+                onPageChanged: (idx) => setState(() => _currentIndex = idx),
+                itemBuilder: (ctx, idx) => Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: Image.network(
+                      widget.urls[idx],
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 48, color: Colors.grey)),
+                      loadingBuilder: (_, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator(color: AppColors.adminPrimary, strokeWidth: 2));
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Badge Counter (e.g. Foto 1 / 2)
+            Positioned(
+              top: 12,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.65),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'Foto ${_currentIndex + 1} / ${widget.urls.length}',
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold, fontFamily: 'Poppins'),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        // Dots Indicator
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            widget.urls.length,
+            (idx) => Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4),
+              width: _currentIndex == idx ? 18 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: _currentIndex == idx ? AppColors.adminPrimary : Colors.grey[300],
+                borderRadius: BorderRadius.circular(4),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Geser ke samping untuk melihat foto lainnya',
+          style: TextStyle(fontSize: 11, color: Colors.grey[500], fontFamily: 'Poppins', fontStyle: FontStyle.italic),
+        ),
+      ],
     );
   }
 }

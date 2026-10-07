@@ -2,6 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
+import 'package:flutter/foundation.dart';
 
 class AdminService {
 
@@ -16,61 +17,111 @@ class AdminService {
     try {
       var targetSnap = await FirebaseFirestore.instance.collection('users').doc(adminUid).get();
       if (targetSnap.exists && targetSnap.data()?['role'] == 'admin') {
+        final data = targetSnap.data()!;
+        final email = data['email']?.toString() ?? '';
+        final authEmail = data['auth_email']?.toString() ?? email;
+        final pass = data['auth_pass']?.toString();
+
+        // 1. Coba hapus akun dari Firebase Authentication jika credential tersedia
+        if (authEmail.isNotEmpty && pass != null && pass.isNotEmpty) {
+          try {
+            FirebaseApp app = await Firebase.initializeApp(
+              name: 'DeleteAdmin_${DateTime.now().millisecondsSinceEpoch}',
+              options: Firebase.app().options,
+            );
+            try {
+              UserCredential cred = await FirebaseAuth.instanceFor(app: app)
+                  .signInWithEmailAndPassword(email: authEmail, password: pass);
+              await cred.user?.delete();
+            } catch (authErr) {
+              debugPrint('Error deleting auth user: $authErr');
+            } finally {
+              await app.delete();
+            }
+          } catch (e) {
+            debugPrint('Error init secondary app for delete: $e');
+          }
+        }
+
+        // 2. Hapus dokumen dari Firestore
         await FirebaseFirestore.instance.collection('users').doc(adminUid).delete();
         return {'success': true, 'message': 'Admin berhasil dihapus'};
       }
       return {'success': false, 'message': 'Admin tidak ditemukan'};
     } catch (e) {
-      return {'success': false, 'message': 'Gagal menghapus admin'};
+      return {'success': false, 'message': 'Gagal menghapus admin: $e'};
     }
   }
 
   static Future<Map<String, dynamic>> createAdmin({
     required String name,
-    required String email,
+    required String username,
     required String password,
   }) async {
+    // Sanitasi username: lowercase, hapus spasi & @
+    username = username.toLowerCase().replaceAll(RegExp(r'[\s@]+'), '').trim();
+    final email = '$username@icompost.app';
+
     // Validasi input
-    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+    if (name.isEmpty || username.isEmpty || password.isEmpty) {
       return {'success': false, 'message': 'Semua field harus diisi'};
-    }
-    if (!email.contains('@')) {
-      return {'success': false, 'message': 'Format email tidak valid'};
     }
     if (password.length < 6) {
       return {'success': false, 'message': 'Password minimal 6 karakter'};
     }
 
     try {
-      // Cek apakah email sudah terdaftar di Firestore
+      // Cek apakah username sudah terdaftar di Firestore
       var existing = await FirebaseFirestore.instance
           .collection('users')
-          .where('email', isEqualTo: email.toLowerCase().trim())
+          .where('email', isEqualTo: email)
           .limit(1)
           .get();
       if (existing.docs.isNotEmpty) {
-        return {'success': false, 'message': 'Email sudah terdaftar'};
+        return {'success': false, 'message': 'Username sudah digunakan'};
       }
 
-      // GUNAKAN SECONDARY APP agar admin utama tidak logout
+      String targetAuthEmail = email;
+
       FirebaseApp app = await Firebase.initializeApp(
-        name: 'SecondaryApp',
+        name: 'SecondaryApp_${DateTime.now().millisecondsSinceEpoch}',
         options: Firebase.app().options,
       );
 
       try {
-        UserCredential cred = await FirebaseAuth.instanceFor(app: app)
-            .createUserWithEmailAndPassword(
-              email: email.toLowerCase().trim(),
-              password: password,
-            );
+        UserCredential cred;
+        try {
+          cred = await FirebaseAuth.instanceFor(app: app)
+              .createUserWithEmailAndPassword(
+                email: targetAuthEmail,
+                password: password,
+              );
+        } on FirebaseAuthException catch (authErr) {
+          if (authErr.code == 'email-already-in-use') {
+            // Dokumen di Firestore sudah terhapus, tetapi Firebase Auth record masih ada.
+            // Coba login & gunakan akun Auth lama jika password cocok.
+            try {
+              cred = await FirebaseAuth.instanceFor(app: app)
+                  .signInWithEmailAndPassword(email: targetAuthEmail, password: password);
+            } catch (_) {
+              // Jika login gagal (password lama beda), buat Auth email unik internal
+              targetAuthEmail = '${username}_${DateTime.now().millisecondsSinceEpoch}@icompost.app';
+              cred = await FirebaseAuth.instanceFor(app: app)
+                  .createUserWithEmailAndPassword(email: targetAuthEmail, password: password);
+            }
+          } else {
+            rethrow;
+          }
+        }
 
         String uid = cred.user!.uid;
 
         Map<String, dynamic> newAdmin = {
           'uid': uid,
           'name': name,
-          'email': email.toLowerCase().trim(),
+          'email': email,
+          'auth_email': targetAuthEmail,
+          'auth_pass': password,
           'role': 'admin',
           'points': null,
           'created_at': DateTime.now().toIso8601String(),
@@ -87,8 +138,8 @@ class AdminService {
         await app.delete(); // Hapus instance secondary app
       }
     } on FirebaseAuthException catch (e) {
-      if (e.code == 'email-already-in-use') {
-        return {'success': false, 'message': 'Email sudah terdaftar di sistem'};
+      if (e.code == 'invalid-email') {
+        return {'success': false, 'message': 'Format username tidak valid'};
       }
       return {'success': false, 'message': 'Error Auth: ${e.message}'};
     } catch (e) {

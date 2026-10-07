@@ -353,7 +353,7 @@ class _AdminSystemStatusScreenState extends State<AdminSystemStatusScreen> {
       onRefresh: _refreshStatus,
       color: AppColors.adminPrimary,
       child: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
+        physics: const AlwaysScrollableScrollPhysics(parent: ClampingScrollPhysics()),
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

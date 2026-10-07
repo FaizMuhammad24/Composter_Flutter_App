@@ -1,16 +1,20 @@
 /*
  * =============================================================
  *  I-COMPOST — Firmware ESP32 30-PIN (DevKit V1 / classic)
- *  Versi  : 2.5.1-ESP32 (fix relay motor & RTC)
- *  Tanggal: Juli 2026
+ *  Versi  : 2.6.0-ESP32
+ *  Tanggal: Agustus 2026
  * =============================================================
  *
- *  PERBAIKAN DARI VERSI 2.5.0:
- *  - RTC selalu sinkron dari NTP setiap boot (jika WiFi tersambung)
- *  - Debug status motorCommandOn dan pin relay di Serial Monitor
- *  - Inisialisasi ulang relay motor di setup() dipastikan mati
- *  - Penanganan perintah OFF lebih robust
- *  - Pin mapping tetap sama
+ *  PERUBAHAN DARI VERSI 2.5.1:
+ *  - WiFi Dual SSID: 4G-UFI-F6F (3 menit), fallback Samsung
+ *  - Firebase: icompost-db, tanpa api_key (Legacy Token only)
+ *  - Firebase failure recovery (reinit setelah 5x gagal)
+ *  - SSL buffer optimasi (rx=4096, tx=512)
+ *  - MQ-135: R0=375 kΩ (kalibrasi diagnostik), VCC=5V, formula standar
+ *  - Soil: DRY=3300, WET=1000 (kalibrasi diagnostik)
+ *  - LCD 6 screen dengan custom character, motor punya screen sendiri
+ *  - Warning buzzer terintegrasi ke rotasi LCD
+ *  - WiFi reconnect dengan SSID bergantian
  */
 
 #include <DallasTemperature.h>
@@ -25,13 +29,20 @@
 #include <time.h>
 
 // ============================================================
-//  KONFIGURASI WIFI & FIREBASE
+//  KONFIGURASI WIFI — DUAL SSID (Fallback)
+//  Urutan: SSID1 (3 menit) → SSID2 (1 menit)
 // ============================================================
-#define WIFI_SSID "4G-UFI-F6F"
-#define WIFI_PASSWORD "telkomb23"
+#define WIFI_SSID1     "4G-UFI-F6F"
+#define WIFI_PASSWORD1 "telkomb23"
+#define WIFI_SSID2     "Samsung"
+#define WIFI_PASSWORD2 "dodolipet2505"
 
-#define API_KEY "AIzaSyAQyAwHey8tDJ4moHKDeWDTlAzlINdBJFk"
-#define DATABASE_URL "https://icompost-db-default-rtdb.asia-southeast1.firebasedatabase.app/"
+// ============================================================
+//  KONFIGURASI FIREBASE — icompost-db
+//  PENTING: Jangan set api_key saat menggunakan Legacy Token.
+//  Kombinasi keduanya menyebabkan konflik autentikasi.
+// ============================================================
+#define DATABASE_URL    "https://icompost-db-default-rtdb.asia-southeast1.firebasedatabase.app/"
 #define DATABASE_SECRET "0elSe0OFDDQ1ypcthT7wOrqkjq252Kv5uOKUSIgm"
 
 FirebaseData fbdo;
@@ -54,7 +65,7 @@ FirebaseConfig config;
 #define MOTOR_PIN       32
 #define BUZZER_PIN      19
 
-// Relay logic (active LOW — sesuai dengan modul relay Anda)
+// Relay logic (active LOW — sesuai modul relay)
 #define RELAY4_ON  LOW
 #define RELAY4_OFF HIGH
 #define RELAY2_ON  HIGH
@@ -77,44 +88,50 @@ float qosLastJitterMs = 0.0f;
 unsigned long qosTotalSent = 0;
 unsigned long qosTotalFailed = 0;
 
-// ============================================================
-//  KALIBRASI SENSOR — DATA TERBARU
-// ============================================================
-#define MQ135_RL_VALUE 10.0f
-#define MQ135_R0 60.0f            // hasil kalibrasi udara bersih
-#define MQ135_VREF 3.3f
-#define MQ135_ADC_MAX 4095.0f
-#define MQ135_SAMPLES 10
+// ── Firebase failure recovery ──────────────────────────────
+int fbFailCount = 0;          // consecutive upload failures
+const int FB_FAIL_REINIT = 5; // reinit Firebase after N failures
 
-#define TEMP_OFFSET 0.0f
+// ============================================================
+//  KALIBRASI SENSOR — DATA TERBARU (dari Diagnostic Tool)
+// ============================================================
+#define MQ135_RL_VALUE  10.0f
+#define MQ135_R0        375.0f   // hasil kalibrasi R0 udara bersih (kΩ) — diagnostik: 350-400
+#define MQ135_VCC       5.0f     // Tegangan VCC sensor MQ-135 (5.0V)
+#define ESP32_VREF      3.3f     // Referensi ADC ESP32 (3.3V)
+#define MQ135_ADC_MAX   4095.0f
+#define MQ135_SAMPLES   10
+
+#define TEMP_OFFSET     0.0f
 #define TEMP_RESOLUTION 12
 
-#define SOIL_SAMPLES 20
-#define SOIL_DRY_ADC 3400
-#define SOIL_WET_ADC 0
+#define SOIL_SAMPLES    20
+#define SOIL_DRY_ADC    3300     // Nilai ADC saat kering (di udara) — kalibrasi diagnostik
+#define SOIL_WET_ADC    1000     // Nilai ADC saat basah (di air) — kalibrasi diagnostik
 
 // ============================================================
-//  THRESHOLDS
+//  THRESHOLDS (default — akan di-override dari Firebase)
 // ============================================================
-float tempThresholdMin = 60.0f;
-float tempThresholdMax = 70.0f;
-float gasThresholdMax = 50.0f;
-float soilThresholdMin = 50.0f;
+float tempThresholdMin = 28.0f;
+float tempThresholdMax = 33.0f;
+float gasThresholdMax  = 200.0f;  // disesuaikan: clean air ~117 ppm dengan R0=375
+float soilThresholdMin = 25.0f;
+float soilThresholdMax = 85.0f;
 
 // ============================================================
 //  STATUS AKTUATOR & KONTROL
 // ============================================================
 bool heaterStatus = false;
-bool fanStatus = false;
-bool p1Status = false;
-bool p2Status = false;
-bool motorStatus = false;
+bool fanStatus    = false;
+bool p1Status     = false;
+bool p2Status     = false;
+bool motorStatus  = false;
 
 bool prevHeater = false, prevFan = false;
 bool prevP1 = false, prevP2 = false;
 bool prevMotor = false;
 
-bool gasHigh = false;
+bool gasHigh  = false;
 bool tempHigh = false;
 
 // Pompa P1 & P2
@@ -143,17 +160,12 @@ int motorLastRunDay = -1;
 // ============================================================
 unsigned long lastLCDUpdate = 0;
 int lcdScreen = 0;
-bool warningMode = false;
-const unsigned long LCD_INTERVAL = 5000UL;
-
-int warningScreen = 0;
-unsigned long lastWarningUpdate = 0;
-const unsigned long WARNING_INTERVAL = 3000UL;
+const unsigned long LCD_INTERVAL = 3500UL; // Rotasi layar tiap 3.5 detik
 
 unsigned long lastFirebaseSync = 0;
-unsigned long lastControlRead = 0;
-unsigned long lastDataUpload = 0;
-unsigned long lastHistoryPush = 0;
+unsigned long lastControlRead  = 0;
+unsigned long lastDataUpload   = 0;
+unsigned long lastHistoryPush  = 0;
 unsigned long packetId = 0;
 
 bool motorBuzzActive = false;
@@ -161,16 +173,26 @@ int motorBuzzCount = 0;
 unsigned long lastBuzzTime = 0;
 
 // ============================================================
-//  KARAKTER KUSTOM LCD (tidak diubah)
+//  KARAKTER KUSTOM LCD (5x8 Icons)
 // ============================================================
 byte blockChar[8] = {B11111, B11111, B11111, B11111,
                      B11111, B11111, B11111, B11111};
-byte checkMark[8] = {B00000, B00001, B00011, B10110,
-                     B11100, B01000, B00000, B00000};
-byte thermometer[8] = {B00100, B01010, B01010, B01110,
-                       B11111, B11111, B01110, B00000};
-byte droplet[8] = {B00100, B01110, B11111, B11111,
-                   B11111, B01110, B00100, B00000};
+byte charTemp[8]  = {B00100, B01010, B01010, B01110,
+                     B01110, B11111, B11111, B01110}; // 0: Thermometer
+byte charGas[8]   = {B00100, B01010, B00100, B01110,
+                     B10001, B10101, B10001, B01110}; // 1: Gas Cloud
+byte charSoil[8]  = {B00100, B00100, B01010, B01010,
+                     B10001, B10001, B10001, B01110}; // 2: Droplet / Soil
+byte charMotor[8] = {B00000, B01010, B01110, B11111,
+                     B01110, B01010, B00000, B00000}; // 3: Motor Gear
+byte charFan[8]   = {B00000, B11011, B11011, B00100,
+                     B11011, B11011, B00000, B00000}; // 4: Fan Wind
+byte charPump[8]  = {B01110, B01010, B11111, B10001,
+                     B10101, B10001, B11111, B00000}; // 5: Pump Liquid
+byte charAlert[8] = {B00100, B01110, B01110, B01110,
+                     B00100, B00000, B00100, B00000}; // 6: Alert !
+byte charCheck[8] = {B00000, B00001, B00011, B10110,
+                     B11100, B01000, B00000, B00000}; // 7: Checkmark OK
 
 // ============================================================
 //  HELPER: LCD Print Center
@@ -186,21 +208,23 @@ void lcdPrintCenter(int row, const char *str) {
 }
 
 // ============================================================
-//  WIFI (tidak diubah)
+//  WIFI — DUAL SSID (SSID1 3 menit, SSID2 1 menit)
 // ============================================================
 void initWiFi() {
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  // ── Coba SSID1 dulu (3 menit) ──────────────────────────
+  Serial.println("[WiFi] Mencoba " + String(WIFI_SSID1) + " (timeout 3 menit)...");
+  WiFi.begin(WIFI_SSID1, WIFI_PASSWORD1);
   unsigned long wifiStartMs = millis();
-  const unsigned long WIFI_TIMEOUT = 120000UL;
+  const unsigned long WIFI_TIMEOUT1 = 180000UL; // 3 menit
   int attempt = 0;
 
   while (WiFi.status() != WL_CONNECTED) {
     unsigned long elapsed = millis() - wifiStartMs;
-    if (elapsed >= WIFI_TIMEOUT) break;
+    if (elapsed >= WIFI_TIMEOUT1) break;
 
-    int remaining = (WIFI_TIMEOUT - elapsed) / 1000;
+    int remaining = (WIFI_TIMEOUT1 - elapsed) / 1000;
     char buf[17];
-    snprintf(buf, sizeof(buf), "Tunggu.. %3ds", remaining);
+    snprintf(buf, sizeof(buf), "4G-UFI %3ds", remaining);
 
     lcd.clear();
     lcdPrintCenter(0, "Koneksi WiFi");
@@ -217,47 +241,138 @@ void initWiFi() {
     if (WiFi.status() != WL_CONNECTED) {
       WiFi.disconnect();
       delay(200);
-      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      WiFi.begin(WIFI_SSID1, WIFI_PASSWORD1);
     }
   }
 
+  // ── Jika SSID1 gagal, coba SSID2 (1 menit) ───────────
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[WiFi] " + String(WIFI_SSID1) + " gagal. Mencoba " + String(WIFI_SSID2) + "...");
+    WiFi.disconnect();
+    delay(200);
+    WiFi.begin(WIFI_SSID2, WIFI_PASSWORD2);
+    wifiStartMs = millis();
+    const unsigned long WIFI_TIMEOUT2 = 60000UL; // 1 menit
+
+    while (WiFi.status() != WL_CONNECTED) {
+      unsigned long elapsed = millis() - wifiStartMs;
+      if (elapsed >= WIFI_TIMEOUT2) break;
+
+      int remaining = (WIFI_TIMEOUT2 - elapsed) / 1000;
+      char buf[17];
+      snprintf(buf, sizeof(buf), "Samsung %3ds", remaining);
+
+      lcd.clear();
+      lcdPrintCenter(0, "Koneksi WiFi");
+      lcdPrintCenter(1, buf);
+
+      delay(5000);
+
+      if (WiFi.status() != WL_CONNECTED) {
+        WiFi.disconnect();
+        delay(200);
+        WiFi.begin(WIFI_SSID2, WIFI_PASSWORD2);
+      }
+    }
+  }
+
+  // ── Hasil ──────────────────────────────────────────────
   if (WiFi.status() == WL_CONNECTED) {
     lcd.clear();
     lcdPrintCenter(0, "WiFi Terhubung!");
     lcdPrintCenter(1, WiFi.localIP().toString().c_str());
+    Serial.println("[WiFi] Terhubung! IP: " + WiFi.localIP().toString());
     delay(1500);
   } else {
     lcd.clear();
     lcdPrintCenter(0, "! WIFI GAGAL !");
     lcdPrintCenter(1, "Lanjut offline");
+    Serial.println("[WiFi] Semua SSID gagal. Lanjut offline.");
     delay(2000);
   }
 }
 
 // ============================================================
-//  FIREBASE INIT (tidak diubah)
+//  FIREBASE INIT (Legacy Token, tanpa api_key)
 // ============================================================
 void initFirebase() {
-  if (WiFi.status() != WL_CONNECTED) return;
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("[FB] WiFi tidak tersambung — Firebase dilewati.");
+    return;
+  }
 
-  config.api_key = API_KEY;
+  // PENTING: Jangan set api_key saat menggunakan Legacy Token.
   config.database_url = DATABASE_URL;
   config.signer.tokens.legacy_token = DATABASE_SECRET;
+
+  // Batasi buffer SSL agar tidak habiskan heap & tidak hang.
+  fbdo.setBSSLBufferSize(4096, 512);
+  fbdo.setResponseSize(4096);
+
+  Firebase.reconnectWiFi(true);
   Firebase.begin(&config, &auth);
 
   lcd.clear();
   lcdPrintCenter(0, "Firebase...");
+  Serial.print("[FB] Menunggu Firebase ready");
+
   unsigned long fbStart = millis();
-  while (!Firebase.ready() && (millis() - fbStart < 15000)) {
-    delay(500);
+  while (!Firebase.ready() && (millis() - fbStart < 10000UL)) {
+    Serial.print(".");
+    delay(300);
+    yield();
   }
-  if (Firebase.ready()) lcdPrintCenter(1, "Terhubung!");
-  else lcdPrintCenter(1, "Gagal!");
+  Serial.println();
+
+  if (Firebase.ready()) {
+    lcdPrintCenter(1, "Terhubung!");
+    Serial.println("[FB] Firebase READY — Legacy Token aktif.");
+    fbFailCount = 0;
+  } else {
+    lcdPrintCenter(1, "Gagal!");
+    Serial.println("[FB] Firebase GAGAL — cek DATABASE_SECRET dan DATABASE_URL.");
+  }
   delay(1000);
 }
 
 // ============================================================
-//  RTC INIT + NTP SYNC (DIPERBAIKI — selalu sync dari NTP)
+//  FIREBASE RE-INIT (dipanggil saat gagal 5x berturut-turut)
+// ============================================================
+void reinitFirebase() {
+  Serial.println("[FB] Reinit Firebase karena gagal " + String(FB_FAIL_REINIT) +
+                 "x berturut-turut...");
+  lcd.clear();
+  lcdPrintCenter(0, "FB Reconnect...");
+
+  Firebase.reset(&config);
+  delay(500);
+  yield();
+
+  config.database_url = DATABASE_URL;
+  config.signer.tokens.legacy_token = DATABASE_SECRET;
+  fbdo.setBSSLBufferSize(4096, 512);
+  fbdo.setResponseSize(4096);
+  Firebase.reconnectWiFi(true);
+  Firebase.begin(&config, &auth);
+
+  unsigned long fbStart = millis();
+  while (!Firebase.ready() && (millis() - fbStart < 8000UL)) {
+    delay(300);
+    yield();
+  }
+
+  if (Firebase.ready()) {
+    Serial.println("[FB] Reinit OK.");
+    fbFailCount = 0;
+  } else {
+    Serial.println("[FB] Reinit GAGAL — akan coba lagi nanti.");
+  }
+  lcd.clear();
+  lastLCDUpdate = 0;
+}
+
+// ============================================================
+//  RTC INIT + NTP SYNC (selalu sync dari NTP)
 // ============================================================
 #define WIB_OFFSET_SEC (7L * 3600L)
 
@@ -296,7 +411,7 @@ void initRTC() {
     Serial.println("[RTC] WiFi tidak tersambung, tidak bisa sync NTP.");
   }
 
-  // Jika NTP gagal, cek apakah RTC kehilangan daya / belum diset
+  // Jika NTP gagal, cek apakah RTC kehilangan daya
   if (!setSuccess) {
     if (rtc.lostPower()) {
       rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
@@ -322,27 +437,55 @@ void initRTC() {
 }
 
 // ============================================================
-//  BACA THRESHOLDS DARI FIREBASE
+//  BACA THRESHOLDS DARI FIREBASE (handle int & double)
 // ============================================================
 void readFirebaseThresholds() {
   if (!Firebase.ready()) return;
   if (Firebase.RTDB.getJSON(&fbdo, "/komposter/thresholds")) {
     FirebaseJson &json = fbdo.jsonObject();
     FirebaseJsonData jsonData;
+
     json.get(jsonData, "temperature/min");
-    if (jsonData.success) tempThresholdMin = jsonData.doubleValue;
+    if (jsonData.success)
+      tempThresholdMin = (jsonData.typeNum == FirebaseJson::JSON_INT)
+                             ? (float)jsonData.intValue
+                             : (float)jsonData.doubleValue;
+
     json.get(jsonData, "temperature/max");
-    if (jsonData.success) tempThresholdMax = jsonData.doubleValue;
+    if (jsonData.success)
+      tempThresholdMax = (jsonData.typeNum == FirebaseJson::JSON_INT)
+                             ? (float)jsonData.intValue
+                             : (float)jsonData.doubleValue;
+
     json.get(jsonData, "gas/max");
-    if (jsonData.success) gasThresholdMax = jsonData.doubleValue;
+    if (jsonData.success)
+      gasThresholdMax = (jsonData.typeNum == FirebaseJson::JSON_INT)
+                            ? (float)jsonData.intValue
+                            : (float)jsonData.doubleValue;
+
     json.get(jsonData, "soil/min");
-    if (jsonData.success) soilThresholdMin = jsonData.doubleValue;
-    Serial.println("[SYNC] Thresholds loaded");
+    if (jsonData.success)
+      soilThresholdMin = (jsonData.typeNum == FirebaseJson::JSON_INT)
+                             ? (float)jsonData.intValue
+                             : (float)jsonData.doubleValue;
+
+    json.get(jsonData, "soil/max");
+    if (jsonData.success)
+      soilThresholdMax = (jsonData.typeNum == FirebaseJson::JSON_INT)
+                             ? (float)jsonData.intValue
+                             : (float)jsonData.doubleValue;
+
+    Serial.print("[SYNC] Thresholds loaded: Temp(");
+    Serial.print(tempThresholdMin, 1); Serial.print("-"); Serial.print(tempThresholdMax, 1);
+    Serial.print("C) Gas(<"); Serial.print(gasThresholdMax, 0);
+    Serial.print("ppm) Soil("); Serial.print(soilThresholdMin, 0);
+    Serial.print("-"); Serial.print(soilThresholdMax, 0);
+    Serial.println("%)");
   }
 }
 
 // ============================================================
-//  BACA PERINTAH KONTROL DARI FIREBASE (dengan motor manual)
+//  BACA PERINTAH KONTROL DARI FIREBASE
 // ============================================================
 void readFirebaseControls() {
   if (!Firebase.ready()) return;
@@ -356,7 +499,8 @@ void readFirebaseControls() {
       String cmd = jsonData.stringValue;
       if (cmd == "ON" && !pumpP1Active && !pump1CmdProcessed) {
         json.get(jsonData, "p1/duration_sec");
-        if (jsonData.success) pumpP1Duration = (unsigned long)jsonData.intValue * 1000UL;
+        if (jsonData.success)
+          pumpP1Duration = (unsigned long)jsonData.intValue * 1000UL;
         pumpP1Active = true;
         pumpP1StartMs = millis();
         pump1CmdProcessed = true;
@@ -373,7 +517,8 @@ void readFirebaseControls() {
       String cmd = jsonData.stringValue;
       if (cmd == "ON" && !pumpP2Active && !pump2CmdProcessed) {
         json.get(jsonData, "p2/duration_sec");
-        if (jsonData.success) pumpP2Duration = (unsigned long)jsonData.intValue * 1000UL;
+        if (jsonData.success)
+          pumpP2Duration = (unsigned long)jsonData.intValue * 1000UL;
         pumpP2Active = true;
         pumpP2StartMs = millis();
         pump2CmdProcessed = true;
@@ -399,7 +544,7 @@ void readFirebaseControls() {
 }
 
 // ============================================================
-//  SENSOR: MQ-135 (R0=60.0 kΩ)
+//  SENSOR: MQ-135 (VCC=5.0V, R0=375.0 kΩ, formula standar)
 // ============================================================
 float readMQ135ppm() {
   long sum = 0;
@@ -411,19 +556,21 @@ float readMQ135ppm() {
 
   if (adcAvg >= 4090.0f || adcAvg <= 10.0f) return -1.0f;
 
-  float voltage = (adcAvg / MQ135_ADC_MAX) * MQ135_VREF;
-  if (voltage <= 0.01f || voltage >= 3.28f) return -1.0f;
+  // Tegangan yang terbaca pada pin ESP32 ADC (0V s/d 3.3V)
+  float vADC = (adcAvg / MQ135_ADC_MAX) * ESP32_VREF;
+  if (vADC <= 0.01f || vADC >= 3.28f) return -1.0f;
 
-  float rs = MQ135_RL_VALUE * (MQ135_VREF - voltage) / voltage;
+  // Hitung RS dengan VCC = 5.0V (karena MQ-135 terhubung ke 5V)
+  float rs = MQ135_RL_VALUE * (MQ135_VCC - vADC) / vADC;
   if (rs <= 0.0f) return -1.0f;
 
   float ratio = rs / MQ135_R0;
-  if (ratio <= 0.0f || ratio > 1.5f) return -1.0f;
+  if (ratio <= 0.0f) return -1.0f;
 
-  // Interpolasi dua titik: ratio=1 → ppm=1, ratio=0.238 → ppm=100
-  const float RATIO_GAS = 0.238f;
-  float ppm = 1.0f + (100.0f - 1.0f) * (1.0f - ratio) / (1.0f - RATIO_GAS);
-  return constrain(ppm, 1.0f, 100.0f);
+  // Formula standar kurva karakteristik MQ-135
+  // PPM = 116.602 * ratio^(-2.769)
+  float ppm = 116.602f * pow(ratio, -2.769f);
+  return constrain(ppm, 1.0f, 2000.0f);
 }
 
 // ============================================================
@@ -448,20 +595,22 @@ float readTemperature() {
 }
 
 // ============================================================
-//  SENSOR: Soil Moisture (DRY=3400, WET=0)
+//  SENSOR: Soil Moisture (DRY=3300, WET=1000)
 // ============================================================
 float readSoilMoisture() {
   long sum = 0;
   for (int i = 0; i < SOIL_SAMPLES; i++) {
     sum += analogRead(SOIL_PIN);
-    delay(10);
+    delay(5);
   }
   int adcAvg = (int)(sum / SOIL_SAMPLES);
 
-  if (adcAvg >= 4090 || adcAvg <= 10) return -1.0f;
+  if (adcAvg >= 4090 || adcAvg <= 100) return -1.0f;
 
-  // Interpolasi linear: DRY=3400 → 0%, WET=0 → 100%
-  float moisture = (float)(SOIL_DRY_ADC - adcAvg) / (SOIL_DRY_ADC - SOIL_WET_ADC) * 100.0f;
+  // Interpolasi linear: DRY (3300) → 0%, WET (1000) → 100%
+  // Sensor Kapasitif: Nilai ADC makin KECIL saat media makin BASAH
+  float moisture = (float)(SOIL_DRY_ADC - adcAvg) /
+                   (float)(SOIL_DRY_ADC - SOIL_WET_ADC) * 100.0f;
   return constrain(moisture, 0.0f, 100.0f);
 }
 
@@ -470,7 +619,7 @@ float readSoilMoisture() {
 // ============================================================
 bool isTempError(float t) { return (t < -900.0f); }
 bool isSoilError(float s) { return (s < 0.0f); }
-bool isGasError(float g) { return (g < 0.0f || g > 200.0f); }
+bool isGasError(float g)  { return (g < 0.0f || g > 5000.0f); }
 
 // ============================================================
 //  KONTROL POMPA (NON-BLOCKING)
@@ -533,22 +682,25 @@ void handleMotorSchedule(int currentHour, int currentMinute, int currentDay) {
   }
 
   if (motorScheduleHours.length() == 0) return;
-  if (currentHour == motorLastRunHour && currentMinute == motorLastRunMinute && currentDay == motorLastRunDay) return;
+  if (currentHour == motorLastRunHour &&
+      currentMinute == motorLastRunMinute &&
+      currentDay == motorLastRunDay) return;
 
   bool shouldRun = false;
   int startIdx = 0;
   for (int i = 0; i <= (int)motorScheduleHours.length(); i++) {
-    if (i == (int)motorScheduleHours.length() || motorScheduleHours.charAt(i) == ',') {
+    if (i == (int)motorScheduleHours.length() ||
+        motorScheduleHours.charAt(i) == ',') {
       String timeStr = motorScheduleHours.substring(startIdx, i);
       timeStr.trim();
       int sepIdx = timeStr.indexOf(':');
       int schHour = -1, schMin = -1;
       if (sepIdx != -1) {
         schHour = timeStr.substring(0, sepIdx).toInt();
-        schMin = timeStr.substring(sepIdx + 1).toInt();
+        schMin  = timeStr.substring(sepIdx + 1).toInt();
       } else {
         schHour = timeStr.toInt();
-        schMin = 0;
+        schMin  = 0;
       }
       if (schHour == currentHour && schMin == currentMinute) {
         shouldRun = true;
@@ -560,15 +712,16 @@ void handleMotorSchedule(int currentHour, int currentMinute, int currentDay) {
 
   if (shouldRun) {
     motorSessionActive = true;
-    motorSessionStart = millis();
-    motorLastRunHour = currentHour;
+    motorSessionStart  = millis();
+    motorLastRunHour   = currentHour;
     motorLastRunMinute = currentMinute;
-    motorLastRunDay = currentDay;
+    motorLastRunDay    = currentDay;
     digitalWrite(MOTOR_PIN, RELAY2_ON);
     motorBuzzCount = 0;
-    lastBuzzTime = millis() - 3000;
+    lastBuzzTime   = millis() - 3000;
     motorBuzzActive = true;
-    Serial.println("[MOTOR] Sesi dimulai jam " + String(currentHour) + ":" + String(currentMinute));
+    Serial.println("[MOTOR] Sesi dimulai jam " + String(currentHour) + ":" +
+                   String(currentMinute));
   }
 }
 
@@ -591,57 +744,14 @@ void handleMotorBuzzer() {
 }
 
 // ============================================================
-//  LCD: WARNING MODE (tidak diubah)
-// ============================================================
-void updateLCDWithWarning(float gas, float temp, float soil) {
-  unsigned long now = millis();
-  if (now - lastWarningUpdate < WARNING_INTERVAL) return;
-  lastWarningUpdate = now;
-
-  struct Warning {
-    const char *title;
-    char value[17];
-    bool buzzer;
-  };
-  Warning warnings[5];
-  int wCount = 0;
-
-  if (!isGasError(gas) && gas > gasThresholdMax) {
-    warnings[wCount] = {"! BAU TINGGI !", "", true};
-    snprintf(warnings[wCount].value, 17, "%.0f ppm", gas);
-    wCount++;
-  }
-  if (!isTempError(temp) && temp < tempThresholdMin) {
-    warnings[wCount] = {"! SUHU RENDAH !", "", false};
-    snprintf(warnings[wCount].value, 17, "%.1f%cC [Heat]", temp, (char)223);
-    wCount++;
-  }
-  if (!isTempError(temp) && temp > tempThresholdMax) {
-    warnings[wCount] = {"! SUHU TINGGI !", "", false};
-    snprintf(warnings[wCount].value, 17, "%.1f%cC [Cool]", temp, (char)223);
-    wCount++;
-  }
-  if (!isSoilError(soil) && soil < soilThresholdMin) {
-    warnings[wCount] = {"!TANAH KERING!", "", false};
-    snprintf(warnings[wCount].value, 17, "%.0f%%  [Siram]", soil);
-    wCount++;
-  }
-  if (wCount == 0) return;
-
-  warningScreen %= wCount;
-  lcd.clear();
-  lcdPrintCenter(0, warnings[warningScreen].title);
-  lcdPrintCenter(1, warnings[warningScreen].value);
-  if (warnings[warningScreen].buzzer) {
-    digitalWrite(BUZZER_PIN, HIGH);
-    delay(100);
-    digitalWrite(BUZZER_PIN, LOW);
-  }
-  warningScreen++;
-}
-
-// ============================================================
-//  LCD: ROTATING DISPLAY
+//  LCD: ROTATING DISPLAY (6 SCREEN — Motor punya screen sendiri)
+//
+//  Screen 0: Suhu Kompos
+//  Screen 1: Kadar Gas MQ-135
+//  Screen 2: Kelembaban Tanah
+//  Screen 3: Motor Pengaduk    ← screen terpisah
+//  Screen 4: Fan & Heater
+//  Screen 5: Pompa P1 & P2
 // ============================================================
 void updateLCDRotating(float temp, float gas, float soil, const char *timeStr) {
   unsigned long now = millis();
@@ -650,49 +760,155 @@ void updateLCDRotating(float temp, float gas, float soil, const char *timeStr) {
   lcd.clear();
   char buf[17];
 
+  // Evaluasi kondisi peringatan per sensor
+  bool tempLow  = (!isTempError(temp) && temp < tempThresholdMin);
+  bool tempIsHigh = (!isTempError(temp) && temp > tempThresholdMax);
+  bool tempWarn = (tempLow || tempIsHigh);
+
+  bool gasWarn  = (!isGasError(gas) && gas > gasThresholdMax);
+  bool soilLow  = (!isSoilError(soil) && soil < soilThresholdMin);
+  bool soilHigh = (!isSoilError(soil) && soil > soilThresholdMax);
+  bool soilWarn = (soilLow || soilHigh);
+
+  // Buzzer beep saat screen sensor menunjukkan peringatan
+  if ((lcdScreen == 0 && tempWarn) ||
+      (lcdScreen == 1 && gasWarn)  ||
+      (lcdScreen == 2 && soilWarn)) {
+    digitalWrite(BUZZER_PIN, HIGH);
+    delay(120);
+    digitalWrite(BUZZER_PIN, LOW);
+  }
+
   switch (lcdScreen) {
-  case 0:
-    lcdPrintCenter(0, "  [ SUHU ]");
-    snprintf(buf, sizeof(buf), isTempError(temp) ? "  NO SENSOR" : "%.1f%cC | %s", temp, (char)223, timeStr);
-    lcdPrintCenter(1, buf);
+  case 0: // ── SCREEN 0: SUHU KOMPOS ──────────────────────
+    lcd.setCursor(0, 0);
+    lcd.write(0); // Icon Thermometer
+    snprintf(buf, sizeof(buf), " SUHU %s", timeStr);
+    lcd.print(buf);
+
+    lcd.setCursor(0, 1);
+    if (isTempError(temp)) {
+      lcd.print("  [ NO SENSOR ] ");
+    } else if (tempLow) {
+      snprintf(buf, sizeof(buf), " %4.1f%cC [DINGIN]", temp, (char)223);
+      lcd.print(buf);
+    } else if (tempIsHigh) {
+      snprintf(buf, sizeof(buf), " %4.1f%cC [PANAS]", temp, (char)223);
+      lcd.print(buf);
+    } else {
+      snprintf(buf, sizeof(buf), " %4.1f%cC  [ OK ] ", temp, (char)223);
+      lcd.print(buf);
+    }
     break;
-  case 1:
-    lcdPrintCenter(0, " [ GAS ]");
-    snprintf(buf, sizeof(buf), isGasError(gas) ? "  NO SENSOR" : "%.0f ppm", gas);
-    lcdPrintCenter(1, buf);
+
+  case 1: // ── SCREEN 1: KADAR GAS (MQ-135) ──────────────
+    lcd.setCursor(0, 0);
+    lcd.write(1); // Icon Gas
+    lcd.print(" GAS MQ-135    ");
+
+    lcd.setCursor(0, 1);
+    if (isGasError(gas)) {
+      lcd.print("  [ NO SENSOR ] ");
+    } else if (gasWarn) {
+      snprintf(buf, sizeof(buf), " %4.0f ppm[PEKAT]", gas);
+      lcd.print(buf);
+    } else {
+      snprintf(buf, sizeof(buf), " %4.0f ppm [ OK ]", gas);
+      lcd.print(buf);
+    }
     break;
-  case 2:
-    lcdPrintCenter(0, " [ TANAH ]");
-    snprintf(buf, sizeof(buf), isSoilError(soil) ? "  NO SENSOR" : "Lembab: %.0f%%", soil);
-    lcdPrintCenter(1, buf);
+
+  case 2: // ── SCREEN 2: KELEMBABAN TANAH ─────────────────
+    lcd.setCursor(0, 0);
+    lcd.write(2); // Icon Soil / Droplet
+    lcd.print(" KELEMBABAN    ");
+
+    lcd.setCursor(0, 1);
+    if (isSoilError(soil)) {
+      lcd.print("  [ NO SENSOR ] ");
+    } else if (soilLow) {
+      snprintf(buf, sizeof(buf), "  %3.0f%% [KERING] ", soil);
+      lcd.print(buf);
+    } else if (soilHigh) {
+      snprintf(buf, sizeof(buf), "  %3.0f%%  [BASAH] ", soil);
+      lcd.print(buf);
+    } else {
+      snprintf(buf, sizeof(buf), "  %3.0f%%   [ OK ] ", soil);
+      lcd.print(buf);
+    }
     break;
-  case 3:
-    snprintf(buf, sizeof(buf), "H:%d F:%d M:%d", heaterStatus, fanStatus, motorStatus);
-    lcdPrintCenter(0, buf);
-    snprintf(buf, sizeof(buf), "P1:%s P2:%s", p1Status ? "ON " : "OFF", p2Status ? "ON " : "OFF");
-    lcdPrintCenter(1, buf);
+
+  case 3: // ── SCREEN 3: MOTOR PENGADUK (screen sendiri) ──
+    lcd.setCursor(0, 0);
+    lcd.write(3); // Icon Motor
+    lcd.print(" MOTOR PENGADUK");
+
+    lcd.setCursor(0, 1);
+    if (motorStatus) {
+      lcd.print("  Status: [ ON ]");
+    } else {
+      lcd.print("  Status: [OFF] ");
+    }
+    break;
+
+  case 4: // ── SCREEN 4: FAN & HEATER ─────────────────────
+    lcd.setCursor(0, 0);
+    lcd.write(4); // Icon Fan
+    lcd.print(" FAN & HEATER  ");
+
+    lcd.setCursor(0, 1);
+    snprintf(buf, sizeof(buf), "FAN:%-3s  HEAT:%-3s",
+             fanStatus ? "ON" : "OFF",
+             heaterStatus ? "ON" : "OFF");
+    lcd.print(buf);
+    break;
+
+  case 5: // ── SCREEN 5: POMPA P1 & P2 ────────────────────
+    lcd.setCursor(0, 0);
+    lcd.write(5); // Icon Pump
+    lcd.print(" POMPA NUTRISI ");
+
+    lcd.setCursor(0, 1);
+    snprintf(buf, sizeof(buf), "P1:%-3s   P2:%-3s",
+             p1Status ? "ON" : "OFF",
+             p2Status ? "ON" : "OFF");
+    lcd.print(buf);
     break;
   }
-  lcdScreen = (lcdScreen + 1) % 4;
+
+  lcdScreen = (lcdScreen + 1) % 6;
 }
 
 // ============================================================
-//  SERIAL MONITOR — ditambah debug motor
+//  SERIAL MONITOR
 // ============================================================
-void printSerialMonitor(float temp, float gas, float soil, const char *timeStr) {
+void printSerialMonitor(float temp, float gas, float soil,
+                        const char *timeStr) {
   Serial.println(F("\n=================================================="));
-  Serial.print(F("     I-COMPOST v2.5.1-ESP32 | WIB: "));
+  Serial.print(F("     I-COMPOST v2.6.0-ESP32 | WIB: "));
   Serial.println(timeStr);
   Serial.println(F("=================================================="));
   Serial.print(F(" Suhu         : "));
   if (isTempError(temp)) Serial.println(F("NO SENSOR"));
   else { Serial.print(temp, 1); Serial.println(F(" C")); }
+
   Serial.print(F(" Gas          : "));
   if (isGasError(gas)) Serial.println(F("NO SENSOR"));
-  else { Serial.print(gas, 1); Serial.println(F(" ppm")); }
+  else {
+    Serial.print(gas, 1);
+    Serial.print(F(" ppm (raw ADC: "));
+    Serial.print(analogRead(MQ135_AOUT_PIN));
+    Serial.println(F(")"));
+  }
+
   Serial.print(F(" Kelembaban   : "));
   if (isSoilError(soil)) Serial.println(F("NO SENSOR"));
-  else { Serial.print(soil, 1); Serial.println(F(" %")); }
+  else {
+    Serial.print(soil, 1);
+    Serial.print(F(" % (raw ADC: "));
+    Serial.print(analogRead(SOIL_PIN));
+    Serial.println(F(")"));
+  }
 
   Serial.println(F("--------------------------------------------------"));
   Serial.print(F(" Heater       : ")); Serial.println(heaterStatus ? F("ON") : F("OFF"));
@@ -702,13 +918,17 @@ void printSerialMonitor(float temp, float gas, float soil, const char *timeStr) 
   Serial.print(F(" Pompa P2     : ")); Serial.println(p2Status ? F("ON") : F("OFF"));
 
   // DEBUG: status motor jadwal
-  Serial.print(F(" [DEBUG] motorEnabled=")); Serial.print(motorEnabled);
-  Serial.print(F(", sessionActive=")); Serial.print(motorSessionActive);
-  Serial.print(F(", pinState=")); Serial.println(digitalRead(MOTOR_PIN));
+  Serial.print(F(" [DEBUG] motorEnabled="));  Serial.print(motorEnabled);
+  Serial.print(F(", sessionActive="));         Serial.print(motorSessionActive);
+  Serial.print(F(", pinState="));              Serial.println(digitalRead(MOTOR_PIN));
 
   Serial.println(F("=================================================="));
-  Serial.print(F(" Heap: ")); Serial.print(ESP.getFreeHeap());
-  Serial.print(F(" | WiFi: ")); Serial.println(WiFi.RSSI());
+  Serial.print(F(" Heap     : ")); Serial.print(ESP.getFreeHeap()); Serial.println(F(" bytes"));
+  Serial.print(F(" WiFi RSSI: ")); Serial.print(WiFi.RSSI()); Serial.println(F(" dBm"));
+  Serial.print(F(" FB Ready : ")); Serial.println(Firebase.ready() ? F("YES") : F("NO"));
+  if (!Firebase.ready()) {
+    Serial.print(F(" FB Error : ")); Serial.println(fbdo.errorReason().c_str());
+  }
   Serial.println();
 }
 
@@ -718,14 +938,20 @@ void printSerialMonitor(float temp, float gas, float soil, const char *timeStr) 
 void animatedOpening() {
   lcd.clear();
   lcd.createChar(0, blockChar);
-  lcd.createChar(1, checkMark);
+  lcd.createChar(1, charCheck);
   lcd.setCursor(3, 0);
   const char *brand = "I-COMPOST";
-  for (int i = 0; brand[i]; ++i) { lcd.print(brand[i]); delay(150); }
+  for (int i = 0; brand[i]; ++i) {
+    lcd.print(brand[i]);
+    delay(150);
+  }
   delay(1000);
   lcd.setCursor(5, 1);
   const char *tag = "by PNJ";
-  for (int i = 0; tag[i]; ++i) { lcd.print(tag[i]); delay(80); }
+  for (int i = 0; tag[i]; ++i) {
+    lcd.print(tag[i]);
+    delay(80);
+  }
   delay(1000);
   lcd.clear();
   lcdPrintCenter(0, "Initializing..");
@@ -754,12 +980,20 @@ void animatedOpening() {
   }
   delay(1000);
   lcd.clear();
-  lcdPrintCenter(0, "I-COMPOSTER");
-  lcdPrintCenter(1, "v2.5.1 ESP32");
+  lcdPrintCenter(0, "I-COMPOST");
+  lcdPrintCenter(1, "v2.6.0");
   delay(1500);
   lcd.clear();
-  lcd.createChar(2, thermometer);
-  lcd.createChar(3, droplet);
+
+  // Load custom 5x8 characters ke LCD
+  lcd.createChar(0, charTemp);
+  lcd.createChar(1, charGas);
+  lcd.createChar(2, charSoil);
+  lcd.createChar(3, charMotor);
+  lcd.createChar(4, charFan);
+  lcd.createChar(5, charPump);
+  lcd.createChar(6, charAlert);
+  lcd.createChar(7, charCheck);
 }
 
 // ============================================================
@@ -778,8 +1012,8 @@ void setup() {
   pinMode(MOTOR_PIN, OUTPUT);
   pinMode(BUZZER_PIN, OUTPUT);
 
-  // === PERBAIKAN: pastikan relay motor mati saat boot ===
-  digitalWrite(MOTOR_PIN, RELAY2_OFF);
+  // Pastikan semua relay mati saat boot
+  digitalWrite(MOTOR_PIN,  RELAY2_OFF);
   digitalWrite(HEATER_PIN, RELAY4_OFF);
   digitalWrite(FAN_PIN,    RELAY4_OFF);
   digitalWrite(P1_PIN,     RELAY4_OFF);
@@ -800,12 +1034,15 @@ void setup() {
   analogSetPinAttenuation(MQ135_AOUT_PIN, ADC_11db);
   analogSetPinAttenuation(SOIL_PIN, ADC_11db);
 
-  Serial.println("\n[INFO] Kalibrasi terbaru:");
-  Serial.println("  Soil   : DRY=" + String(SOIL_DRY_ADC) + " WET=" + String(SOIL_WET_ADC) + " (linear, turun saat basah)");
-  Serial.println("  MQ-135 : R0=" + String(MQ135_R0, 1) + " kΩ (baseline udara bersih)");
+  Serial.println("\n[INFO] Kalibrasi v2.6.0:");
+  Serial.println("  Soil   : DRY=" + String(SOIL_DRY_ADC) + " WET=" +
+                 String(SOIL_WET_ADC) + " (linear, turun saat basah)");
+  Serial.println("  MQ-135 : R0=" + String(MQ135_R0, 1) +
+                 " kOhm, VCC=5.0V (formula standar)");
   Serial.println("  DS18B20: retry 3x + kunci interrupt");
   Serial.println("  RTC    : selalu sync dari NTP jika WiFi tersambung");
   Serial.println("  Motor  : otomatis via jadwal Firebase (active HIGH)");
+  Serial.println("  WiFi   : Dual SSID (4G-UFI-F6F / Samsung)");
   Serial.println("  Chip   : ESP32 30-pin classic");
 }
 
@@ -815,10 +1052,13 @@ void setup() {
 void loop() {
   unsigned long currentMs = millis();
 
+  // Sync thresholds dari Firebase setiap 5 detik
   if (currentMs - lastFirebaseSync >= 5000UL) {
     lastFirebaseSync = currentMs;
     readFirebaseThresholds();
   }
+
+  // Baca kontrol dari Firebase setiap 3 detik
   if (currentMs - lastControlRead >= 3000UL) {
     lastControlRead = currentMs;
     readFirebaseControls();
@@ -827,32 +1067,36 @@ void loop() {
   handlePumpTimers();
   handleMotorBuzzer();
 
+  // Baca sensor
   float temperature = readTemperature();
-  float gasPPM = readMQ135ppm();
+  float gasPPM      = readMQ135ppm();
   float soilPercent = readSoilMoisture();
 
+  // Waktu RTC → WIB
   DateTime nowUTC = rtc.now();
   DateTime nowWIB = nowUTC + TimeSpan(WIB_OFFSET_SEC);
   char timeString[9];
-  sprintf(timeString, "%02d:%02d:%02d", nowWIB.hour(), nowWIB.minute(), nowWIB.second());
-  int currentHour = nowWIB.hour();
+  sprintf(timeString, "%02d:%02d:%02d",
+          nowWIB.hour(), nowWIB.minute(), nowWIB.second());
+  int currentHour   = nowWIB.hour();
   int currentMinute = nowWIB.minute();
-  int currentDay = nowWIB.day();
+  int currentDay    = nowWIB.day();
 
   handleMotorSchedule(currentHour, currentMinute, currentDay);
 
   // Heater & Fan (otomatis berdasarkan threshold)
   heaterStatus = (!isTempError(temperature) && temperature < tempThresholdMin);
-  gasHigh = (!isGasError(gasPPM) && gasPPM > gasThresholdMax);
+  gasHigh  = (!isGasError(gasPPM) && gasPPM > gasThresholdMax);
   tempHigh = (!isTempError(temperature) && temperature > tempThresholdMax);
   fanStatus = (gasHigh || tempHigh);
 
   digitalWrite(HEATER_PIN, heaterStatus ? RELAY4_ON : RELAY4_OFF);
-  digitalWrite(FAN_PIN, fanStatus ? RELAY4_ON : RELAY4_OFF);
+  digitalWrite(FAN_PIN,    fanStatus    ? RELAY4_ON : RELAY4_OFF);
 
-  // Log actuator ke Firebase
+  // Log actuator ke Firebase saat berubah
   if (Firebase.ready()) {
-    auto pushActuatorLog = [&](String name, bool status, String reason, float val) {
+    auto pushActuatorLog = [&](String name, bool status, String reason,
+                               float val) {
       FirebaseJson log;
       log.set("actuator", name);
       log.set("status", status ? "ON" : "OFF");
@@ -863,42 +1107,47 @@ void loop() {
       Firebase.RTDB.pushJSON(&fbdo, "/logs/actuators", &log);
     };
     if (heaterStatus != prevHeater) {
-      pushActuatorLog("Heater", heaterStatus, heaterStatus ? "Suhu Terlalu Rendah" : "Suhu Sudah Normal", temperature);
+      pushActuatorLog("Heater", heaterStatus,
+                      heaterStatus ? "Suhu Terlalu Rendah"
+                                   : "Suhu Sudah Normal",
+                      temperature);
       prevHeater = heaterStatus;
     }
     if (fanStatus != prevFan) {
-      String reason = fanStatus ? ((gasHigh && tempHigh) ? "Bau & Suhu Tinggi" : (gasHigh ? "Kadar Bau Tinggi" : "Suhu Terlalu Tinggi")) : "Bau & Suhu Normal";
-      pushActuatorLog("Exhaust Fan", fanStatus, reason, (gasHigh ? gasPPM : temperature));
+      String reason =
+          fanStatus
+              ? ((gasHigh && tempHigh)
+                     ? "Bau & Suhu Tinggi"
+                     : (gasHigh ? "Kadar Bau Tinggi" : "Suhu Terlalu Tinggi"))
+              : "Bau & Suhu Normal";
+      pushActuatorLog("Exhaust Fan", fanStatus, reason,
+                      (gasHigh ? gasPPM : temperature));
       prevFan = fanStatus;
     }
     if (p1Status != prevP1) {
-      pushActuatorLog("Pompa P1", p1Status, p1Status ? "Dinyalakan dari App" : "Selesai / Dimatikan", soilPercent);
+      pushActuatorLog("Pompa P1", p1Status,
+                      p1Status ? "Dinyalakan dari App" : "Selesai / Dimatikan",
+                      soilPercent);
       prevP1 = p1Status;
     }
     if (p2Status != prevP2) {
-      pushActuatorLog("Pompa P2", p2Status, p2Status ? "Dinyalakan dari App" : "Selesai / Dimatikan", 0.0f);
+      pushActuatorLog("Pompa P2", p2Status,
+                      p2Status ? "Dinyalakan dari App" : "Selesai / Dimatikan",
+                      0.0f);
       prevP2 = p2Status;
     }
     if (motorStatus != prevMotor) {
-      pushActuatorLog("Motor Aduk", motorStatus, motorStatus ? "Manual ON" : "Manual OFF", 0.0f);
+      pushActuatorLog("Motor Aduk", motorStatus,
+                      motorStatus ? "Jadwal ON" : "Selesai / OFF", 0.0f);
       prevMotor = motorStatus;
     }
   }
 
-  // Warning mode
-  warningMode = (!isGasError(gasPPM) && gasPPM > gasThresholdMax) ||
-                (!isTempError(temperature) && temperature < tempThresholdMin) ||
-                (!isTempError(temperature) && temperature > tempThresholdMax) ||
-                (!isSoilError(soilPercent) && soilPercent < soilThresholdMin);
+  // Update rotasi layar LCD (6 Screen)
+  updateLCDRotating(temperature, gasPPM, soilPercent, timeString);
 
-  if (warningMode) updateLCDWithWarning(gasPPM, temperature, soilPercent);
-  else {
-    warningScreen = 0;
-    updateLCDRotating(temperature, gasPPM, soilPercent, timeString);
-  }
-
-  // Upload data ke Firebase
-  if (currentMs - lastDataUpload >= 2000UL) {
+  // Upload data ke Firebase (interval 5 detik — kurangi tekanan SSL)
+  if (currentMs - lastDataUpload >= 5000UL) {
     lastDataUpload = currentMs;
     printSerialMonitor(temperature, gasPPM, soilPercent, timeString);
 
@@ -908,63 +1157,86 @@ void loop() {
       Serial.println("[FB] WiFi terputus — skip upload");
     } else if (!Firebase.ready()) {
       Serial.println("[FB] Firebase belum ready — skip upload");
+      fbFailCount++;
+      if (fbFailCount >= FB_FAIL_REINIT) reinitFirebase();
     } else {
       FirebaseJson json;
       json.set("temperature", isTempError(temperature) ? -1.0f : temperature);
-      json.set("gas", isGasError(gasPPM) ? -1.0f : gasPPM);
-      json.set("soil", isSoilError(soilPercent) ? -1.0f : soilPercent);
+      json.set("gas",  isGasError(gasPPM)       ? -1.0f : gasPPM);
+      json.set("soil", isSoilError(soilPercent)  ? -1.0f : soilPercent);
       json.set("time", timeString);
       json.set("unix_time", (double)nowUTC.unixtime());
       json.set("actuators/heater", heaterStatus);
-      json.set("actuators/fan", fanStatus);
-      json.set("actuators/motor", motorStatus);
-      json.set("actuators/p1", p1Status);
-      json.set("actuators/p2", p2Status);
+      json.set("actuators/fan",    fanStatus);
+      json.set("actuators/motor",  motorStatus);
+      json.set("actuators/p1",     p1Status);
+      json.set("actuators/p2",     p2Status);
 
       float packetLossPct = 0.0f;
-      if (qosTotalSent > 0) packetLossPct = ((float)qosTotalFailed / (float)qosTotalSent) * 100.0f;
+      if (qosTotalSent > 0)
+        packetLossPct = ((float)qosTotalFailed / (float)qosTotalSent) * 100.0f;
 
-      json.set("qos/delay_ms", qosLastDelayMs);
-      json.set("qos/throughput_bps", qosLastThroughputBps);
-      json.set("qos/jitter_ms", qosLastJitterMs);
+      json.set("qos/delay_ms",        qosLastDelayMs);
+      json.set("qos/throughput_bps",   qosLastThroughputBps);
+      json.set("qos/jitter_ms",       qosLastJitterMs);
       json.set("qos/packet_loss_pct", packetLossPct);
-      json.set("qos/free_heap", (uint32_t)ESP.getFreeHeap());
-      json.set("qos/uptime_ms", (uint32_t)millis());
-      json.set("qos/packet_id", packetId);
+      json.set("qos/free_heap",       (uint32_t)ESP.getFreeHeap());
+      json.set("qos/uptime_ms",       (uint32_t)millis());
+      json.set("qos/packet_id",       packetId);
 
       String jsonStr;
       json.toString(jsonStr, false);
       size_t payloadSize = jsonStr.length() + 300;
 
+      yield(); // beri kesempatan WiFi stack sebelum SSL
       unsigned long startSend = millis();
       bool ok = Firebase.RTDB.updateNode(&fbdo, "/komposter", &json);
       unsigned long endSend = millis();
+      yield();
 
       qosTotalSent++;
 
       if (ok) {
+        fbFailCount = 0; // reset counter saat berhasil
         float currentDelayMs = (float)(endSend - startSend);
-        if (qosLastDelayMs > 0) qosLastJitterMs = fabs(currentDelayMs - qosLastDelayMs);
-        else qosLastJitterMs = 0;
+        if (qosLastDelayMs > 0)
+          qosLastJitterMs = fabs(currentDelayMs - qosLastDelayMs);
+        else
+          qosLastJitterMs = 0;
         float delaySeconds = currentDelayMs / 1000.0f;
-        if (delaySeconds > 0) qosLastThroughputBps = ((float)payloadSize / delaySeconds);
+        if (delaySeconds > 0)
+          qosLastThroughputBps = ((float)payloadSize / delaySeconds);
         qosLastDelayMs = currentDelayMs;
-        Serial.println("[FB] Upload OK. Delay: " + String(currentDelayMs, 0) + "ms | Jitter: " + String(qosLastJitterMs, 0) + "ms | Throughput: " + String(qosLastThroughputBps, 1) + " Bps");
+        Serial.println("[FB] Upload OK. Delay: " + String(currentDelayMs, 0) +
+                       "ms | Jitter: " + String(qosLastJitterMs, 0) +
+                       "ms | Throughput: " + String(qosLastThroughputBps, 1) +
+                       " Bps");
       } else {
         qosTotalFailed++;
-        Serial.println("[FB] Upload GAGAL: " + fbdo.errorReason());
+        fbFailCount++;
+        Serial.println("[FB] !! Upload GAGAL !! (" + String(fbFailCount) + "/" +
+                       String(FB_FAIL_REINIT) + ")");
+        Serial.println("[FB]    Reason  : " + fbdo.errorReason());
+        Serial.println("[FB]    HTTP    : " + String(fbdo.httpCode()));
+        Serial.println("[FB]    Path    : /komposter");
+        if (fbFailCount >= FB_FAIL_REINIT) reinitFirebase();
       }
 
+      // Push ke history log setiap 1 menit
       if (currentMs - lastHistoryPush >= 60000UL) {
         lastHistoryPush = currentMs;
+        yield();
         Firebase.RTDB.pushJSON(&fbdo, "/komposter_logs", &json);
+        yield();
       }
     }
   }
 
-  // WiFi reconnect
+  // ── WiFi reconnect — bergantian SSID1 / SSID2 ─────────
   static unsigned long lastWifiCheck = 0;
   static bool wifiWasDisconnected = false;
+  static int reconnectSSID = 1; // mulai dari SSID1
+
   if (WiFi.status() != WL_CONNECTED) {
     if (!wifiWasDisconnected) {
       wifiWasDisconnected = true;
@@ -976,11 +1248,20 @@ void loop() {
       lastWifiCheck = currentMs;
       WiFi.disconnect();
       delay(200);
-      WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+      if (reconnectSSID == 1) {
+        Serial.println("[WiFi] Reconnect: mencoba " + String(WIFI_SSID1));
+        WiFi.begin(WIFI_SSID1, WIFI_PASSWORD1);
+        reconnectSSID = 2; // next time try SSID2
+      } else {
+        Serial.println("[WiFi] Reconnect: mencoba " + String(WIFI_SSID2));
+        WiFi.begin(WIFI_SSID2, WIFI_PASSWORD2);
+        reconnectSSID = 1; // next time try SSID1
+      }
     }
   } else {
     if (wifiWasDisconnected) {
       wifiWasDisconnected = false;
+      reconnectSSID = 1; // reset ke SSID1
       lcd.clear();
       lcdPrintCenter(0, "WiFi Terhubung!");
       lcdPrintCenter(1, WiFi.localIP().toString().c_str());

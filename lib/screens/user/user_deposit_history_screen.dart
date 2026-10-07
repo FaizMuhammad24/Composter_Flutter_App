@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../constants/app_colors.dart';
 import '../../models/compost_model.dart';
@@ -17,30 +18,36 @@ class _UserDepositHistoryScreenState extends State<UserDepositHistoryScreen> {
   bool _isLoading = true;
   List<CompostModel> _allHistory = [];
   List<CompostModel> _displayedHistory = [];
+  StreamSubscription? _historySub;
 
   @override
   void initState() {
     super.initState();
-    _loadHistory();
+    _subscribeHistory();
   }
 
-  Future<void> _loadHistory() async {
-    setState(() => _isLoading = true);
-    try {
-      final history = await HistoryService.getUserHistory(widget.userEmail);
+  @override
+  void dispose() {
+    _historySub?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeHistory() {
+    _historySub = HistoryService.getUserHistoryStream(widget.userEmail).listen((history) {
       if (!mounted) return;
       setState(() {
         _allHistory = history;
         _filterByDate();
         _isLoading = false;
       });
-    } catch (e) {
+    }, onError: (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal memuat riwayat: $e')),
-      );
-    }
+    });
+  }
+
+  Future<void> _loadHistory() async {
+    _subscribeHistory();
   }
 
   Future<void> _selectDate(BuildContext context) async {
@@ -211,48 +218,58 @@ class _UserDepositHistoryScreenState extends State<UserDepositHistoryScreen> {
                       
                       if (_displayedHistory.isEmpty)
                         Expanded(
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
+                          child: RefreshIndicator(
+                            onRefresh: _loadHistory,
+                            color: AppColors.primary,
+                            child: ListView(
+                              physics: const AlwaysScrollableScrollPhysics(),
                               children: [
+                                const SizedBox(height: 60),
                                 Icon(Icons.history, size: 64, color: Colors.grey[300]),
                                 const SizedBox(height: 16),
-                                const Text('Belum ada riwayat setoran.', style: TextStyle(color: Colors.grey, fontFamily: 'Poppins')),
+                                const Center(child: Text('Belum ada riwayat setoran.', style: TextStyle(color: Colors.grey, fontFamily: 'Poppins'))),
                               ],
                             ),
                           ),
                         )
                       else
                         Expanded(
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.horizontal,
-                            child: DataTable(
-                              columnSpacing: 35,
-                              columns: const [
-                                DataColumn(label: Text('Tanggal', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
-                                DataColumn(label: Text('Berat (kg)', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
-                                DataColumn(label: Text('Poin', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
-                                DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
-                                DataColumn(label: Text('Bukti', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
-                              ],
-                              rows: _displayedHistory.map((item) {
-                                return DataRow(
-                                  cells: [
-                                    DataCell(Text(DateFormat('dd/MM/yy HH:mm').format(DateTime.parse(item.createdAt)), style: const TextStyle(fontFamily: 'Poppins', fontSize: 12))),
-                                    DataCell(Text('${item.weight} kg', style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
-                                    DataCell(Text('+${item.points}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
-                                    DataCell(_buildStatusBadge(item.status)),
-                                    DataCell(
-                                      item.imageUrl.isNotEmpty 
-                                      ? IconButton(
-                                          icon: const Icon(Icons.image, color: Colors.blue),
-                                          onPressed: () => _showImageDialog(item.imageUrl),
-                                        )
-                                      : const Icon(Icons.image_not_supported, color: Colors.grey),
-                                    ),
+                          child: RefreshIndicator(
+                            onRefresh: _loadHistory,
+                            color: AppColors.primary,
+                            child: SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: DataTable(
+                                  columnSpacing: 35,
+                                  columns: const [
+                                    DataColumn(label: Text('Tanggal', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
+                                    DataColumn(label: Text('Berat (kg)', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
+                                    DataColumn(label: Text('Poin', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
+                                    DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
+                                    DataColumn(label: Text('Bukti', style: TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
                                   ],
-                                );
-                              }).toList(),
+                                  rows: _displayedHistory.map((item) {
+                                    return DataRow(
+                                      cells: [
+                                        DataCell(Text(DateFormat('dd/MM/yy HH:mm').format(DateTime.parse(item.createdAt)), style: const TextStyle(fontFamily: 'Poppins', fontSize: 12))),
+                                        DataCell(Text('${item.weight} kg', style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
+                                        DataCell(Text('+${item.points}', style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontFamily: 'Poppins'))),
+                                        DataCell(_buildStatusBadge(item.status)),
+                                        DataCell(
+                                          item.imageUrl.isNotEmpty 
+                                          ? IconButton(
+                                              icon: const Icon(Icons.image, color: Colors.blue),
+                                              onPressed: () => _showImageDialog(item.imageUrl),
+                                            )
+                                          : const Icon(Icons.image_not_supported, color: Colors.grey),
+                                        ),
+                                      ],
+                                    );
+                                  }).toList(),
+                                ),
+                              ),
                             ),
                           ),
                         ),

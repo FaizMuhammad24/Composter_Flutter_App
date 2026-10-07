@@ -60,7 +60,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
           : _users
               .where((u) =>
                   u.name.toLowerCase().contains(q.toLowerCase()) ||
-                  u.email.toLowerCase().contains(q.toLowerCase()))
+                  u.username.toLowerCase().contains(q.toLowerCase()))
               .toList();
     });
   }
@@ -71,7 +71,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Hapus User', style: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold)),
-        content: Text('Yakin hapus "${user.name}"?\nEmail: ${user.email}', style: const TextStyle(fontFamily: 'Poppins')),
+        content: Text('Yakin ingin menghapus user "${user.name}"?', style: const TextStyle(fontFamily: 'Poppins')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Batal')),
           ElevatedButton(
@@ -223,8 +223,7 @@ class _ManageUsersScreenState extends State<ManageUsersScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(user.name, style: const TextStyle(fontWeight: FontWeight.bold, fontFamily: 'Poppins', fontSize: 14)),
-                Text(user.email, style: const TextStyle(fontSize: 11, color: Colors.grey, fontFamily: 'Poppins')),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Row(
                   children: [
                     // Deposit count

@@ -230,7 +230,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
           child: DefaultTabController(
-            length: 3,
+            length: 2,
             child: Column(
               children: [
                 // Handle
@@ -250,7 +250,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                   labelStyle: TextStyle(fontFamily: 'Poppins', fontWeight: FontWeight.bold, fontSize: 12),
                   tabs: [
                     Tab(text: 'Tips'),
-                    Tab(text: 'Standar SNI'),
                     Tab(text: 'Bahan'),
                   ],
                 ),
@@ -258,7 +257,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
                   child: TabBarView(
                     children: [
                       _buildTipsTab(scrollController),
-                      _buildSNITab(scrollController),
                       _buildBahanTab(scrollController),
                     ],
                   ),
@@ -308,70 +306,6 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSNITab(ScrollController controller) {
-    final params = [
-      ['Parameter', 'Standar SNI', 'Unit'],
-      ['Suhu', '25 – 35', '°C'],
-      ['pH', '6.80 – 7.49', ''],
-      ['Kelembaban', '40 – 50', '%'],
-      ['C/N Ratio', '10 – 20', ''],
-      ['Kadar Air', '≤ 50', '%'],
-      ['Warna', 'Coklat kehitaman', ''],
-      ['Bau', 'Berbau tanah', ''],
-      ['Ukuran partikel', '0.55 – 25', 'mm'],
-    ];
-    return ListView(
-      controller: controller,
-      padding: const EdgeInsets.all(16),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.green.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.verified, color: Colors.green, size: 18),
-              SizedBox(width: 8),
-              Expanded(child: Text('Standar SNI 19-7030-2004 — Spesifikasi Kompos', style: TextStyle(fontSize: 12, fontFamily: 'Poppins', fontWeight: FontWeight.w600, color: Colors.green))),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8)],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: Table(
-              border: TableBorder.symmetric(inside: BorderSide(color: Colors.grey.shade100)),
-              columnWidths: const {0: FlexColumnWidth(2), 1: FlexColumnWidth(2), 2: FlexColumnWidth(1)},
-              children: params.asMap().entries.map((e) {
-                final isHeader = e.key == 0;
-                return TableRow(
-                  decoration: BoxDecoration(color: isHeader ? AppColors.adminPrimary.withValues(alpha: 0.08) : null),
-                  children: e.value.map((cell) => Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    child: Text(cell, style: TextStyle(
-                      fontSize: 12, fontFamily: 'Poppins',
-                      fontWeight: isHeader ? FontWeight.bold : FontWeight.normal,
-                      color: isHeader ? AppColors.adminPrimary : Colors.black87,
-                    )),
-                  )).toList(),
-                );
-              }).toList(),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -829,7 +763,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       unit: '°C',
       status: isOffline ? 'Terputus' : _sensorData!.temperatureStatus,
       valuePercent: (_sensorData!.temperature - 30) / (80 - 30),
-      targetNote: 'Target SNI: 25-35°C',
+      targetNote: 'Standar: 28-33°C',
       icon: Icons.thermostat,
       color: AppColors.temperature,
       isActive: !isOffline,
@@ -845,7 +779,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       unit: _sensorData!.isSoilHealthy ? '%' : '',
       status: isOffline ? 'Terputus' : _sensorData!.humidityStatus,
       valuePercent: _sensorData!.humidity / 100,
-      targetNote: 'Target SNI: 40-50%',
+      targetNote: 'Standar: 25-85%',
       icon: Icons.water_drop,
       color: AppColors.humidity,
       isActive: !isOffline,
@@ -861,7 +795,7 @@ class _AdminDashboardState extends State<AdminDashboard> with SingleTickerProvid
       unit: 'ppm',
       status: isOffline ? 'Terputus' : _sensorData!.gasStatus,
       valuePercent: _sensorData!.mq4 / 800,
-      targetNote: 'Batas Max: 50 ppm',
+      targetNote: 'Standar: < 100 ppm',
       icon: Icons.air,
       color: AppColors.gas,
       isActive: !isOffline,

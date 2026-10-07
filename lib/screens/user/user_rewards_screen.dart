@@ -5,6 +5,7 @@ import '../../models/user_model.dart';
 import '../../models/reward_model.dart';
 import '../../services/rewards/reward_service.dart';
 import '../../services/user/user_service.dart';
+import '../../widgets/common/reward_image.dart';
 
 class UserRewardsScreen extends StatefulWidget {
   final UserModel user;
@@ -178,15 +179,17 @@ class _UserRewardsScreenState extends State<UserRewardsScreen> {
                 if (imageUrl.isNotEmpty)
                   ClipRRect(
                     borderRadius: BorderRadius.circular(20),
-                    child: Image.network(
-                      imageUrl,
+                    child: SizedBox(
                       height: 72,
                       width: 72,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
-                        child: Icon(icon, size: 40, color: color),
+                      child: RewardImage(
+                        imageUrl: imageUrl,
+                        fit: BoxFit.cover,
+                        placeholder: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+                          child: Icon(icon, size: 40, color: color),
+                        ),
                       ),
                     ),
                   )
